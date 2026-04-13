@@ -41,6 +41,9 @@ dependencies = [
     "aiofiles>=24.1.0",
     "python-dotenv>=1.0.0",
     "rich>=13.9.0",
+    "llama-cpp-python>=0.3.0",
+    "huggingface_hub>=0.20.0",
+    "click>=8.0",
 ]
 
 [project.optional-dependencies]
@@ -50,6 +53,9 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
+]
+cuda = [
+    "llama-cpp-python[cuda]>=0.3.0",
 ]
 
 [project.scripts]

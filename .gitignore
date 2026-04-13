@@ -48,3 +48,6 @@ storage/metadata.db
 htmlcov/
 .coverage
 coverage.xml
+
+# Downloaded models
+models/

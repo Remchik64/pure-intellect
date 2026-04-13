@@ -1,0 +1,48 @@
+"""Каталог доступных LLM моделей."""
+
+MODEL_REGISTRY = {
+    "qwen2.5-3b": {
+        "name": "Qwen 2.5 3B Instruct",
+        "repo": "bartowski/Qwen2.5-3B-Instruct-GGUF",
+        "file": "Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+        "size_gb": 2.0,
+        "vram_gb": 2.5,
+        "context": 32768,
+        "languages": ["ru", "en", "zh"],
+        "good_for": ["chat", "analysis", "simple_code"],
+        "recommended_hardware": "RTX 3060 12GB+",
+    },
+    "llama3.1-8b": {
+        "name": "Llama 3.1 8B Instruct",
+        "repo": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+        "file": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+        "size_gb": 4.9,
+        "vram_gb": 5.5,
+        "context": 131072,
+        "languages": ["en", "multilingual"],
+        "good_for": ["chat", "code", "reasoning"],
+        "recommended_hardware": "RTX 3060 12GB+",
+    },
+    "qwen2.5-coder-7b": {
+        "name": "Qwen 2.5 Coder 7B Instruct",
+        "repo": "bartowski/Qwen2.5-Coder-7B-Instruct-GGUF",
+        "file": "Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
+        "size_gb": 4.7,
+        "vram_gb": 5.3,
+        "context": 32768,
+        "languages": ["code", "en"],
+        "good_for": ["code_generation", "code_review", "refactoring"],
+        "recommended_hardware": "RTX 3060 12GB+",
+    },
+    "deepseek-coder-v2-lite": {
+        "name": "DeepSeek Coder V2 Lite",
+        "repo": "bartowski/DeepSeek-Coder-V2-Lite-Instruct-GGUF",
+        "file": "DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf",
+        "size_gb": 9.0,
+        "vram_gb": 10.0,
+        "context": 131072,
+        "languages": ["code", "en"],
+        "good_for": ["advanced_code", "architecture", "debugging"],
+        "recommended_hardware": "RTX 3060 12GB (close to limit)",
+    },
+}
