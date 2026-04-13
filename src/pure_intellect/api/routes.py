@@ -1,7 +1,8 @@
 """API endpoints."""
 
 import logging
-from typing import Optional
+from typing import Optional, List
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from ..api.schemas import ChatRequest, ChatResponse, HealthResponse, ModelListResponse
 from ..engine import ModelManager, MODEL_REGISTRY
@@ -132,3 +133,50 @@ async def detect_intent(request: ChatRequest):
         "reasoning": result.reasoning,
         "suggested_context": result.suggested_context,
     }
+
+
+@router.post("/index")
+async def index_project(directory: str = ".", extensions: List[str] = [".py"]):
+    """Index project directory for code cards."""
+    from ..core import CardGenerator
+    
+    try:
+        generator = CardGenerator()
+        total_cards = generator.index_directory(Path(directory), extensions)
+        
+        return {
+            "status": "indexed",
+            "directory": directory,
+            "total_cards": total_cards,
+            "extensions": extensions,
+        }
+    except Exception as e:
+        logger.error(f"Indexing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/cards/search")
+async def search_cards(query: str, top_k: int = 5):
+    """Search code cards by query."""
+    from ..core import CardGenerator
+    
+    try:
+        generator = CardGenerator()
+        cards = generator.search_cards(query, top_k)
+        
+        return {
+            "query": query,
+            "results": [
+                {
+                    "card_id": card.card_id,
+                    "entity_name": card.entity.name,
+                    "entity_type": card.entity.type,
+                    "file_path": card.entity.file_path,
+                    "summary": card.summary,
+                }
+                for card in cards
+            ],
+        }
+    except Exception as e:
+        logger.error(f"Card search failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

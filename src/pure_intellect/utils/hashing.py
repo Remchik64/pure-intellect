@@ -1,28 +1,41 @@
-"""Утилиты для хеширования файлов."""
+"""Hashing utilities for file change detection."""
 
 import hashlib
 from pathlib import Path
 
 
-def file_sha256(file_path: Path | str) -> str:
-    """Вычислить SHA256 хэш файла."""
-    path = Path(file_path)
-    if not path.exists():
-        return ""
-    content = path.read_bytes()
-    return hashlib.sha256(content).hexdigest()
+def file_hash(file_path: Path, algorithm: str = "sha256") -> str:
+    """Calculate hash of a file.
+    
+    Args:
+        file_path: Path to the file
+        algorithm: Hash algorithm (sha256, md5, etc.)
+        
+    Returns:
+        Hex string of the file hash
+    """
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+    
+    hash_func = hashlib.new(algorithm)
+    
+    with open(file_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(8192), b''):
+            hash_func.update(chunk)
+    
+    return hash_func.hexdigest()
 
 
-def content_sha256(content: str) -> str:
-    """Вычислить SHA256 хэш строки."""
-    return hashlib.sha256(content.encode("utf-8")).hexdigest()
-
-
-def chunked_hash(file_path: Path | str, chunk_size: int = 8192) -> str:
-    """Хэширование файла блоками (для больших файлов)."""
-    path = Path(file_path)
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        while chunk := f.read(chunk_size):
-            h.update(chunk)
-    return h.hexdigest()
+def content_hash(content: str, algorithm: str = "sha256") -> str:
+    """Calculate hash of a string content.
+    
+    Args:
+        content: String content to hash
+        algorithm: Hash algorithm
+        
+    Returns:
+        Hex string of the content hash
+    """
+    hash_func = hashlib.new(algorithm)
+    hash_func.update(content.encode('utf-8'))
+    return hash_func.hexdigest()
