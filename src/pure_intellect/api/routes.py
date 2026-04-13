@@ -101,3 +101,34 @@ async def chat(request: ChatRequest):
     except Exception as e:
         logger.error(f"Chat failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/intent")
+async def detect_intent(request: ChatRequest):
+    """Определить намерение запроса."""
+    from ..core import IntentDetector
+    
+    manager = get_model_manager()
+    detector = IntentDetector(model_manager=manager)
+    
+    # Пытаемся загрузить модель если не загружена
+    use_llm = False
+    if manager.loaded_model is None:
+        try:
+            manager.load("qwen2.5-3b", n_gpu_layers=-1)
+            use_llm = True
+        except Exception:
+            pass
+    else:
+        use_llm = True
+    
+    result = detector.detect(request.query, use_llm=use_llm)
+    
+    return {
+        "intent": result.intent.value,
+        "confidence": result.confidence,
+        "entities": result.entities,
+        "keywords": result.keywords,
+        "reasoning": result.reasoning,
+        "suggested_context": result.suggested_context,
+    }
