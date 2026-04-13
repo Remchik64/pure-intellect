@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     port: int = Field(default=8085, description="Порт сервера")
     debug: bool = Field(default=False, description="Режим отладки")
     
+    # Logging
+    log_level: str = Field(default="INFO", description="Уровень логирования")
+    log_format: str = Field(default="text", description="Формат логов: text или json")
+    
     # Models
     orchestrator_model: str = Field(
         default="qwen2.5-3b",
@@ -53,3 +57,6 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Получить настройки."""
     return Settings()
+
+# Глобальный экземпляр настроек
+settings = get_settings()

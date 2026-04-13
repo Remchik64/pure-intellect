@@ -180,3 +180,46 @@ async def search_cards(query: str, top_k: int = 5):
     except Exception as e:
         logger.error(f"Card search failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/retrieve")
+async def retrieve_context(
+    query: str,
+    top_k: int = 5,
+    intent: Optional[str] = None,
+):
+    """Retrieve relevant code context using RAG."""
+    from ..core import Retriever
+    
+    try:
+        retriever = Retriever()
+        
+        if intent:
+            # Поиск по intent
+            results = retriever.search_by_intent(intent)
+        else:
+            # Обычный поиск
+            results = retriever.search(query, top_k=top_k)
+        
+        return {
+            "query": query,
+            "intent": intent,
+            "total_cards": retriever.count(),
+            "results": [
+                {
+                    "card_id": r.card_id,
+                    "entity_name": r.entity_name,
+                    "entity_type": r.entity_type,
+                    "file_path": r.file_path,
+                    "lines": f"{r.start_line}-{r.end_line}",
+                    "summary": r.summary,
+                    "distance": round(r.distance, 4),
+                    "relevance": round(r.relevance_score, 4),
+                }
+                for r in results
+            ],
+            "context": retriever.format_context(results),
+        }
+    except Exception as e:
+        logger.error(f"Retrieve failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
