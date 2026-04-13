@@ -223,3 +223,31 @@ async def retrieve_context(
     except Exception as e:
         logger.error(f"Retrieve failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/assemble")
+async def assemble_context(request: ChatRequest):
+    """Assemble context for LLM from user query."""
+    from ..core import IntentDetector, ContextAssembler
+    
+    try:
+        # 1. Intent detection
+        detector = IntentDetector()
+        intent_result = detector.detect(request.query)
+        
+        # 2. Context assembly
+        assembler = ContextAssembler()
+        result = assembler.assemble_and_respond(request.query, intent_result)
+        
+        return {
+            "query": request.query,
+            "intent": intent_result.intent.value,
+            "confidence": intent_result.confidence,
+            "entities": intent_result.entities,
+            "total_tokens": result["total_tokens"],
+            "mode": result["mode"],
+            "messages": result["messages"],
+        }
+    except Exception as e:
+        logger.error(f"Assemble failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

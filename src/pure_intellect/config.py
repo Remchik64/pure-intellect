@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     temperature: float = Field(default=0.7, description="Температура генерации")
     max_tokens: int = Field(default=2048, description="Максимум токенов в ответе")
     
+    # RAG settings
+    max_rag_chunks: int = Field(default=5, description="Максимум карточек RAG")
+    max_context_tokens: int = Field(default=3000, description="Максимум токенов контекста")
+    max_system_prompt_tokens: int = Field(default=2000, description="Максимум токенов system prompt")
+    
     class Config:
         env_prefix = "PURE_INTELLECT_"
         env_file = ".env"
