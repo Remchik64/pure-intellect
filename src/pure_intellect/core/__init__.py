@@ -6,6 +6,8 @@ from .retriever import Retriever, RetrievalResult
 from .assembler import ContextAssembler
 from .graph import KnowledgeGraph
 from .graph_builder import GraphBuilder
+from .watcher import FileWatcher
+from .watcher_integration import WatcherIntegration
 
 __all__ = [
     "IntentDetector", "IntentType", "IntentResult",
@@ -14,4 +16,6 @@ __all__ = [
     "ContextAssembler",
     "KnowledgeGraph",
     "GraphBuilder",
+    "FileWatcher",
+    "WatcherIntegration",
 ]

@@ -6,7 +6,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from pure_intellect.config import settings
-from pure_intellect.utils.hashing import file_sha256
+from pure_intellect.utils.hashing import file_hash
 from pure_intellect.utils.logger import get_logger
 
 logger = get_logger("watcher")
@@ -106,7 +106,7 @@ class FileWatcher:
         if not path.exists():
             return
 
-        new_hash = file_sha256(path)
+        new_hash = file_hash(path)
         old_hash = self._file_hashes.get(file_path)
 
         if old_hash == new_hash:
@@ -130,7 +130,7 @@ class FileWatcher:
                 continue
 
             str_path = str(file_path)
-            current_hash = file_sha256(file_path)
+            current_hash = file_hash(file_path)
             stored_hash = self._file_hashes.get(str_path)
 
             if stored_hash is None:

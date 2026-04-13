@@ -312,3 +312,66 @@ async def graph_file(file_path: str):
     except Exception as e:
         logger.error(f"Graph file failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/watcher/start")
+async def start_watcher(directory: str = "./src"):
+    """Start file watcher for project directory."""
+    from ..core import WatcherIntegration
+    
+    try:
+        integration = WatcherIntegration(directory)
+        integration.start()
+        return {
+            "status": "started",
+            "directory": directory,
+        }
+    except Exception as e:
+        logger.error(f"Watcher start failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/watcher/stop")
+async def stop_watcher():
+    """Stop file watcher."""
+    from ..core import WatcherIntegration
+    
+    try:
+        integration = WatcherIntegration()
+        integration.stop()
+        return {"status": "stopped"}
+    except Exception as e:
+        logger.error(f"Watcher stop failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/watcher/scan")
+async def scan_changes(directory: str = "./src"):
+    """One-time scan for file changes."""
+    from ..core import WatcherIntegration
+    
+    try:
+        integration = WatcherIntegration(directory)
+        changes = integration.scan_now()
+        return {
+            "status": "scanned",
+            "directory": directory,
+            "changes": changes,
+            "total": len(changes),
+        }
+    except Exception as e:
+        logger.error(f"Watcher scan failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/watcher/status")
+async def watcher_status():
+    """Get watcher status."""
+    from ..core import WatcherIntegration
+    
+    try:
+        integration = WatcherIntegration()
+        return integration.get_status()
+    except Exception as e:
+        logger.error(f"Watcher status failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

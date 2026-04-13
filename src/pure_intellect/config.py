@@ -53,6 +53,16 @@ class Settings(BaseSettings):
     max_context_tokens: int = Field(default=3000, description="Максимум токенов контекста")
     max_system_prompt_tokens: int = Field(default=2000, description="Максимум токенов system prompt")
     
+    # File Watcher settings
+    supported_extensions: list[str] = Field(
+        default=[".py", ".js", ".ts", ".jsx", ".tsx", ".json", ".yaml", ".yml", ".md"],
+        description="Поддерживаемые расширения файлов"
+    )
+    ignore_dirs: list[str] = Field(
+        default=["__pycache__", ".git", "venv", ".venv", "node_modules", ".eggs", "dist", "build", "storage", "models"],
+        description="Игнорируемые директории"
+    )
+    
     class Config:
         env_prefix = "PURE_INTELLECT_"
         env_file = ".env"
