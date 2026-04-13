@@ -13,13 +13,12 @@ class Settings(BaseSettings):
     port: int = Field(default=8085, description="Порт сервера")
     debug: bool = Field(default=False, description="Режим отладки")
 
-    # ─── Ollama ───
     ollama_url: str = Field(
-        default="http://localhost:11434",
+        default="http://127.0.0.1:11434",
         description="URL Ollama сервера",
     )
     default_model: str = Field(
-        default="qwen2.5:7b",
+        default="qwen2.5:3b",
         description="Модель по умолчанию",
     )
     ollama_timeout: int = Field(
