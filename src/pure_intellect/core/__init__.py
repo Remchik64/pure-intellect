@@ -8,6 +8,7 @@ from .graph import KnowledgeGraph
 from .graph_builder import GraphBuilder
 from .watcher import FileWatcher
 from .watcher_integration import WatcherIntegration
+from .orchestrator import OrchestratorPipeline, OrchestrationResult
 
 __all__ = [
     "IntentDetector", "IntentType", "IntentResult",
@@ -18,4 +19,5 @@ __all__ = [
     "GraphBuilder",
     "FileWatcher",
     "WatcherIntegration",
+    "OrchestratorPipeline", "OrchestrationResult",
 ]

@@ -1,9 +1,10 @@
 """FastAPI сервер для Чистый Интеллект."""
 
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from .api.routes import router
+from .api.websocket import websocket_endpoint
 from .config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,9 @@ app.add_middleware(
 
 # Routes
 app.include_router(router, prefix="/api/v1", tags=["orchestrator"])
+
+# WebSocket
+app.add_api_websocket_route("/ws", websocket_endpoint)
 
 
 @app.on_event("startup")

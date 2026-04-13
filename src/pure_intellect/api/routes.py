@@ -374,4 +374,34 @@ async def watcher_status():
         return integration.get_status()
     except Exception as e:
         logger.error(f"Watcher status failed: {e}")
+
+
+@router.post("/orchestrate")
+async def orchestrate(
+    query: str,
+    model: Optional[str] = None,
+    system: Optional[str] = None,
+    temperature: float = 0.7,
+    max_tokens: int = 2048,
+    use_llm_intent: bool = False,
+):
+    """Полный пайплайн: Intent → RAG → Graph → Assembler → LLM."""
+    from ..core import OrchestratorPipeline
+    
+    try:
+        manager = get_model_manager()
+        pipeline = OrchestratorPipeline(model_manager=manager)
+        
+        result = pipeline.run(
+            query=query,
+            model_key=model,
+            system=system,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            use_llm_intent=use_llm_intent,
+        )
+        
+        return result.to_dict()
+    except Exception as e:
+        logger.error(f"Orchestration failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
