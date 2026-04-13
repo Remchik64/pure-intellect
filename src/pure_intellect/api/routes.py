@@ -251,3 +251,64 @@ async def assemble_context(request: ChatRequest):
     except Exception as e:
         logger.error(f"Assemble failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/graph/build")
+async def build_graph(directory: str = "./src", extensions: List[str] = [".py"]):
+    """Build knowledge graph from project directory."""
+    from ..core import GraphBuilder
+    
+    try:
+        builder = GraphBuilder()
+        stats = builder.build_from_directory(Path(directory), extensions)
+        return {
+            "status": "built",
+            "directory": directory,
+            "stats": stats,
+        }
+    except Exception as e:
+        logger.error(f"Graph build failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/graph/stats")
+async def graph_stats():
+    """Get knowledge graph statistics."""
+    from ..core import GraphBuilder
+    
+    try:
+        builder = GraphBuilder()
+        return builder.get_stats()
+    except Exception as e:
+        logger.error(f"Graph stats failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/graph/search")
+async def graph_search(query: str, limit: int = 10):
+    """Search knowledge graph nodes."""
+    from ..core import GraphBuilder
+    
+    try:
+        builder = GraphBuilder()
+        results = builder.search(query, limit)
+        return {
+            "query": query,
+            "results": results,
+        }
+    except Exception as e:
+        logger.error(f"Graph search failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/graph/file")
+async def graph_file(file_path: str):
+    """Get graph subgraph for a specific file."""
+    from ..core import GraphBuilder
+    
+    try:
+        builder = GraphBuilder()
+        return builder.get_file_graph(file_path)
+    except Exception as e:
+        logger.error(f"Graph file failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
