@@ -51,3 +51,6 @@ coverage.xml
 
 # Downloaded models
 models/
+src/storage/
+*.db-shm
+*.db-wal
