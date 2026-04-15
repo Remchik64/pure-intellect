@@ -10,6 +10,7 @@
 import logging
 from typing import Optional, TYPE_CHECKING
 from .fact import Fact, CompressionLevel
+from .scorer import AttentionScorer
 
 if TYPE_CHECKING:
     from .storage import MemoryStorage
@@ -43,6 +44,7 @@ class WorkingMemory:
         self._facts: list[Fact] = []
         self.current_turn: int = 0
         self._evicted_count: int = 0  # статистика
+        self._scorer = AttentionScorer()  # для анализа разговора
     
     def add(self, fact: Fact) -> None:
         """Добавить факт в рабочую память.
@@ -79,21 +81,41 @@ class WorkingMemory:
                 return True
         return False
     
-    def cleanup(self, turn: Optional[int] = None) -> dict:
+    def cleanup(
+        self,
+        turn: Optional[int] = None,
+        query: str = "",
+        response: str = "",
+    ) -> dict:
         """Очистить рабочую память после turn.
         
+        Применяет scoring если переданы query/response.
         Применяет decay ко всем фактам.
         Перемещает холодные факты в storage (если задан).
         Оставляет горячие в рабочей памяти.
         
+        Args:
+            turn: Номер текущего turn (если None — автоинкремент)
+            query: Запрос пользователя для scoring
+            response: Ответ LLM для scoring
+        
         Returns:
-            Статистика очистки: {kept, evicted, total_tokens}
+            Статистика очистки: {kept, evicted, total_tokens, scored}
         """
         if turn is not None:
             self.current_turn = turn
         else:
             self.current_turn += 1
         
+        # Шаг 1: если есть разговор — обновляем веса через scorer
+        scored_count = 0
+        if query or response:
+            results = self._scorer.score_facts(
+                self._facts, query, response, self.current_turn
+            )
+            scored_count = sum(1 for r in results if r.matched)
+        
+        # Шаг 2: decay + classify
         kept = []
         evicted = []
         
@@ -124,6 +146,7 @@ class WorkingMemory:
             "turn": self.current_turn,
             "kept": len(kept),
             "evicted": len(evicted),
+            "scored": scored_count,
             "total_tokens": self._total_tokens(),
         }
         

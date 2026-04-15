@@ -9,10 +9,13 @@
 from .fact import Fact, CompressionLevel
 from .working_memory import WorkingMemory
 from .storage import MemoryStorage
+from .scorer import AttentionScorer, ScoreResult
 
 __all__ = [
     "Fact",
     "CompressionLevel",
     "WorkingMemory",
     "MemoryStorage",
+    "AttentionScorer",
+    "ScoreResult",
 ]
