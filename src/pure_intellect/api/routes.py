@@ -10,16 +10,9 @@ from ..engine import ModelManager, MODEL_REGISTRY
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Global model manager instance
-_model_manager: Optional[ModelManager] = None
-
-
 def get_model_manager() -> ModelManager:
-    """Получить или создать ModelManager."""
-    global _model_manager
-    if _model_manager is None:
-        _model_manager = ModelManager(cache_dir="./models")
-    return _model_manager
+    """Получить thread-safe singleton ModelManager."""
+    return ModelManager.get_instance(cache_dir="./models")
 
 
 @router.get("/health", response_model=HealthResponse)

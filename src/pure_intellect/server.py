@@ -1,7 +1,7 @@
 """FastAPI сервер для Чистый Интеллект."""
 
 import logging
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api.routes import router
 from .api.websocket import websocket_endpoint
@@ -17,12 +17,23 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS
+# CORS — разрешаем localhost для локального использования
+_CORS_ORIGINS = [
+    "http://localhost:3005",
+    "http://localhost:5006",
+    "http://localhost:8085",
+    "http://127.0.0.1:3005",
+    "http://127.0.0.1:5006",
+    "http://127.0.0.1:8085",
+    "http://localhost",
+    "http://127.0.0.1",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -44,5 +55,8 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    """Очистка при остановке."""
-    logger.info("🧠 Чистый Интеллект останавливается...")
+    """Очистка при остановке — освобождаем VRAM."""
+    from .engine.model_manager import ModelManager
+    manager = ModelManager.get_instance()
+    manager.dispose()
+    logger.info("🧠 Чистый Интеллект остановлен, VRAM освобождена")

@@ -151,12 +151,10 @@ class IntentDetector:
             temperature=0.1,  # Низкая температура для точности
         )
         
-        # Парсим JSON из ответа
-        try:
-            # Ищем JSON в ответе
-            json_match = re.search(r'\{[^}]+\}', response, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
+        # Парсим JSON из ответа (robust вариант)
+        data = self._parse_json_response(response)
+        if data:
+            try:
                 return IntentResult(
                     intent=IntentType(data.get("intent", "chat")),
                     confidence=float(data.get("confidence", 0.5)),
@@ -165,8 +163,8 @@ class IntentDetector:
                     reasoning=data.get("reasoning", ""),
                     suggested_context=data.get("suggested_context", []),
                 )
-        except (json.JSONDecodeError, ValueError) as e:
-            logger.warning(f"Failed to parse LLM intent response: {e}")
+            except (ValueError, KeyError) as e:
+                logger.warning(f"Failed to build IntentResult from parsed JSON: {e}")
         
         # Fallback
         return IntentResult(
@@ -205,6 +203,44 @@ class IntentDetector:
             reasoning="Нет совпадений, дефолтный CHAT",
             suggested_context=["general"],
         )
+    
+    def _parse_json_response(self, response: str) -> dict | None:
+        """Надёжный парсинг JSON из ответа LLM.
+        
+        Попытки (от строгого к мягкому):
+        1. json.loads(response) — если LLM вернул чистый JSON
+        2. Найти '{' ... '}' по границам — если JSON обёрнут в текст
+        3. Вернуть None — если JSON не найден
+        """
+        if not response:
+            return None
+        
+        # Попытка 1: весь ответ — JSON
+        try:
+            return json.loads(response.strip())
+        except json.JSONDecodeError:
+            pass
+        
+        # Попытка 2: найти JSON по первому '{' и последнему '}'
+        start = response.find('{')
+        end = response.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            try:
+                return json.loads(response[start:end + 1])
+            except json.JSONDecodeError:
+                pass
+        
+        # Попытка 3: найти JSON-блок в markdown ```json ... ```
+        import re as _re
+        md_match = _re.search(r'```(?:json)?\s*({.*?})\s*```', response, _re.DOTALL)
+        if md_match:
+            try:
+                return json.loads(md_match.group(1))
+            except json.JSONDecodeError:
+                pass
+        
+        logger.warning("Could not extract JSON from LLM response")
+        return None
     
     def _extract_entities(self, query: str) -> list[str]:
         """Извлекает сущности из запроса (файлы, функции, классы)."""

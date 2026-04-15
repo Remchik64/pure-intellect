@@ -169,12 +169,9 @@ class OrchestratorPipeline:
         except Exception:
             pass
         
-        messages = self.assembler.assemble(
+        messages = self.assembler.build_messages(
             query=query,
-            intent=intent,
-            context_cards=context_cards,
-            graph_entities=graph_entities,
-            system_override=system,
+            intent_result=intent,
         )
         
         # Шаг 5: Стриминг генерации
