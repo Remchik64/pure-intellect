@@ -455,4 +455,48 @@ async def cci_reset():
         return {"status": "reset", "message": "CCI history cleared"}
     except Exception as e:
         logger.error(f"CCI reset failed: {e}")
+
+
+@router.get("/session/info")
+async def session_info():
+    """Информация о текущей сохранённой сессии."""
+    try:
+        pipeline = get_pipeline()
+        return pipeline.session_info()
+    except Exception as e:
+        logger.error(f"Session info failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/session")
+async def session_delete():
+    """Удалить сохранённую сессию и сбросить состояние."""
+    try:
+        pipeline = get_pipeline()
+        pipeline.session_delete()
+        return {"status": "deleted", "message": "Session deleted and state reset"}
+    except Exception as e:
+        logger.error(f"Session delete failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/session/save")
+async def session_save():
+    """Принудительно сохранить текущую сессию."""
+    try:
+        pipeline = get_pipeline()
+        pipeline._session.save(
+            working_memory=pipeline.working_memory,
+            storage=pipeline.memory_storage,
+            chat_history=pipeline._chat_history,
+            turn=pipeline._turn,
+        )
+        return {
+            "status": "saved",
+            "turn": pipeline._turn,
+            "working_memory_facts": pipeline.working_memory.size(),
+            "storage_facts": pipeline.memory_storage.size(),
+        }
+    except Exception as e:
+        logger.error(f"Session save failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

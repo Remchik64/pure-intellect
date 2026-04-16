@@ -11,6 +11,7 @@ from .assembler import ContextAssembler
 from .graph_builder import GraphBuilder
 from .card_generator import CardGenerator
 from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer, CCITracker, ImportanceTagger
+from .session import SessionPersistence
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,23 @@ class OrchestratorPipeline:
             history_size=10,
             threshold=0.15,
         )
+
+        # ── P5: Session Persistence ──
+        self._session = SessionPersistence(
+            base_dir="storage/sessions",
+            session_id="default",
+        )
+        # Загружаем сохранённую сессию если есть
+        if self._session.exists:
+            result = self._session.load(self.working_memory, self.memory_storage)
+            if result["loaded"]:
+                self._turn = result["turn"]
+                self._chat_history = result["chat_history"]
+                logger.info(
+                    f"[session] Restored: turn={self._turn}, "
+                    f"wm={self.working_memory.size()} facts, "
+                    f"history={len(self._chat_history)} msgs"
+                )
     
     def _create_coordinate(self, chat_history: list) -> str:
         """Создать координату сессии через Ollama — дистиллят истории разговора.
@@ -161,6 +179,14 @@ class OrchestratorPipeline:
         # Шаг 3: Обрезаем историю — оставляем последние 6 messages (3 turns)
         self._chat_history = self._chat_history[-6:]
         logger.info(f"  [soft_reset] History trimmed to {len(self._chat_history)} messages")
+
+        # P5: Сохраняем сессию при каждом soft reset
+        self._session.save(
+            working_memory=self.working_memory,
+            storage=self.memory_storage,
+            chat_history=self._chat_history,
+            turn=self._turn,
+        )
 
     def run(
         self,
@@ -277,6 +303,15 @@ class OrchestratorPipeline:
         
         # ── Memory Update ──
         self._turn += 1
+
+        # P5: Периодическое сохранение каждые 5 turns (не при soft reset — там уже сохраняем)
+        if self._turn % 5 == 0:
+            self._session.save(
+                working_memory=self.working_memory,
+                storage=self.memory_storage,
+                chat_history=self._chat_history,
+                turn=self._turn,
+            )
         try:
             # P3: LLM-based importance tagging
             tagging = self._tagger.tag(query, response_text)
@@ -497,6 +532,18 @@ class OrchestratorPipeline:
         
         return text, tokens_prompt, tokens_completion
     
+    def session_info(self) -> dict:
+        """Информация о текущей сессии (для API endpoint)."""
+        return self._session.info()
+
+    def session_delete(self) -> None:
+        """Удалить сохранённую сессию."""
+        self._session.delete()
+        self._turn = 0
+        self._chat_history = []
+        self.working_memory.clear()
+        logger.info("[session] Session deleted and reset")
+
     def memory_stats(self) -> dict:
         """Статистика состояния памяти."""
         return {

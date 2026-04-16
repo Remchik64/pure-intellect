@@ -5,9 +5,14 @@
 - Горячие факты остаются
 - Холодные перемещаются в MemoryStorage
 - Бюджет токенов никогда не превышается
+
+P5: save_state()/load_state() для persistence между сессиями.
 """
 
+
+import json
 import logging
+from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 from .fact import Fact, CompressionLevel
 from .scorer import AttentionScorer
@@ -224,7 +229,46 @@ class WorkingMemory:
             for fact in self._facts:
                 self.storage.store(fact)
         self._facts = []
-        logger.info("WorkingMemory cleared")
+
+    def save_state(self, path) -> None:
+        """Сохранить состояние WorkingMemory в JSON файл."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "version": "1.0",
+            "current_turn": self.current_turn,
+            "evicted_count": self._evicted_count,
+            "token_budget": self.token_budget,
+            "facts": [f.to_dict() for f in self._facts],
+        }
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+        logger.debug(f"WorkingMemory saved: {len(self._facts)} facts to {path}")
+
+    def load_state(self, path) -> bool:
+        """Загрузить состояние WorkingMemory из JSON файла.
+        
+        Returns: True если загрузка успешна, False если файл не найден.
+        """
+        path = Path(path)
+        if not path.exists():
+            return False
+        try:
+            data = json.loads(path.read_text())
+            self.current_turn = data.get("current_turn", 0)
+            self._evicted_count = data.get("evicted_count", 0)
+            loaded_facts = [
+                Fact.from_dict(fd) for fd in data.get("facts", [])
+            ]
+            self._facts = loaded_facts
+            logger.info(
+                f"WorkingMemory loaded: {len(self._facts)} facts "
+                f"(turn={self.current_turn}) from {path}"
+            )
+            return True
+        except Exception as e:
+            logger.error(f"WorkingMemory load failed: {e}")
+            return False
+
     
     def stats(self) -> dict:
         """Статистика рабочей памяти."""
