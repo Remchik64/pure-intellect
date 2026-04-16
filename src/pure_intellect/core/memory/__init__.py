@@ -8,6 +8,7 @@
 - MemoryOptimizer: фоновая оптимизация (promote/compress/archive)
 - CCITracker: Context Coherence Index (отслеживание связности контекста)
 - ImportanceTagger: LLM-based классификация важности фактов (P3)
+- MetaCoordinator: управление ростом координат (R1 roadmap)
 """
 
 from .fact import Fact, CompressionLevel
@@ -17,6 +18,7 @@ from .scorer import AttentionScorer, ScoreResult
 from .optimizer import MemoryOptimizer, OptimizationStats
 from .cci import CCITracker, CoherenceEntry, CoherenceResult
 from .tagger import ImportanceTagger, TaggingResult
+from .meta_coordinator import MetaCoordinator, CoordinateRecord
 
 __all__ = [
     "Fact",
@@ -32,4 +34,6 @@ __all__ = [
     "CoherenceResult",
     "ImportanceTagger",
     "TaggingResult",
+    "MetaCoordinator",
+    "CoordinateRecord",
 ]

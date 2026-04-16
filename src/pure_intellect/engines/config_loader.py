@@ -68,6 +68,11 @@ class MemoryConfig:
     keep_after_reset: int = 6
     working_memory_tokens: int = 500
     max_storage_facts: int = 1000
+    # R1: Мета-координата
+    meta_coordinate_every: int = 4   # объединять каждые N координат в мета
+    # R2/R3: RAM management
+    max_hot_facts: int = 50           # максимум горячих фактов в WorkingMemory
+    hot_evict_threshold: float = 0.2  # порог внимания для выгрузки из RAM
 
 
 @dataclass

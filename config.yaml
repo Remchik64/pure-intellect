@@ -63,10 +63,16 @@ memory:
   # Soft reset — обрезать историю до N последних messages
   keep_after_reset: 6
 
-  # WorkingMemory — максимум токенов для горячих фактов в prompt
-  working_memory_tokens: 500
+  # Мета-координата: объединять каждые N координат в одну
+  # Предотвращает бесконтрольный рост anchor facts (R1 roadmap)
+  meta_coordinate_every: 4   # 4 координаты → 1 мета (~600 токенов стабильно)
 
-  # Long-term storage — максимум фактов
+  # RAM management: максимум горячих фактов в WorkingMemory
+  # Факты ниже порога внимания → cold storage на диск (R2 roadmap)
+  max_hot_facts: 50          # максимум фактов в RAM
+  hot_evict_threshold: 0.2   # факты с вниманием < 0.2 → выгружать
+
+  # Long-term storage
   max_storage_facts: 1000
 
 # ── Сервер ──────────────────────────────────────────────

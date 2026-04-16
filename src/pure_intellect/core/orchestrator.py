@@ -10,7 +10,7 @@ from .retriever import Retriever
 from .assembler import ContextAssembler
 from .graph_builder import GraphBuilder
 from .card_generator import CardGenerator
-from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer, CCITracker, ImportanceTagger
+from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer, CCITracker, ImportanceTagger, MetaCoordinator
 from .session import SessionPersistence
 from .dual_model import DualModelRouter
 
@@ -97,6 +97,18 @@ class OrchestratorPipeline:
             base_dir="storage/sessions",
             session_id="default",
         )
+
+        # ── R1: MetaCoordinator — управление ростом координат ──
+        try:
+            from pure_intellect.engines.config_loader import get_config as _get_cfg
+            _meta_every = _get_cfg().memory.meta_coordinate_every
+        except Exception:
+            _meta_every = 4
+        self._meta_coordinator = MetaCoordinator(
+            session_dir=self._session.session_dir,
+            meta_every=_meta_every,
+        )
+
         # Загружаем сохранённую сессию если есть
         if self._session.exists:
             result = self._session.load(self.working_memory, self.memory_storage)
@@ -186,13 +198,24 @@ class OrchestratorPipeline:
         # Шаг 1: Создаём координату
         coordinate = self._create_coordinate(self._chat_history)
         
-        # Шаг 2: Сохраняем как anchor fact
+        # Шаг 2: Передаём координату в MetaCoordinator (R1)
         if coordinate:
-            self.working_memory.add_anchor(
+            self._meta_coordinator.add_coordinate(
                 content=coordinate,
-                source=f"coordinate_turn_{self._turn}"
+                turn=self._turn,
             )
-        
+            # Если накопилось достаточно координат → создаём мета-координату
+            if self._meta_coordinator.needs_meta():
+                meta_content = self._create_meta_coordinate()
+                if meta_content:
+                    self._meta_coordinator.consolidate(
+                        meta_content=meta_content,
+                        turn=self._turn,
+                    )
+                    logger.info(
+                        f"  [soft_reset] Meta-coordinate created at turn {self._turn}"
+                    )
+
         # Шаг 3: Обрезаем историю — оставляем последние 6 messages (3 turns)
         self._chat_history = self._chat_history[-6:]
         logger.info(f"  [soft_reset] History trimmed to {len(self._chat_history)} messages")
@@ -204,6 +227,45 @@ class OrchestratorPipeline:
             chat_history=self._chat_history,
             turn=self._turn,
         )
+
+
+    def _create_meta_coordinate(self) -> str:
+        """Создать мета-координату из накопленных координат (R1).
+
+        Вызывается когда MetaCoordinator.needs_meta() == True.
+        3B модель объединяет все активные координаты в одну сжатую мета-координату.
+        """
+        all_contents = self._meta_coordinator.get_all_active_contents()
+        if not all_contents:
+            return ""
+
+        history_text = "\n---\n".join(all_contents)
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Ты — архивариус AI системы. Создай краткую мета-координату "
+                    "объединяющую несколько координат сессии в одну запись. "
+                    "Формат: УЧАСТНИК/ПРОЕКТ/ИСТОРИЯ/КЛЮЧЕВЫЕ РЕШЕНИЯ/ТЕКУЩИЙ ФОКУС. "
+                    "Будь кратким — не более 300 слов."
+                ),
+            },
+            {
+                "role": "user",
+                "content": "Объедини эти координаты в мета-координату:\n\n" + history_text,
+            },
+        ]
+
+        try:
+            meta = self._router.coordinate(
+                messages=messages,
+                temperature=0.2,
+                max_tokens=400,
+            )
+            return meta.strip() if meta else ""
+        except Exception as e:
+            logger.error(f"[meta_coord] Failed to create meta-coordinate: {e}")
+            return "МЕТА: " + " | ".join(c[:80] for c in all_contents[:3])
 
     def run(
         self,
@@ -497,16 +559,11 @@ class OrchestratorPipeline:
                 else:
                     parts.append(f"- {str(node)}")
         
-        # ── Память: активный контекст из WorkingMemory ──
-        # ── Anchor facts — ВСЕГДА в prompt, не decay ──
-        anchor_facts = [
-            f for f in self.working_memory._facts
-            if getattr(f, 'is_anchor', False)
-        ]
-        if anchor_facts:
-            parts.append("\n## Ключевые якорные факты (ВСЕГДА актуальны):")
-            for af in anchor_facts:
-                parts.append(f"- {af.content}")
+        # ── R1: MetaCoordinator — стабильный контекст координат ──
+        meta_context = self._meta_coordinator.get_context_for_prompt()
+        if meta_context:
+            parts.append("\n## Координаты сессии:")
+            parts.append(meta_context)
 
         # ── Горячие факты из WorkingMemory ──
         memory_context = self.working_memory.get_context(max_tokens=400)
