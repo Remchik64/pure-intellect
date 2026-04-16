@@ -772,3 +772,128 @@ async def build_code_graph():
     except Exception as e:
         logger.error(f"Build graph failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── OpenAI-Compatible API (для Agent Zero, Open WebUI, LM Studio) ─────
+# Позволяет использовать Pure Intellect как OpenAI-совместимый сервер
+# Agent Zero config: api_base = http://localhost:8085/v1
+
+openai_router = APIRouter(prefix="/v1", tags=["openai-compatible"])
+
+
+class OpenAIMessage(BaseModel):
+    role: str
+    content: str
+
+
+class OpenAIChatRequest(BaseModel):
+    model: str = "pure-intellect"
+    messages: list[OpenAIMessage]
+    temperature: float = 0.7
+    max_tokens: int = 2000
+    stream: bool = False
+
+
+@openai_router.get("/models")
+async def openai_list_models():
+    """Список доступных моделей (OpenAI формат)."""
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": "pure-intellect",
+                "object": "model",
+                "created": 1714000000,
+                "owned_by": "pure-intellect",
+                "description": "Local AI with hierarchical memory",
+            },
+            {
+                "id": "pure-intellect-code",
+                "object": "model",
+                "created": 1714000000,
+                "owned_by": "pure-intellect",
+                "description": "Pure Intellect with Code Module",
+            },
+        ],
+    }
+
+
+@openai_router.post("/chat/completions")
+async def openai_chat_completions(req: OpenAIChatRequest):
+    """OpenAI-совместимый endpoint для чата.
+
+    Принимает запросы в формате OpenAI API и возвращает ответы
+    с полной поддержкой иерархической памяти Pure Intellect.
+
+    Настройка Agent Zero:
+      api_base: http://localhost:8085/v1
+      api_key: pure-intellect  (любой)
+      model: pure-intellect
+    """
+    import time
+    import uuid
+
+    try:
+        pipe = pipeline
+        if pipe is None:
+            raise HTTPException(status_code=503, detail="Pipeline not initialized")
+
+        # Извлекаем последнее user сообщение как основной запрос
+        user_messages = [m for m in req.messages if m.role == "user"]
+        if not user_messages:
+            raise HTTPException(status_code=400, detail="No user message found")
+
+        query = user_messages[-1].content
+
+        # Если есть system message — используем как кастомный промпт
+        system_messages = [m for m in req.messages if m.role == "system"]
+        system_override = system_messages[0].content if system_messages else None
+
+        # Прогоняем через OrchestratorPipeline с ПАМЯТЬЮ
+        result = pipe.run(
+            query=query,
+            temperature=req.temperature,
+            max_tokens=req.max_tokens,
+            system=system_override,
+        )
+
+        response_text = result.response
+        prompt_tokens = result.tokens_prompt or len(query.split()) * 2
+        completion_tokens = result.tokens_completion or len(response_text.split()) * 2
+
+        # Возвращаем в формате OpenAI
+        return {
+            "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": req.model,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": response_text,
+                    },
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
+            },
+            "system_fingerprint": "pure-intellect-v1",
+            # Дополнительная мета-информация Pure Intellect
+            "pure_intellect": {
+                "turn": result.intent.turn if hasattr(result.intent, "turn") else 0,
+                "coherence_score": result.coherence_score,
+                "memory_facts": pipe.working_memory.size(),
+                "session_id": pipe._session_manager.active_session_id,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OpenAI endpoint failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from .api.routes import router
+from .api.routes import router, openai_router
 from .api.websocket import websocket_endpoint
 from .config import get_settings
 logger = logging.getLogger(__name__)
@@ -41,6 +41,7 @@ app.add_middleware(
 
 # Routes
 app.include_router(router, prefix="/api/v1", tags=["orchestrator"])
+app.include_router(openai_router, tags=["openai-compatible"])  # /v1/chat/completions
 
 # WebSocket
 app.add_api_websocket_route("/ws", websocket_endpoint)
