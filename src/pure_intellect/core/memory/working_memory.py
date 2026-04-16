@@ -270,10 +270,15 @@ class WorkingMemory:
             return False
 
     
-    def stats(self) -> dict:
+    def stats(self, max_hot_facts: int = 50) -> dict:
         """Статистика рабочей памяти."""
+        non_anchor = [f for f in self._facts if not f.is_anchor]
         return {
             "facts_count": len(self._facts),
+            "anchor_count": len([f for f in self._facts if f.is_anchor]),
+            "hot_facts": len(non_anchor),
+            "max_hot_facts": max_hot_facts,
+            "memory_pressure": round(self.get_memory_pressure(max_hot_facts), 2),
             "total_tokens": self._total_tokens(),
             "token_budget": self.token_budget,
             "budget_used_pct": round(self._total_tokens() / self.token_budget * 100, 1),
@@ -288,6 +293,82 @@ class WorkingMemory:
         """Суммарный размер всех фактов в токенах."""
         return sum(f.token_size() for f in self._facts)
     
+
+    def get_memory_pressure(self, max_hot_facts: int = 50) -> float:
+        """Давление на RAM: отношение текущего числа фактов к максимальному.
+
+        R3 roadmap: метрика для принятия решений об evict.
+
+        Returns:
+            0.0 — память пуста
+            0.5 — половина заполнена
+            1.0 — полностью заполнена
+            > 1.0 — переполнена (нужен evict!)
+        """
+        non_anchor = [f for f in self._facts if not f.is_anchor]
+        return len(non_anchor) / max(max_hot_facts, 1)
+
+    def evict_below_threshold(
+        self,
+        threshold: float = 0.2,
+        max_facts: int = 50,
+    ) -> int:
+        """Агрессивный evict маловажных фактов из RAM (R3 roadmap).
+
+        Вызывается когда memory pressure > 0.8 (более 80% от max_facts).
+        Выгружает факты с attention_weight < threshold в cold storage.
+        Anchor facts НИКОГДА не выгружаются.
+
+        Args:
+            threshold: порог внимания для evict (по умолчанию 0.2)
+            max_facts: максимальное число горячих фактов в RAM
+
+        Returns:
+            Число выгруженных фактов
+        """
+        non_anchor = [f for f in self._facts if not f.is_anchor]
+
+        # Выгружаем только если давление > 0.8
+        if len(non_anchor) <= max_facts * 0.8:
+            return 0
+
+        # Сортируем по весу — самые слабые первыми
+        candidates = sorted(
+            [f for f in non_anchor if f.attention_weight < threshold],
+            key=lambda f: f.attention_weight,
+        )
+
+        if not candidates:
+            return 0
+
+        evicted_count = 0
+        evict_ids = {f.fact_id for f in candidates}
+
+        kept = []
+        for fact in self._facts:
+            if fact.fact_id in evict_ids:
+                # Перемещаем в cold storage
+                if self.storage is not None:
+                    self.storage.store(fact)
+                self._evicted_count += 1
+                evicted_count += 1
+                logger.info(
+                    f"[R3 evict] Fact evicted to cold: {fact.fact_id[:8]}... "
+                    f"(weight={fact.attention_weight:.3f} < threshold={threshold})"
+                )
+            else:
+                kept.append(fact)
+
+        self._facts = kept
+
+        if evicted_count > 0:
+            logger.info(
+                f"[R3 evict] Evicted {evicted_count} low-attention facts "
+                f"(RAM: {len(self._facts)} facts remaining)"
+            )
+
+        return evicted_count
+
     def _evict_to_budget(self) -> None:
         """Вытеснить самые холодные факты пока не уложимся в бюджет."""
         while self._total_tokens() > self.token_budget and self._facts:

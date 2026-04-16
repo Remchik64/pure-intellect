@@ -391,6 +391,28 @@ class OrchestratorPipeline:
                 chat_history=self._chat_history,
                 turn=self._turn,
             )
+
+            # R3: Умная фильтрация WorkingMemory — evict маловажных фактов из RAM
+            try:
+                from pure_intellect.engines.config_loader import get_config as _get_cfg
+                _mem_cfg = _get_cfg().memory
+                _max_hot = _mem_cfg.max_hot_facts
+                _threshold = _mem_cfg.hot_evict_threshold
+            except Exception:
+                _max_hot = 50
+                _threshold = 0.2
+
+            pressure = self.working_memory.get_memory_pressure(_max_hot)
+            if pressure > 0.8:
+                evicted = self.working_memory.evict_below_threshold(
+                    threshold=_threshold,
+                    max_facts=_max_hot,
+                )
+                if evicted > 0:
+                    logger.info(
+                        f"[R3] Evicted {evicted} low-attention facts "
+                        f"(pressure={pressure:.2f} > 0.8)"
+                    )
         try:
             # P3: LLM-based importance tagging
             tagging = self._tagger.tag(query, response_text)
