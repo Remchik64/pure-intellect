@@ -7,6 +7,7 @@
 - AttentionScorer: оценка важности фактов по тексту разговора
 - MemoryOptimizer: фоновая оптимизация (promote/compress/archive)
 - CCITracker: Context Coherence Index (отслеживание связности контекста)
+- ImportanceTagger: LLM-based классификация важности фактов (P3)
 """
 
 from .fact import Fact, CompressionLevel
@@ -15,6 +16,7 @@ from .storage import MemoryStorage
 from .scorer import AttentionScorer, ScoreResult
 from .optimizer import MemoryOptimizer, OptimizationStats
 from .cci import CCITracker, CoherenceEntry, CoherenceResult
+from .tagger import ImportanceTagger, TaggingResult
 
 __all__ = [
     "Fact",
@@ -28,4 +30,6 @@ __all__ = [
     "CCITracker",
     "CoherenceEntry",
     "CoherenceResult",
+    "ImportanceTagger",
+    "TaggingResult",
 ]

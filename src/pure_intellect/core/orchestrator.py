@@ -10,7 +10,7 @@ from .retriever import Retriever
 from .assembler import ContextAssembler
 from .graph_builder import GraphBuilder
 from .card_generator import CardGenerator
-from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer, CCITracker
+from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer, CCITracker, ImportanceTagger
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,7 @@ class OrchestratorPipeline:
             run_every_n_turns=5,
         )
         self._scorer = AttentionScorer()
+        self._tagger = ImportanceTagger()  # P3: LLM-based importance tagging
         self._turn: int = 0  # счётчик turns
         self._chat_history: list = []  # rolling window разговора
         self._context_window_size: int = 12  # max messages (6 turns)
@@ -277,12 +278,31 @@ class OrchestratorPipeline:
         # ── Memory Update ──
         self._turn += 1
         try:
-            # Извлекаем новые факты из ответа LLM
-            new_facts = self._scorer.extract_facts_from_response(
-                response_text, source=f"turn_{self._turn}"
+            # P3: LLM-based importance tagging
+            tagging = self._tagger.tag(query, response_text)
+            
+            # Anchors → add_anchor() (не decay, не evict)
+            for anchor_content in tagging.anchors:
+                if anchor_content.strip():
+                    self.working_memory.add_anchor(
+                        content=anchor_content,
+                        source=f"tagger_turn_{self._turn}"
+                    )
+            
+            # Facts → add_text() (обычный lifecycle)
+            for fact_content in tagging.facts:
+                if fact_content.strip():
+                    self.working_memory.add_text(
+                        fact_content,
+                        source=f"tagger_turn_{self._turn}"
+                    )
+            
+            logger.debug(
+                f"  [tagger/{tagging.method}] "
+                f"anchors={len(tagging.anchors)}, "
+                f"facts={len(tagging.facts)}, "
+                f"transient={len(tagging.transient)}"
             )
-            for fact_content in new_facts:
-                self.working_memory.add_text(fact_content, source=f"llm_turn_{self._turn}")
             
             # Обновляем веса по тексту разговора
             self.working_memory.cleanup(
