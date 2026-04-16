@@ -684,3 +684,91 @@ async def delete_session(session_id: str):
     except Exception as e:
         logger.error(f"Delete session failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── C1: Code Module API endpoints ────────────────────────
+
+class IndexProjectRequest(BaseModel):
+    project_path: str
+    session_id: Optional[str] = None
+    extensions: Optional[list] = None
+    force: bool = False
+
+
+class CodeSearchRequest(BaseModel):
+    query: str
+    top_k: int = 5
+    entity_types: Optional[list] = None
+
+
+@router.post("/code/index")
+async def index_project(req: IndexProjectRequest):
+    """Проиндексировать проект в ChromaDB."""
+    try:
+        from pure_intellect.core.code_module import CodeModule
+        module = CodeModule(
+            project_path=req.project_path,
+            session_id=req.session_id or pipeline._session_manager.active_session_id,
+        )
+        # Сохраняем в pipeline для последующих запросов
+        pipeline._code_module = module
+        result = module.index_project(
+            extensions=req.extensions,
+            force=req.force,
+        )
+        # Обновляем метаданные сессии
+        if result.get("status") == "success":
+            pipeline._session_manager.update_meta(
+                session_id=pipeline._session_manager.active_session_id,
+                indexed_files=result.get("indexed_files", 0),
+            )
+        return result
+    except Exception as e:
+        logger.error(f"Index project failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/code/search")
+async def search_code(q: str, top_k: int = 5):
+    """Семантический поиск по проиндексированному коду."""
+    try:
+        if not hasattr(pipeline, '_code_module') or pipeline._code_module is None:
+            raise HTTPException(status_code=404, detail="No project indexed. Use POST /code/index first.")
+        results = pipeline._code_module.search(query=q, top_k=top_k)
+        return {
+            "query": q,
+            "results": [r.to_dict() for r in results],
+            "total": len(results),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Code search failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/code/stats")
+async def code_stats():
+    """Статистика Code Module."""
+    try:
+        if not hasattr(pipeline, '_code_module') or pipeline._code_module is None:
+            return {"active": False, "message": "No project indexed"}
+        return {"active": True, **pipeline._code_module.stats()}
+    except Exception as e:
+        logger.error(f"Code stats failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/code/graph")
+async def build_code_graph():
+    """Построить граф зависимостей проекта."""
+    try:
+        if not hasattr(pipeline, '_code_module') or pipeline._code_module is None:
+            raise HTTPException(status_code=404, detail="No project indexed")
+        result = pipeline._code_module.build_graph()
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Build graph failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
