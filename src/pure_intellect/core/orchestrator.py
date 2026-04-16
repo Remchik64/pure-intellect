@@ -12,6 +12,7 @@ from .graph_builder import GraphBuilder
 from .card_generator import CardGenerator
 from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer, CCITracker, ImportanceTagger
 from .session import SessionPersistence
+from .dual_model import DualModelRouter
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,9 @@ class OrchestratorPipeline:
             threshold=0.15,
         )
 
+        # ── P6: Dual Model Router ──
+        self._router = DualModelRouter()
+
         # ── P5: Session Persistence ──
         self._session = SessionPersistence(
             base_dir="storage/sessions",
@@ -106,54 +110,45 @@ class OrchestratorPipeline:
                 )
     
     def _create_coordinate(self, chat_history: list) -> str:
-        """Создать координату сессии через Ollama — дистиллят истории разговора.
-        
+        """Создать координату сессии через coordinator (3B) — дистиллят истории разговора.
+
+        P6: Использует DualModelRouter.coordinate() для структурированной задачи.
         Координата = компактное резюме всего что важно сохранить при soft reset.
         """
-        import json
-        import urllib.request
-        
         # Собираем текст истории
         history_text = "\n".join(
             f"{m['role'].upper()}: {m['content'][:200]}"
             for m in chat_history[-10:]  # Последние 10 сообщений
         )
-        
+
         prompt = (
             "Проанализируй этот разговор и создай КРАТКУЮ координату (3-7 строк).\n"
             "Включи: имена участников, ключевые факты, текущую тему, открытые вопросы.\n"
             "Отвечай ТОЛЬКО на русском, без пояснений, только сама координата.\n\n"
             f"РАЗГОВОР:\n{history_text}\n\nКООРДИНАТА:"
         )
-        
-        try:
-            payload = json.dumps({
-                "model": "qwen2.5:3b",
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 300}
-            }).encode("utf-8")
-            
-            req = urllib.request.Request(
-                "http://localhost:11434/api/generate",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST"
+
+        # P6: coordinator (3B) для структурированной задачи
+        messages = [
+            {"role": "system", "content": "Ты навигатор памяти. Создавай краткие координаты сессии."},
+            {"role": "user", "content": prompt},
+        ]
+        coordinate = self._router.coordinate(
+            messages=messages,
+            temperature=0.3,
+            max_tokens=300,
+        )
+        if coordinate.strip():
+            logger.info(
+                f"  [soft_reset] Coordinate via {self._router.coordinator_model}: "
+                f"{coordinate[:80]}..."
             )
-            
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read())
-                coordinate = data.get("response", "").strip()
-                if coordinate:
-                    logger.info(f"  [soft_reset] Coordinate created: {coordinate[:80]}...")
-                    return coordinate
-        except Exception as e:
-            logger.warning(f"  [soft_reset] Coordinate creation failed: {e}")
-        
+            return coordinate.strip()
+
         # Fallback: простая суммаризация без LLM
         key_messages = [m for m in chat_history if m["role"] == "user"][-3:]
         return "Контекст разговора: " + " | ".join(m["content"][:100] for m in key_messages)
-    
+
     def _soft_reset(self) -> None:
         """Мягкий сброс контекста с сохранением координаты.
         
@@ -514,24 +509,18 @@ class OrchestratorPipeline:
         return messages
     
     def _generate(self, messages: list, model_key: str, temperature: float, max_tokens: int) -> tuple:
-        """Сгенерировать ответ."""
-        # Загрузить модель если нужно
-        if self.model_manager.loaded_model is None:
-            self.model_manager.load(model_key, n_gpu_layers=-1)
-        
-        response = self.model_manager.loaded_model.create_chat_completion(
+        """Сгенерировать ответ через DualModelRouter (P6).
+
+        Использует generator (7B если доступен) или coordinator (3B fallback).
+        Returns: (text, tokens_prompt, tokens_completion)
+        """
+        text, tokens_prompt, tokens_completion = self._router.generate(
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        
-        text = response["choices"][0]["message"]["content"]
-        usage = response.get("usage", {})
-        tokens_prompt = usage.get("prompt_tokens", 0)
-        tokens_completion = usage.get("completion_tokens", 0)
-        
         return text, tokens_prompt, tokens_completion
-    
+
     def session_info(self) -> dict:
         """Информация о текущей сессии (для API endpoint)."""
         return self._session.info()
@@ -543,6 +532,10 @@ class OrchestratorPipeline:
         self._chat_history = []
         self.working_memory.clear()
         logger.info("[session] Session deleted and reset")
+
+    def dual_model_stats(self) -> dict:
+        """Статистика dual model router (P6)."""
+        return self._router.stats()
 
     def memory_stats(self) -> dict:
         """Статистика состояния памяти."""

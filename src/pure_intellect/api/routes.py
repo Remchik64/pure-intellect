@@ -500,3 +500,30 @@ async def session_save():
     except Exception as e:
         logger.error(f"Session save failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dual-model/stats")
+async def dual_model_stats():
+    """Статистика Dual Model Router (P6): coordinator vs generator."""
+    try:
+        pipeline = get_pipeline()
+        return pipeline.dual_model_stats()
+    except Exception as e:
+        logger.error(f"Dual model stats failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/dual-model/refresh")
+async def dual_model_refresh():
+    """Перепроверить доступность generator модели (7B)."""
+    try:
+        pipeline = get_pipeline()
+        available = pipeline._router.refresh_generator_check()
+        return {
+            "generator_model": pipeline._router.generator_model,
+            "generator_available": available,
+            "coordinator_model": pipeline._router.coordinator_model,
+        }
+    except Exception as e:
+        logger.error(f"Dual model refresh failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
