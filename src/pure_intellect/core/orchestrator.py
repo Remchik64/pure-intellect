@@ -12,6 +12,7 @@ from .graph_builder import GraphBuilder
 from .card_generator import CardGenerator
 from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer, CCITracker, ImportanceTagger, MetaCoordinator
 from .session import SessionPersistence
+from .session_manager import SessionManager, SESSION_TYPE_CHAT, SESSION_TYPE_PROJECT
 from .dual_model import DualModelRouter
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,10 @@ class OrchestratorPipeline:
             base_dir="storage/sessions",
             session_id="default",
         )
+
+        # ── F1: SessionManager — multi-session support ──
+        self._session_manager = SessionManager(base_dir="storage/sessions")
+        self._first_message_seen: bool = False  # для auto-name
 
         # ── R1: MetaCoordinator — управление ростом координат ──
         try:
@@ -661,4 +666,121 @@ class OrchestratorPipeline:
     def memory_clear(self) -> None:
         """Очистить рабочую память (переместить в storage)."""
         self.working_memory.clear()
+
+    # ── F1: Multi-session API ────────────────────────────────
+
+    def get_sessions(self) -> dict:
+        """Список всех сессий."""
+        return self._session_manager.stats()
+
+    def create_new_session(
+        self,
+        display_name: str = None,
+        session_type: str = "chat",
+        project_path: str = None,
+    ) -> dict:
+        """Создать новую сессию и переключиться на неё."""
+        # Сохраняем текущую сессию
+        self._session.save(
+            working_memory=self.working_memory,
+            storage=self.memory_storage,
+            chat_history=self._chat_history,
+            turn=self._turn,
+        )
+
+        # Создаём новую
+        info = self._session_manager.create_session(
+            display_name=display_name,
+            session_type=session_type,
+            project_path=project_path,
+        )
+
+        # Переключаемся
+        return self._switch_to_session(info.session_id)
+
+    def switch_session(self, session_id: str) -> dict:
+        """Переключить активную сессию."""
+        if not self._session_manager.session_exists(session_id):
+            return {"success": False, "error": f"Session not found: {session_id}"}
+
+        # Сохраняем текущую
+        self._session.save(
+            working_memory=self.working_memory,
+            storage=self.memory_storage,
+            chat_history=self._chat_history,
+            turn=self._turn,
+        )
+
+        return self._switch_to_session(session_id)
+
+    def rename_session(self, session_id: str, new_name: str) -> dict:
+        """Переименовать сессию."""
+        ok = self._session_manager.rename_session(session_id, new_name)
+        return {"success": ok, "session_id": session_id, "display_name": new_name}
+
+    def delete_session_by_id(self, session_id: str) -> dict:
+        """Удалить сессию."""
+        ok = self._session_manager.delete_session(session_id)
+        return {"success": ok, "session_id": session_id}
+
+    def _switch_to_session(self, session_id: str) -> dict:
+        """Внутренний метод переключения сессии."""
+        self._session_manager.switch_to(session_id)
+
+        # Обновляем SessionPersistence
+        self._session = __import__(
+            "pure_intellect.core.session", fromlist=["SessionPersistence"]
+        ).SessionPersistence(
+            base_dir="storage/sessions",
+            session_id=session_id,
+        )
+
+        # Сбрасываем состояние
+        from .memory import WorkingMemory, MemoryStorage
+        self.working_memory = WorkingMemory(
+            token_budget=1500,
+            storage=self.memory_storage,
+        )
+        self.memory_storage = MemoryStorage()
+        self._chat_history = []
+        self._turn = 0
+        self._first_message_seen = False
+
+        # Обновляем MetaCoordinator для новой сессии
+        self._meta_coordinator = self._meta_coordinator.__class__(
+            session_dir=self._session.session_dir,
+            meta_every=self._meta_coordinator._meta_every,
+        )
+
+        # Загружаем сохранённую сессию если есть
+        if self._session.exists:
+            result = self._session.load(self.working_memory, self.memory_storage)
+            if result["loaded"]:
+                self._turn = result["turn"]
+                self._chat_history = result["chat_history"]
+                self._first_message_seen = self._turn > 0
+                logger.info(
+                    f"[session] Switched to {session_id!r}: "
+                    f"turn={self._turn}, wm={self.working_memory.size()} facts"
+                )
+
+        info = self._session_manager.get_session_info(session_id)
+        return {
+            "success": True,
+            "session_id": session_id,
+            "display_name": info.display_name if info else session_id,
+            "session_type": info.session_type if info else "chat",
+            "turn": self._turn,
+            "wm_facts": self.working_memory.size(),
+        }
+
+    def _auto_name_session_if_first(self, message: str) -> None:
+        """Автоматически назвать сессию из первого сообщения."""
+        if not self._first_message_seen:
+            self._first_message_seen = True
+            session_id = self._session_manager.active_session_id
+            # Называем только если имя дефолтное или содержит new_chat
+            info = self._session_manager.get_session_info(session_id)
+            if info and (info.display_name == session_id or "new_chat" in info.display_name):
+                self._session_manager.auto_name_from_message(message, session_id)
         logger.info("Working memory cleared")

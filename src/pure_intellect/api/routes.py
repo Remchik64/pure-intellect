@@ -4,6 +4,7 @@ import logging
 from typing import Optional, List
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from ..api.schemas import ChatRequest, ChatResponse, HealthResponse, ModelListResponse, OrchestrateRequest
 from ..engine import ModelManager, MODEL_REGISTRY
 
@@ -604,4 +605,82 @@ async def hardware_info():
         }
     except Exception as e:
         logger.error(f"Hardware info failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── F1: Multi-session API endpoints ──────────────────────
+
+class NewSessionRequest(BaseModel):
+    display_name: Optional[str] = None
+    session_type: str = "chat"  # 'chat' or 'project'
+    project_path: Optional[str] = None
+
+
+class RenameSessionRequest(BaseModel):
+    display_name: str
+
+
+@router.get("/sessions")
+async def list_sessions():
+    """Список всех сессий."""
+    try:
+        return pipeline.get_sessions()
+    except Exception as e:
+        logger.error(f"List sessions failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sessions/new")
+async def create_new_session(req: NewSessionRequest):
+    """Создать новую сессию и переключиться на неё."""
+    try:
+        result = pipeline.create_new_session(
+            display_name=req.display_name,
+            session_type=req.session_type,
+            project_path=req.project_path,
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Create session failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sessions/{session_id}/switch")
+async def switch_session(session_id: str):
+    """Переключить активную сессию."""
+    try:
+        result = pipeline.switch_session(session_id)
+        if not result.get("success"):
+            raise HTTPException(status_code=404, detail=result.get("error", "Session not found"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Switch session failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/sessions/{session_id}/rename")
+async def rename_session(session_id: str, req: RenameSessionRequest):
+    """Переименовать сессию."""
+    try:
+        result = pipeline.rename_session(session_id, req.display_name)
+        return result
+    except Exception as e:
+        logger.error(f"Rename session failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Удалить сессию."""
+    try:
+        result = pipeline.delete_session_by_id(session_id)
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail="Cannot delete this session")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete session failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
