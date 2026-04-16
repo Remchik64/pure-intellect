@@ -72,6 +72,28 @@ class WorkingMemory:
         )
         self.add(fact)
         return fact
+
+    def add_anchor(self, content: str, source: str = "coordinate") -> Fact:
+        """Создать якорный факт и добавить в рабочую память.
+        
+        Anchor facts: не decay, не evict — всегда остаются в WorkingMemory.
+        Используется для координат сессии, имён пользователей, ключевых параметров.
+        """
+        fact = Fact(
+            content=content,
+            source=source,
+            attention_weight=1.0,  # Максимальный вес
+            stability=1.0,          # Максимальная стабильность
+            is_anchor=True,
+        )
+        # Anchor facts не дублируются по контенту
+        for existing in self._facts:
+            if existing.content == content and existing.is_anchor:
+                return existing
+        self.add(fact)
+        logger.info(f"Anchor fact added: '{content[:60]}...' " if len(content) > 60 else f"Anchor fact added: '{content}'")
+        return fact
+
     
     def touch(self, fact_id: str) -> bool:
         """Отметить факт как использованный в текущем turn."""
@@ -120,9 +142,14 @@ class WorkingMemory:
         evicted = []
         
         for fact in self._facts:
-            # Применяем decay
+            # Anchor facts: decay пропускаем (защищены в fact.decay())
             fact.decay(self.current_turn, DECAY_RATE)
             fact.update_stability()
+            
+            # Anchor facts НИКОГДА не evict
+            if fact.is_anchor:
+                kept.append(fact)
+                continue
             
             # Решаем: оставить или убрать
             if fact.is_hot(HOT_THRESHOLD):

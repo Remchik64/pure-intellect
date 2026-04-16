@@ -77,6 +77,8 @@ class OrchestratorPipeline:
         )
         self._scorer = AttentionScorer()
         self._turn: int = 0  # счётчик turns
+        self._chat_history: list = []  # rolling window разговора
+        self._context_window_size: int = 12  # max messages (6 turns)
         
         # ── CCI Tracker ──
         self.cci_tracker = CCITracker(
@@ -84,6 +86,81 @@ class OrchestratorPipeline:
             threshold=0.15,
         )
     
+    def _create_coordinate(self, chat_history: list) -> str:
+        """Создать координату сессии через Ollama — дистиллят истории разговора.
+        
+        Координата = компактное резюме всего что важно сохранить при soft reset.
+        """
+        import json
+        import urllib.request
+        
+        # Собираем текст истории
+        history_text = "\n".join(
+            f"{m['role'].upper()}: {m['content'][:200]}"
+            for m in chat_history[-10:]  # Последние 10 сообщений
+        )
+        
+        prompt = (
+            "Проанализируй этот разговор и создай КРАТКУЮ координату (3-7 строк).\n"
+            "Включи: имена участников, ключевые факты, текущую тему, открытые вопросы.\n"
+            "Отвечай ТОЛЬКО на русском, без пояснений, только сама координата.\n\n"
+            f"РАЗГОВОР:\n{history_text}\n\nКООРДИНАТА:"
+        )
+        
+        try:
+            payload = json.dumps({
+                "model": "qwen2.5:3b",
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.3, "num_predict": 300}
+            }).encode("utf-8")
+            
+            req = urllib.request.Request(
+                "http://localhost:11434/api/generate",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read())
+                coordinate = data.get("response", "").strip()
+                if coordinate:
+                    logger.info(f"  [soft_reset] Coordinate created: {coordinate[:80]}...")
+                    return coordinate
+        except Exception as e:
+            logger.warning(f"  [soft_reset] Coordinate creation failed: {e}")
+        
+        # Fallback: простая суммаризация без LLM
+        key_messages = [m for m in chat_history if m["role"] == "user"][-3:]
+        return "Контекст разговора: " + " | ".join(m["content"][:100] for m in key_messages)
+    
+    def _soft_reset(self) -> None:
+        """Мягкий сброс контекста с сохранением координаты.
+        
+        1. Создаёт координату из текущей истории через LLM
+        2. Сохраняет координату как anchor fact (не decay, не evict)
+        3. Обрезает chat_history до последних 3 turns (6 messages)
+        """
+        if not self._chat_history:
+            return
+        
+        logger.info(f"  [soft_reset] Triggered at turn {self._turn}, history={len(self._chat_history)} messages")
+        
+        # Шаг 1: Создаём координату
+        coordinate = self._create_coordinate(self._chat_history)
+        
+        # Шаг 2: Сохраняем как anchor fact
+        if coordinate:
+            self.working_memory.add_anchor(
+                content=coordinate,
+                source=f"coordinate_turn_{self._turn}"
+            )
+        
+        # Шаг 3: Обрезаем историю — оставляем последние 6 messages (3 turns)
+        self._chat_history = self._chat_history[-6:]
+        logger.info(f"  [soft_reset] History trimmed to {len(self._chat_history)} messages")
+
     def run(
         self,
         query: str,
@@ -96,6 +173,14 @@ class OrchestratorPipeline:
         """Выполнить полный пайплайн Оркестратора."""
         
         logger.info(f"🔄 Orchestration started: {query[:80]}...")
+        
+        # ── Rolling Window: добавляем запрос в историю ──
+        self._chat_history.append({"role": "user", "content": query})
+        
+        # ── Soft Reset: если история превысила лимит — создаём координату ──
+        if len(self._chat_history) > self._context_window_size:
+            self._soft_reset()
+        
         
         # ── CCI: Оценка связности контекста ──
         coherence_result = self.cci_tracker.evaluate(query)
@@ -171,6 +256,9 @@ class OrchestratorPipeline:
             max_tokens=max_tokens,
         )
         logger.info(f"        Generated {tokens_completion} tokens")
+        
+        # ── Rolling Window: добавляем ответ в историю ──
+        self._chat_history.append({"role": "assistant", "content": response_text})
         
         result = OrchestrationResult(
             query=query,
@@ -358,10 +446,16 @@ class OrchestratorPipeline:
         else:
             system = self._build_system_prompt(intent, cards, graph_entities)
         
-        messages = [
-            {"role": "system", "content": system},
-            {"role": "user", "content": query},
-        ]
+        # Rolling window: system + история + текущий запрос
+        messages = [{"role": "system", "content": system}]
+        
+        # Добавляем историю (всё кроме текущего запроса который уже в chat_history[-1])
+        if len(self._chat_history) > 1:
+            messages.extend(self._chat_history[:-1])
+        
+        # Текущий запрос всегда последним
+        messages.append({"role": "user", "content": query})
+        
         return messages
     
     def _generate(self, messages: list, model_key: str, temperature: float, max_tokens: int) -> tuple:

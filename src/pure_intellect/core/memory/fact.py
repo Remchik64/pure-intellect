@@ -34,6 +34,7 @@ class Fact:
         attention_weight: Вес важности (0.0 — не нужен, 1.0 — критичен)
         compression_level: Уровень компрессии
         stability: Насколько факт стабилен (0.0 — меняется, 1.0 — постоянен)
+        is_anchor: Якорный факт — не decay, не evict из WorkingMemory
         reference_count: Сколько раз был запрошен
         source: Откуда взялся факт (entity_name, file_path, etc)
         metadata: Произвольные метаданные
@@ -49,6 +50,7 @@ class Fact:
     reference_count: int = 0
     source: str = ""
     metadata: dict = field(default_factory=dict)
+    is_anchor: bool = False  # Якорный факт — защищён от decay и eviction
     
     def touch(self, turn: int) -> None:
         """Обновить время использования и увеличить вес."""
@@ -60,8 +62,11 @@ class Fact:
     def decay(self, current_turn: int, decay_rate: float = 0.05) -> None:
         """Снизить вес если факт не используется.
         
+        Anchor факты не decay — они всегда остаются актуальными.
         Чем дольше не используется — тем сильнее decay.
         """
+        if self.is_anchor:
+            return  # Anchor facts защищены от decay
         turns_since_use = current_turn - self.last_referenced
         if turns_since_use > 0:
             self.attention_weight = max(0.0, self.attention_weight - decay_rate * turns_since_use)
@@ -107,6 +112,7 @@ class Fact:
             "reference_count": self.reference_count,
             "source": self.source,
             "metadata": self.metadata,
+            "is_anchor": self.is_anchor,
         }
     
     @classmethod
@@ -120,9 +126,10 @@ class Fact:
             attention_weight=data["attention_weight"],
             compression_level=CompressionLevel(data["compression_level"]),
             stability=data["stability"],
-            reference_count=data["reference_count"],
+            reference_count=data.get("reference_count", 0),
             source=data.get("source", ""),
             metadata=data.get("metadata", {}),
+            is_anchor=data.get("is_anchor", False),
         )
     
     def __repr__(self) -> str:
