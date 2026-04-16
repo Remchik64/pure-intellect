@@ -10,6 +10,7 @@ from .retriever import Retriever
 from .assembler import ContextAssembler
 from .graph_builder import GraphBuilder
 from .card_generator import CardGenerator
+from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,20 @@ class OrchestratorPipeline:
         self.assembler = ContextAssembler()
         self.graph_builder = GraphBuilder()
         self.card_generator = CardGenerator()
+        
+        # ── Memory Subsystem ──
+        self.memory_storage = MemoryStorage()
+        self.working_memory = WorkingMemory(
+            token_budget=1500,
+            storage=self.memory_storage,
+        )
+        self.memory_optimizer = MemoryOptimizer(
+            hot_retrieval_threshold=3,
+            cold_weight_threshold=0.1,
+            run_every_n_turns=5,
+        )
+        self._scorer = AttentionScorer()
+        self._turn: int = 0  # счётчик turns
     
     def run(
         self,
@@ -137,6 +152,38 @@ class OrchestratorPipeline:
             tokens_prompt=tokens_prompt,
             tokens_completion=tokens_completion,
         )
+        
+        # ── Memory Update ──
+        self._turn += 1
+        try:
+            # Извлекаем новые факты из ответа LLM
+            new_facts = self._scorer.extract_facts_from_response(
+                response_text, source=f"turn_{self._turn}"
+            )
+            for fact_content in new_facts:
+                self.working_memory.add_text(fact_content, source=f"llm_turn_{self._turn}")
+            
+            # Обновляем веса по тексту разговора
+            self.working_memory.cleanup(
+                turn=self._turn,
+                query=query,
+                response=response_text,
+            )
+            
+            # Периодическая оптимизация
+            self.memory_optimizer.run_if_needed(
+                self.working_memory,
+                self.memory_storage,
+                current_turn=self._turn,
+            )
+            
+            logger.info(
+                f"  [memory] turn={self._turn}, "
+                f"working={self.working_memory.size()}, "
+                f"storage={self.memory_storage.size()}"
+            )
+        except Exception as e:
+            logger.warning(f"  [memory] update failed: {e}")
         
         logger.info(f"✅ Orchestration complete: {tokens_completion} tokens generated")
         return result
@@ -250,6 +297,12 @@ class OrchestratorPipeline:
                 else:
                     parts.append(f"- {str(node)}")
         
+        # ── Память: активный контекст из WorkingMemory ──
+        memory_context = self.working_memory.get_context(max_tokens=500)
+        if memory_context:
+            parts.append("\n## Контекст из памяти:")
+            parts.append(memory_context)
+        
         parts.append("\n## Инструкции:")
         parts.append("- Отвечай на русском языке")
         parts.append("- Используй контекст кода выше для точных ответов")
@@ -289,3 +342,17 @@ class OrchestratorPipeline:
         tokens_completion = usage.get("completion_tokens", 0)
         
         return text, tokens_prompt, tokens_completion
+    
+    def memory_stats(self) -> dict:
+        """Статистика состояния памяти."""
+        return {
+            "turn": self._turn,
+            "working_memory": self.working_memory.stats(),
+            "storage": self.memory_storage.stats(),
+            "optimizer": self.memory_optimizer.optimizer_stats(),
+        }
+    
+    def memory_clear(self) -> None:
+        """Очистить рабочую память (переместить в storage)."""
+        self.working_memory.clear()
+        logger.info("Working memory cleared")

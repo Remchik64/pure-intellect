@@ -10,9 +10,27 @@ from ..engine import ModelManager, MODEL_REGISTRY
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Singleton pipeline — сохраняет память между запросами
+_pipeline = None
+import threading
+_pipeline_lock = threading.Lock()
+
+
 def get_model_manager() -> ModelManager:
     """Получить thread-safe singleton ModelManager."""
     return ModelManager.get_instance(cache_dir="./models")
+
+
+def get_pipeline():
+    """Получить thread-safe singleton OrchestratorPipeline."""
+    global _pipeline
+    if _pipeline is None:
+        with _pipeline_lock:
+            if _pipeline is None:
+                from ..core import OrchestratorPipeline
+                _pipeline = OrchestratorPipeline(model_manager=get_model_manager())
+    return _pipeline
+
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -379,12 +397,8 @@ async def orchestrate(
     use_llm_intent: bool = False,
 ):
     """Полный пайплайн: Intent → RAG → Graph → Assembler → LLM."""
-    from ..core import OrchestratorPipeline
-    
     try:
-        manager = get_model_manager()
-        pipeline = OrchestratorPipeline(model_manager=manager)
-        
+        pipeline = get_pipeline()
         result = pipeline.run(
             query=query,
             model_key=model,
@@ -393,8 +407,30 @@ async def orchestrate(
             max_tokens=max_tokens,
             use_llm_intent=use_llm_intent,
         )
-        
         return result.to_dict()
     except Exception as e:
         logger.error(f"Orchestration failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/memory/stats")
+async def memory_stats():
+    """Статистика самообновляемой памяти."""
+    try:
+        pipeline = get_pipeline()
+        return pipeline.memory_stats()
+    except Exception as e:
+        logger.error(f"Memory stats failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/memory/clear")
+async def memory_clear():
+    """Очистить рабочую память (переместить все факты в долгосрочное хранилище)."""
+    try:
+        pipeline = get_pipeline()
+        pipeline.memory_clear()
+        return {"status": "cleared", "message": "Working memory cleared, facts moved to storage"}
+    except Exception as e:
+        logger.error(f"Memory clear failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
