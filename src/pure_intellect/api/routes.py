@@ -834,7 +834,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
     import uuid
 
     try:
-        pipe = pipeline
+        pipe = get_pipeline()
         if pipe is None:
             raise HTTPException(status_code=503, detail="Pipeline not initialized")
 
