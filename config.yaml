@@ -1,0 +1,84 @@
+# ╔══════════════════════════════════════════════════════╗
+# ║        Pure Intellect — Model Configuration          ║
+# ║  Настройка моделей, провайдеров и аппаратных ресурсов ║
+# ╚══════════════════════════════════════════════════════╝
+
+# ── Провайдеры моделей ──────────────────────────────────
+# provider: ollama | llamacpp | auto
+#   ollama   → Ollama (рекомендуется, поддерживает GPU авто)
+#   llamacpp → llama-cpp-python (прямой, CPU+GPU hybrid)
+#   auto     → система выбирает лучший доступный
+
+models:
+
+  # Координатор: лёгкая задача — создание координат, тегирование
+  # Можно использовать 3B для скорости или 7B для качества
+  coordinator:
+    provider: ollama
+    model: qwen2.5:3b        # Меняй на qwen2.5:7b для лучших координат
+    gpu_layers: auto         # auto | -1 (всё GPU) | 0 (только CPU) | N (N слоёв)
+    temperature: 0.2         # Низкая для точной структуры
+    max_tokens: 400
+    timeout: 60
+
+  # Генератор: основная задача — ответы пользователю
+  # Используй самую мощную доступную модель
+  generator:
+    provider: ollama
+    model: qwen2.5:7b        # Меняй на llama3.1:8b, mistral:7b и т.д.
+    gpu_layers: auto         # auto определит сколько влезет в VRAM
+    temperature: 0.7
+    max_tokens: 2048
+    timeout: 120
+    fallback_model: qwen2.5:3b  # Если основная недоступна
+
+  # Embeddings: семантический поиск в памяти
+  embedder:
+    provider: sentence_transformers  # sentence_transformers | ollama
+    model: all-MiniLM-L6-v2          # Быстрая локальная модель (384 dim)
+    device: auto                      # auto | cuda | cpu
+    # Альтернатива: Ollama embeddings
+    # provider: ollama
+    # model: nomic-embed-text
+
+# ── Аппаратные ресурсы ──────────────────────────────────
+hardware:
+  # CPU+GPU Hybrid (как LM Studio)
+  # Если VRAM недостаточно — часть слоёв переносится на CPU
+  auto_gpu_layers: true    # Автоматически определить оптимальное число слоёв
+  vram_reserve_mb: 512     # Резерв VRAM для системы (MB)
+  cpu_threads: 0           # 0 = авто (все доступные ядра)
+
+  # Стратегии при нехватке VRAM:
+  # 'offload'  → часть слоёв на CPU (медленнее но работает)
+  # 'downgrade' → использовать меньшую модель
+  # 'fail'     → вернуть ошибку
+  vram_overflow_strategy: offload
+
+# ── Параметры памяти ────────────────────────────────────
+memory:
+  # Rolling window — сколько messages хранить в активном контексте
+  context_window_messages: 12   # Уменьши для слабого железа (например 8)
+
+  # Soft reset — обрезать историю до N последних messages
+  keep_after_reset: 6
+
+  # WorkingMemory — максимум токенов для горячих фактов в prompt
+  working_memory_tokens: 500
+
+  # Long-term storage — максимум фактов
+  max_storage_facts: 1000
+
+# ── Сервер ──────────────────────────────────────────────
+server:
+  host: 0.0.0.0
+  port: 8085
+  workers: 1               # Для локального использования
+  log_level: INFO
+
+# ── Ollama ──────────────────────────────────────────────
+ollama:
+  base_url: http://localhost:11434
+  timeout: 120
+  # Автоматически использовать GPU если доступен
+  # Управляется через параметр num_gpu в API

@@ -520,3 +520,88 @@ async def dual_model_refresh():
     except Exception as e:
         logger.error(f"Dual model refresh failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Config & Hardware endpoints (Шаг 1: гибкая система моделей) ─────────────
+
+@router.get("/config")
+async def config_info():
+    """Текущая конфигурация моделей из config.yaml."""
+    try:
+        pipeline = get_pipeline()
+        return pipeline._router.config_info()
+    except Exception as e:
+        logger.error(f"Config info failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/config/reload")
+async def config_reload():
+    """Перечитать config.yaml и обновить модели без перезапуска.
+
+    Позволяет сменить модель в config.yaml и применить изменения
+    без остановки сервера.
+    """
+    try:
+        pipeline = get_pipeline()
+        old_coordinator = pipeline._router.coordinator_model
+        old_generator = pipeline._router.generator_model
+        pipeline._router.reload_from_config()
+        # Сброс кеша ProviderFactory
+        from pure_intellect.engines.provider import ProviderFactory
+        ProviderFactory.reset()
+        return {
+            "status": "reloaded",
+            "coordinator": {
+                "before": old_coordinator,
+                "after": pipeline._router.coordinator_model,
+                "changed": old_coordinator != pipeline._router.coordinator_model,
+            },
+            "generator": {
+                "before": old_generator,
+                "after": pipeline._router.generator_model,
+                "changed": old_generator != pipeline._router.generator_model,
+            },
+        }
+    except Exception as e:
+        logger.error(f"Config reload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/config/hardware")
+async def hardware_info():
+    """Информация об аппаратных ресурсах: VRAM, GPU, оптимальные слои."""
+    try:
+        from pure_intellect.engines.provider import (
+            detect_free_vram_mb,
+            detect_optimal_gpu_layers,
+        )
+        from pure_intellect.engines.config_loader import get_config
+        cfg = get_config()
+        free_vram = detect_free_vram_mb()
+        return {
+            "gpu_available": free_vram > 0,
+            "free_vram_mb": free_vram,
+            "free_vram_gb": round(free_vram / 1024, 2),
+            "optimal_gpu_layers": {
+                "3b_model": detect_optimal_gpu_layers(model_size_gb=2.0),
+                "7b_model": detect_optimal_gpu_layers(model_size_gb=4.7),
+                "13b_model": detect_optimal_gpu_layers(model_size_gb=8.0),
+            },
+            "config": {
+                "auto_gpu_layers": cfg.hardware.auto_gpu_layers,
+                "vram_reserve_mb": cfg.hardware.vram_reserve_mb,
+                "vram_overflow_strategy": cfg.hardware.vram_overflow_strategy,
+                "cpu_threads": cfg.hardware.cpu_threads,
+            },
+            "hint": (
+                "GPU available — используй gpu_layers: -1 для максимальной скорости"
+                if free_vram > 4096
+                else "Мало VRAM — используй gpu_layers: auto для частичного offload на CPU"
+                if free_vram > 0
+                else "GPU не обнаружен — используй gpu_layers: 0 (CPU only)"
+            ),
+        }
+    except Exception as e:
+        logger.error(f"Hardware info failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
