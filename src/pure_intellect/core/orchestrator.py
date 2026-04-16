@@ -115,17 +115,39 @@ class OrchestratorPipeline:
         P6: Использует DualModelRouter.coordinate() для структурированной задачи.
         Координата = компактное резюме всего что важно сохранить при soft reset.
         """
-        # Собираем текст истории
+        # Собираем только USER сообщения (факты от пользователя)
+        user_msgs = [m for m in chat_history if m['role'] == 'user']
         history_text = "\n".join(
-            f"{m['role'].upper()}: {m['content'][:200]}"
-            for m in chat_history[-10:]  # Последние 10 сообщений
+            f"USER: {m['content'][:300]}"
+            for m in user_msgs[-8:]  # Последние 8 пользовательских сообщений
         )
 
+        # Включаем предыдущие координаты (anchor facts) чтобы сохранить накопленные знания
+        existing_anchors = [
+            f.content for f in self.working_memory._facts
+            if getattr(f, 'is_anchor', False)
+        ]
+        prev_coords_text = ""
+        if existing_anchors:
+            prev_coords_text = (
+                "ПРЕДЫДУЩИЕ КООРДИНАТЫ (используй эту информацию как базу):\n"
+                + "\n---\n".join(existing_anchors[-2:])  # последние 2 координаты
+                + "\n\n"
+            )
+
         prompt = (
-            "Проанализируй этот разговор и создай КРАТКУЮ координату (3-7 строк).\n"
-            "Включи: имена участников, ключевые факты, текущую тему, открытые вопросы.\n"
-            "Отвечай ТОЛЬКО на русском, без пояснений, только сама координата.\n\n"
-            f"РАЗГОВОР:\n{history_text}\n\nКООРДИНАТА:"
+            "Заполни координату сессии, объединив предыдущие данные с новыми.\n"
+            "ВАЖНО: Если в ПРЕДЫДУЩИХ КООРДИНАТАХ есть имя/проект — обязательно перенеси их!\n\n"
+            f"{prev_coords_text}"
+            f"НОВЫЕ СООБЩЕНИЯ:\n{history_text}\n\n"
+            "Заполни шаблон (каждое поле — одна строка):\n"
+            "УЧАСТНИК: [имя из предыдущих координат или новых сообщений]\n"
+            "ПРОЕКТ: [название проекта из предыдущих координат или новых сообщений]\n"
+            "ТЕХНОЛОГИИ: [языки/фреймворки/инструменты]\n"
+            "ЦЕЛЬ: [главная задача пользователя]\n"
+            "ОБОРУДОВАНИЕ: [GPU/CPU/RAM если упомянуто]\n"
+            "ТЕМА: [о чём говорили в последних сообщениях]\n\n"
+            "Координата:"
         )
 
         # P6: coordinator (3B) для структурированной задачи
@@ -476,7 +498,18 @@ class OrchestratorPipeline:
                     parts.append(f"- {str(node)}")
         
         # ── Память: активный контекст из WorkingMemory ──
-        memory_context = self.working_memory.get_context(max_tokens=500)
+        # ── Anchor facts — ВСЕГДА в prompt, не decay ──
+        anchor_facts = [
+            f for f in self.working_memory._facts
+            if getattr(f, 'is_anchor', False)
+        ]
+        if anchor_facts:
+            parts.append("\n## Ключевые якорные факты (ВСЕГДА актуальны):")
+            for af in anchor_facts:
+                parts.append(f"- {af.content}")
+
+        # ── Горячие факты из WorkingMemory ──
+        memory_context = self.working_memory.get_context(max_tokens=400)
         if memory_context:
             parts.append("\n## Контекст из памяти:")
             parts.append(memory_context)

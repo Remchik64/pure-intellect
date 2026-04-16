@@ -4,7 +4,7 @@ import logging
 from typing import Optional, List
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
-from ..api.schemas import ChatRequest, ChatResponse, HealthResponse, ModelListResponse
+from ..api.schemas import ChatRequest, ChatResponse, HealthResponse, ModelListResponse, OrchestrateRequest
 from ..engine import ModelManager, MODEL_REGISTRY
 
 logger = logging.getLogger(__name__)
@@ -388,24 +388,17 @@ async def watcher_status():
 
 
 @router.post("/orchestrate")
-async def orchestrate(
-    query: str,
-    model: Optional[str] = None,
-    system: Optional[str] = None,
-    temperature: float = 0.7,
-    max_tokens: int = 2048,
-    use_llm_intent: bool = False,
-):
+async def orchestrate(request: OrchestrateRequest):
     """Полный пайплайн: Intent → RAG → Graph → Assembler → LLM."""
     try:
         pipeline = get_pipeline()
         result = pipeline.run(
-            query=query,
-            model_key=model,
-            system=system,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            use_llm_intent=use_llm_intent,
+            query=request.query,
+            model_key=request.model,
+            system=request.system,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            use_llm_intent=request.use_llm_intent,
         )
         return result.to_dict()
     except Exception as e:
