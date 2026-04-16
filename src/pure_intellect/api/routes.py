@@ -433,4 +433,26 @@ async def memory_clear():
         return {"status": "cleared", "message": "Working memory cleared, facts moved to storage"}
     except Exception as e:
         logger.error(f"Memory clear failed: {e}")
+
+
+@router.get("/cci/stats")
+async def cci_stats():
+    """Статистика Context Coherence Index."""
+    try:
+        pipeline = get_pipeline()
+        return pipeline.cci_tracker.stats()
+    except Exception as e:
+        logger.error(f"CCI stats failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/cci/reset")
+async def cci_reset():
+    """Сбросить историю CCI (новая сессия)."""
+    try:
+        pipeline = get_pipeline()
+        pipeline.cci_tracker.reset()
+        return {"status": "reset", "message": "CCI history cleared"}
+    except Exception as e:
+        logger.error(f"CCI reset failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

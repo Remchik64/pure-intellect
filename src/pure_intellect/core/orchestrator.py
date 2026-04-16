@@ -10,7 +10,7 @@ from .retriever import Retriever
 from .assembler import ContextAssembler
 from .graph_builder import GraphBuilder
 from .card_generator import CardGenerator
-from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer
+from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer, CCITracker
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,9 @@ class OrchestrationResult:
     model_used: str = ""
     tokens_prompt: int = 0
     tokens_completion: int = 0
-    
+    coherence_score: float = 1.0
+    coherence_signal: str = "coherent"
+
     def to_dict(self) -> dict:
         return {
             "query": self.query,
@@ -43,6 +45,10 @@ class OrchestrationResult:
             "tokens": {
                 "prompt": self.tokens_prompt,
                 "completion": self.tokens_completion,
+            },
+            "coherence": {
+                "score": round(self.coherence_score, 3),
+                "signal": self.coherence_signal,
             },
         }
 
@@ -71,6 +77,12 @@ class OrchestratorPipeline:
         )
         self._scorer = AttentionScorer()
         self._turn: int = 0  # счётчик turns
+        
+        # ── CCI Tracker ──
+        self.cci_tracker = CCITracker(
+            history_size=10,
+            threshold=0.15,
+        )
     
     def run(
         self,
@@ -84,6 +96,25 @@ class OrchestratorPipeline:
         """Выполнить полный пайплайн Оркестратора."""
         
         logger.info(f"🔄 Orchestration started: {query[:80]}...")
+        
+        # ── CCI: Оценка связности контекста ──
+        coherence_result = self.cci_tracker.evaluate(query)
+        logger.info(
+            f"  [cci] score={coherence_result.score:.3f}, "
+            f"signal={coherence_result.signal}"
+        )
+        
+        # При потере coherence — подсказываем памяти что нужно восстановить контекст
+        if coherence_result.needs_context_restore():
+            logger.info("  [cci] Low coherence detected — restoring context from memory")
+            recent_keywords = self.cci_tracker.get_recent_keywords(n_turns=3)
+            if recent_keywords:
+                # Ищем в storage факты связанные с предыдущим контекстом
+                keyword_query = " ".join(list(recent_keywords)[:10])
+                restored = self.memory_storage.retrieve(keyword_query, top_k=5)
+                for fact in restored:
+                    self.working_memory.add(fact)
+                logger.info(f"  [cci] Restored {len(restored)} facts from storage")
         
         # ── Шаг 1: Определить Intent ──
         logger.info("  [1/5] Intent detection...")
@@ -151,6 +182,8 @@ class OrchestratorPipeline:
             model_used=model_key,
             tokens_prompt=tokens_prompt,
             tokens_completion=tokens_completion,
+            coherence_score=coherence_result.score,
+            coherence_signal=coherence_result.signal,
         )
         
         # ── Memory Update ──
@@ -181,6 +214,13 @@ class OrchestratorPipeline:
                 f"  [memory] turn={self._turn}, "
                 f"working={self.working_memory.size()}, "
                 f"storage={self.memory_storage.size()}"
+            )
+            
+            # CCI: фиксируем turn в истории связности
+            self.cci_tracker.add_turn(
+                query=query,
+                response=response_text,
+                coherence_score=coherence_result.score,
             )
         except Exception as e:
             logger.warning(f"  [memory] update failed: {e}")
