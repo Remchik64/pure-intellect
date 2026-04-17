@@ -7,6 +7,8 @@
 [![Tests](https://img.shields.io/badge/Tests-465%20passed-brightgreen.svg)](tests/)
 [![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2Fpure--intellect-black.svg)](https://github.com/Remchik64/pure-intellect)
 
+![Pure Intellect Admin Panel](docs/images/admin-panel.png)
+
 Pure Intellect solves the fundamental problem of LLM context limitation — **context degradation in long conversations**. Instead of losing information when context fills up, the system creates a "coordinate" (compressed memory snapshot) and performs a **soft reset**, maintaining full conversational continuity.
 
 ---
@@ -326,7 +328,7 @@ Contributions are welcome! Please:
 
 ## 📜 License
 
-Copyright 2025 **Александр Remchik**
+Copyright 2025 **Remchik**
 
 Licensed under the **Apache License, Version 2.0**.
 
@@ -344,7 +346,7 @@ With conditions:
 See [LICENSE](LICENSE) for full terms.
 
 ```
-Copyright 2025 Александр Remchik
+Copyright 2025 Remchik
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -359,7 +361,7 @@ You may obtain a copy of the License at
 
 **Pure Intellect** — Local AI with unlimited memory
 
-*Built with ❤️ by Александр Remchik*
+*Built with ❤️ by Remchik*
 
 [GitHub](https://github.com/Remchik64/pure-intellect) · [Issues](https://github.com/Remchik64/pure-intellect/issues) · [License](LICENSE)
 
