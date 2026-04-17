@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-title Pure Intellect Installer v0.1
+title Pure Intellect Installer
 color 0A
 
 echo.
@@ -16,58 +16,59 @@ python --version >nul 2>&1
 if errorlevel 1 (
     echo.
     echo  ERROR: Python not found!
-    echo  Please install Python 3.13 from:
+    echo  Download Python 3.13:
     echo  https://www.python.org/ftp/python/3.13.13/python-3.13.13-amd64.exe
-    echo.
-    echo  IMPORTANT: Check "Add Python to PATH" during installation!
+    echo  IMPORTANT: Check "Add Python to PATH" during install!
     echo.
     pause
     exit /b 1
 )
-
 for /f "tokens=2" %%v in ('python --version 2^>^&1') do set PY_VER=%%v
-echo  OK: Python %PY_VER% found
+echo  OK: Python %PY_VER%
 
-:: ── Step 2: Check/Install Ollama ────────────────────────────────────────────
+:: ── Step 2: Check Ollama ─────────────────────────────────────────────────────
 echo.
 echo [2/4] Checking Ollama...
 where ollama >nul 2>&1
 if errorlevel 1 (
-    echo  Ollama not found. Downloading installer...
-    echo  Please wait (~150 MB)...
+    echo  Ollama not found. Downloading... (~150 MB)
     curl -L "https://ollama.com/download/ollama-windows-amd64.exe" -o "%TEMP%\ollama-setup.exe"
     if errorlevel 1 (
-        echo.
-        echo  ERROR: Failed to download Ollama.
-        echo  Please download manually: https://ollama.com/download
-        echo.
+        echo  ERROR: Download failed. Get it from: https://ollama.com/download
         pause
         exit /b 1
     )
-    echo  Installing Ollama...
     start /wait "%TEMP%\ollama-setup.exe" /S
     del "%TEMP%\ollama-setup.exe" >nul 2>&1
     echo  OK: Ollama installed
 ) else (
-    for /f "tokens=*" %%v in ('ollama --version 2^>^&1') do echo  OK: Ollama %%v
+    echo  OK: Ollama found
 )
 
-:: Start Ollama in background
-echo  Starting Ollama service...
-start /b "" ollama serve >nul 2>&1
-timeout /t 3 /nobreak >nul
+:: Start Ollama only if not already running
+curl -s http://localhost:11434 >nul 2>&1
+if errorlevel 1 (
+    echo  Starting Ollama service...
+    start /b "" ollama serve
+    timeout /t 3 /nobreak >nul
+    echo  OK: Ollama started
+) else (
+    echo  OK: Ollama already running
+)
 
 :: ── Step 3: Install Pure Intellect ──────────────────────────────────────────
 echo.
 echo [3/4] Installing Pure Intellect...
-echo  This may take 5-15 minutes (downloading PyTorch, ChromaDB...).
+echo  Please wait 5-15 minutes...
 echo.
 
+:: Install from GitHub (public) or with token (private)
 pip install git+https://github.com/Remchik64/pure-intellect.git
 if errorlevel 1 (
     echo.
-    echo  ERROR: Installation failed!
-    echo  Try: Run this script as Administrator
+    echo  ERROR: pip install failed!
+    echo  If repo is private, run manually:
+    echo    pip install git+https://TOKEN@github.com/Remchik64/pure-intellect.git
     echo.
     pause
     exit /b 1
@@ -75,64 +76,57 @@ if errorlevel 1 (
 echo.
 echo  OK: Pure Intellect installed!
 
-:: ── Add Python Scripts to PATH (fix for "not recognized") ───────────────────
-echo.
-echo  Adding Python Scripts to PATH...
-for /f "tokens=*" %%p in ('python -c "import sys, os; print(os.path.join(os.path.dirname(sys.executable), 'Scripts'))"') do set SCRIPTS_DIR=%%p
-if not "!SCRIPTS_DIR!"=="" (
-    set PATH=!SCRIPTS_DIR!;!PATH!
-    echo  OK: Added !SCRIPTS_DIR! to PATH
-)
+:: Add Scripts to PATH for this session
+for /f "delims=" %%p in ('python -c "import sys,os;print(os.path.join(os.path.dirname(sys.executable),'Scripts'))"') do set SCRIPTS=%%p
+if exist "!SCRIPTS!" set PATH=!SCRIPTS!;!PATH!
 
-:: ── Step 4: Create Launcher ──────────────────────────────────────────────────
+:: ── Step 4: Create Launcher + Shortcut ──────────────────────────────────────
 echo.
-echo [4/4] Creating desktop shortcut...
+echo [4/4] Creating launcher...
 
 set APPDIR=%APPDATA%\PureIntellect
 mkdir "%APPDIR%" >nul 2>&1
 
-:: Create start script
 (
     echo @echo off
     echo title Pure Intellect
     echo echo Starting Pure Intellect...
-    echo start /b "" ollama serve ^>nul 2^>^&1
+    echo curl -s http://localhost:11434 ^>nul 2^>^&1 ^|^| start /b "" ollama serve
     echo timeout /t 2 /nobreak ^>nul
     echo start http://localhost:8085
     echo python -m pure_intellect serve --port 8085
+    echo pause
 ) > "%APPDIR%\start.bat"
 
-:: Create desktop shortcut
-powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%USERPROFILE%\Desktop\Pure Intellect.lnk'); $s.TargetPath = '%APPDIR%\start.bat'; $s.Description = 'Pure Intellect AI'; $s.Save()" >nul 2>&1
+powershell -NoProfile -Command "$ws=New-Object -ComObject WScript.Shell;$s=$ws.CreateShortcut('%USERPROFILE%\Desktop\Pure Intellect.lnk');$s.TargetPath='%APPDIR%\start.bat';$s.Description='Pure Intellect AI';$s.Save()" >nul 2>&1
 
 if exist "%USERPROFILE%\Desktop\Pure Intellect.lnk" (
     echo  OK: Shortcut created on Desktop
 ) else (
-    echo  WARNING: Could not create shortcut
+    echo  OK: Launcher saved to %APPDIR%\start.bat
 )
 
-:: ── Done! ────────────────────────────────────────────────────────────────────
+:: ── Launch ───────────────────────────────────────────────────────────────────
 echo.
 echo  ================================================
-echo   Installation Complete!
+echo   Done! Pure Intellect installed.
 echo.
-echo   Start: double-click "Pure Intellect" on Desktop
-echo   OR run: python -m pure_intellect serve
-echo.
-echo   Open browser: http://localhost:8085
-echo.
-echo   First run: go to Models section and
-echo   download a model (e.g. qwen2.5:3b)
+echo   Next step: download a model in Admin Panel
+echo   Models section -> type qwen2.5:3b -> Download
 echo  ================================================
 echo.
 
-set /p START_NOW="Launch Pure Intellect now? (Y/N): "
-if /i "%START_NOW%"=="Y" (
-    echo  Starting...
+set /p GO="Launch now? (Y/N): "
+if /i "!GO!"=="Y" (
+    echo  Opening browser and starting server...
     start http://localhost:8085
     python -m pure_intellect serve --port 8085
 )
 
-echo.
-echo  Done! Run 'python -m pure_intellect serve' to start anytime.
-pause
+if /i "!GO!"=="N" (
+    echo.
+    echo  To start later: double-click Pure Intellect on Desktop
+    echo  Or run: python -m pure_intellect serve
+    echo.
+    pause
+)
