@@ -773,6 +773,80 @@ async def build_code_graph():
         logger.error(f"Build graph failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Watcher (C2) — авто-индексация при изменениях файлов ──────
+
+@router.get("/code/watcher/status")
+async def code_watcher_status():
+    """Статус файлового watcher — активен ли мониторинг."""
+    pipeline = get_pipeline()
+    if not pipeline._code_module:
+        return {"is_running": False, "message": "No active project session"}
+    return pipeline._code_module.watcher_status()
+
+
+@router.post("/code/watcher/start")
+async def code_watcher_start():
+    """Запустить авто-мониторинг изменений файлов проекта.
+
+    При изменении .py файла:
+    1. Файл автоматически переиндексируется в ChromaDB
+    2. Факт об изменении добавляется в WorkingMemory
+    3. Граф зависимостей обновляется
+    """
+    pipeline = get_pipeline()
+    if not pipeline._code_module:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="No active project session. Open a project first.")
+
+    def _watcher_callback(file_path: str, event_type: str, summary: str):
+        """При изменении файла → факт в WorkingMemory."""
+        try:
+            pipeline.working_memory.add(
+                content=summary,
+                source="watcher",
+                importance=0.7,
+            )
+            logger.info(f"[watcher→memory] {summary}")
+        except Exception as e:
+            logger.error(f"[watcher→memory] failed: {e}")
+
+    result = pipeline._code_module.start_watcher(on_change_callback=_watcher_callback)
+    return result
+
+
+@router.post("/code/watcher/stop")
+async def code_watcher_stop():
+    """Остановить мониторинг изменений файлов."""
+    pipeline = get_pipeline()
+    if not pipeline._code_module:
+        return {"status": "no_active_project"}
+    return pipeline._code_module.stop_watcher()
+
+
+@router.get("/code/watcher/changes")
+async def code_watcher_changes(limit: int = 20):
+    """Последние изменения файлов обнаруженные watcher."""
+    pipeline = get_pipeline()
+    if not pipeline._code_module or not pipeline._code_module._watcher:
+        return {"changes": [], "total": 0}
+    status = pipeline._code_module.watcher_status()
+    changes = status.get("recent_changes", [])[-limit:]
+    return {"changes": changes, "total": status.get("total_changes", 0)}
+
+
+@router.post("/code/watcher/scan")
+async def code_watcher_scan():
+    """Одноразовое сканирование изменений без запуска непрерывного мониторинга.
+
+    Полезно для проверки что изменилось с момента последней индексации.
+    """
+    pipeline = get_pipeline()
+    if not pipeline._code_module:
+        return {"changes": [], "message": "No active project"}
+    changes = pipeline._code_module.scan_changes_now()
+    return {"changes": changes, "total": len(changes)}
+
+
 
 # ── OpenAI-Compatible API (для Agent Zero, Open WebUI, LM Studio) ─────
 # Позволяет использовать Pure Intellect как OpenAI-совместимый сервер

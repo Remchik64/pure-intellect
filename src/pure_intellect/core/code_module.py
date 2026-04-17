@@ -94,6 +94,8 @@ class CodeModule:
         self._indexed_files: int = 0
         self._last_indexed: Optional[str] = None
         self._is_indexed: bool = False
+        self._watcher = None  # WatcherIntegration (lazy)
+        self._on_change_callback = None  # callback → WorkingMemory
 
         logger.info(
             f"[code_module] Initialized for project: {self.project_path} "
@@ -357,6 +359,92 @@ class CodeModule:
             "extensions": self.extensions,
             "chroma_dir": self.chroma_dir,
         }
+
+
+    # ── Watcher (C2) ─────────────────────────────────────────────────────
+
+    def start_watcher(self, on_change_callback=None) -> dict:
+        """Запустить авто-мониторинг изменений файлов проекта.
+
+        Args:
+            on_change_callback: вызывается при изменении файла
+                signature: callback(file_path: str, event_type: str, summary: str)
+
+        Returns:
+            Статус watcher
+        """
+        if not self._is_indexed:
+            return {"error": "Project not indexed yet. Call index_project() first."}
+
+        if self._watcher and self._watcher._is_running:
+            return {"status": "already_running", **self._watcher.get_status()}
+
+        try:
+            from .watcher_integration import WatcherIntegration
+
+            self._on_change_callback = on_change_callback
+
+            def _internal_callback(file_path: str, event_type: str, file_hash):
+                """Внутренний callback — переиндексация + уведомление WorkingMemory."""
+                logger.info(f"[watcher] {event_type}: {file_path}")
+                if on_change_callback and event_type != "deleted":
+                    # Сообщаем orchestrator об изменении
+                    try:
+                        from pathlib import Path
+                        fname = Path(file_path).name
+                        summary = f"[КОД ИЗМЕНЁН] {event_type.upper()} `{fname}` — переиндексировано автоматически"
+                        on_change_callback(file_path, event_type, summary)
+                    except Exception as e:
+                        logger.error(f"[watcher] callback error: {e}")
+
+            self._watcher = WatcherIntegration(project_path=str(self.project_path))
+            # Патчим callback чтобы использовать наш расширенный
+            self._watcher._on_file_change = lambda fp, et, fh: (
+                WatcherIntegration._on_file_change(self._watcher, fp, et, fh),
+                _internal_callback(fp, et, fh)
+            )
+            self._watcher.start()
+
+            logger.info(f"[code_module] Watcher started for {self.project_path}")
+            return {"status": "started", "project_path": str(self.project_path)}
+
+        except Exception as e:
+            logger.error(f"[code_module] Watcher start failed: {e}")
+            return {"error": str(e)}
+
+    def stop_watcher(self) -> dict:
+        """Остановить мониторинг изменений."""
+        if not self._watcher or not self._watcher._is_running:
+            return {"status": "not_running"}
+
+        try:
+            self._watcher.stop()
+            logger.info("[code_module] Watcher stopped")
+            return {"status": "stopped"}
+        except Exception as e:
+            logger.error(f"[code_module] Watcher stop failed: {e}")
+            return {"error": str(e)}
+
+    def watcher_status(self) -> dict:
+        """Статус watcher."""
+        if not self._watcher:
+            return {
+                "is_running": False,
+                "project_path": str(self.project_path),
+                "message": "Watcher not initialized",
+            }
+        return self._watcher.get_status()
+
+    def scan_changes_now(self) -> list:
+        """Одноразовое сканирование изменений без запуска непрерывного мониторинга."""
+        try:
+            from .watcher_integration import WatcherIntegration
+            if not self._watcher:
+                self._watcher = WatcherIntegration(project_path=str(self.project_path))
+            return self._watcher.scan_now()
+        except Exception as e:
+            logger.error(f"[code_module] scan_changes_now failed: {e}")
+            return []
 
     def is_code_query(self, query: str) -> bool:
         """Определить является ли запрос вопросом о коде.
