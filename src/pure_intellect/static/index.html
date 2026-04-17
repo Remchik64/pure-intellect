@@ -1241,7 +1241,55 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div id="section-models" class="section">
       <div class="section-title row between">
         <span>🤖 Model Manager</span>
-        <button class="btn" onclick="loadModels()">↻ Refresh</button>
+        <div class="btn-group">
+          <button class="btn" onclick="detectHardware()">🔍 Определить железо</button>
+          <button class="btn" onclick="loadModels()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Hardware Detection Result Card -->
+      <div class="card mb-16" id="hw-result-card" style="display:none;">
+        <div class="card-title">🔍 Ваше железо</div>
+        <div class="grid-2 mt-12">
+          <div>
+            <div class="row" style="gap:8px;align-items:center;">
+              <span class="text-dim">GPU:</span>
+              <span class="font-mono text-accent" id="hw-gpu">—</span>
+              <span class="text-dim" id="hw-vram"></span>
+            </div>
+            <div class="row mt-8" style="gap:8px;align-items:center;">
+              <span class="text-dim">RAM:</span>
+              <span class="font-mono" id="hw-ram">—</span>
+              <span class="text-dim">OS:</span>
+              <span class="font-mono" id="hw-os">—</span>
+            </div>
+          </div>
+          <div>
+            <div class="row" style="gap:8px;align-items:center;">
+              <span class="text-dim">Рекомендация:</span>
+              <span class="font-mono text-accent" id="hw-rec-label">—</span>
+            </div>
+            <div class="mt-8">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                <span class="text-dim">Координатор:</span>
+                <span class="font-mono" id="hw-rec-coord">—</span>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                <span class="text-dim">Генератор:</span>
+                <span class="font-mono" id="hw-rec-gen">—</span>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                <span class="text-dim">Скорость:</span>
+                <span class="font-mono" id="hw-rec-speed">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-12">
+          <button class="btn primary" id="hw-apply-btn" onclick="applyRecommendedModels()">
+            ✅ Применить рекомендованные модели
+          </button>
+        </div>
       </div>
 
       <!-- Active Models -->
@@ -1290,6 +1338,25 @@ tr:hover td { background: rgba(255,255,255,0.02); }
               <tr><td colspan="4" class="empty-state">Загрузка...</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Download Model Form -->
+      <div class="card mt-16">
+        <div class="card-title">⬇️ Скачать новую модель</div>
+        <div class="row mt-12" style="gap:8px;">
+          <input type="text" class="input" id="dl-model-input" placeholder="qwen2.5:3b" style="flex:1;"
+            onkeydown="if(event.key==='Enter') downloadModel()">
+          <button class="btn primary" onclick="downloadModel()">▼ Скачать</button>
+        </div>
+        <div id="dl-progress-wrap" style="display:none;margin-top:12px;">
+          <div class="progress-bar" style="margin-bottom:8px;">
+            <div class="progress-fill" id="dl-progress-bar" style="width:0%;transition:width 0.4s;"></div>
+          </div>
+          <div class="text-dim text-sm" id="dl-status-text">Подготовка...</div>
+        </div>
+        <div id="dl-success-wrap" style="display:none;margin-top:12px;" class="text-sm">
+          <span style="color:var(--success,#4ade80);">✅ Модель готова!</span>
         </div>
       </div>
     </div>
@@ -2139,6 +2206,182 @@ async function setModel(role, name) {
     showSection('settings');
   }
 }
+
+// ================================================================
+// HARDWARE DETECTION
+// ================================================================
+
+let _hwData = null;  // stores last hardware detection result
+
+async function detectHardware() {
+  const btn = document.querySelector('button[onclick="detectHardware()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Определяем...'; }
+
+  try {
+    const data = await api('/api/v1/hardware/detect');
+    if (!data) {
+      toast('Не удалось получить данные о железе', 'error');
+      return;
+    }
+    _hwData = data;
+
+    // GPU info
+    const gpuName = data.gpu?.name ?? data.gpu_name ?? 'Нет GPU';
+    const vram = data.gpu?.vram_gb ?? data.vram_gb ?? data.gpu?.memory_gb ?? null;
+    document.getElementById('hw-gpu').textContent = gpuName;
+    document.getElementById('hw-vram').textContent = vram ? `${vram} GB` : '';
+
+    // RAM + OS
+    const ram = data.ram_gb ?? data.ram ?? data.system?.ram_gb ?? '—';
+    const os  = data.os ?? data.system?.os ?? data.platform ?? '—';
+    document.getElementById('hw-ram').textContent = typeof ram === 'number' ? ram.toFixed(1) + ' GB' : ram;
+    document.getElementById('hw-os').textContent  = os;
+
+    // Recommendation
+    const rec = data.recommendation ?? data.rec ?? {};
+    const label = rec.label ?? rec.tier ?? rec.mode ?? data.tier ?? '—';
+    document.getElementById('hw-rec-label').textContent = label;
+    document.getElementById('hw-rec-coord').textContent = rec.coordinator ?? rec.coordinator_model ?? '—';
+    document.getElementById('hw-rec-gen').textContent   = rec.generator   ?? rec.generator_model   ?? '—';
+    const speed = rec.speed ?? rec.tokens_per_sec ?? data.speed ?? null;
+    document.getElementById('hw-rec-speed').textContent = speed ? `~${speed} tok/sec` : '—';
+
+    document.getElementById('hw-result-card').style.display = '';
+    toast('Железо определено!', 'success');
+  } catch (e) {
+    toast('Ошибка определения железа: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔍 Определить железо'; }
+  }
+}
+
+async function applyRecommendedModels() {
+  if (!_hwData) { toast('Сначала определите железо', 'warning'); return; }
+  const rec = _hwData.recommendation ?? _hwData.rec ?? {};
+  const coord = rec.coordinator ?? rec.coordinator_model;
+  const gen   = rec.generator   ?? rec.generator_model;
+
+  if (!coord && !gen) {
+    toast('Нет рекомендаций для применения', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('hw-apply-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Применяем...'; }
+
+  let ok = 0;
+  try {
+    if (coord) {
+      const r1 = await api('/api/v1/models/switch', {
+        method: 'POST',
+        body: JSON.stringify({ role: 'coordinator', model: coord })
+      });
+      if (r1 !== null) ok++;
+    }
+    if (gen) {
+      const r2 = await api('/api/v1/models/switch', {
+        method: 'POST',
+        body: JSON.stringify({ role: 'generator', model: gen })
+      });
+      if (r2 !== null) ok++;
+    }
+    if (ok > 0) {
+      toast(`✅ Применены рекомендованные модели (${ok})`, 'success');
+      loadModels();
+    } else {
+      toast('Не удалось применить модели — проверьте API', 'error');
+    }
+  } catch (e) {
+    toast('Ошибка: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Применить рекомендованные модели'; }
+  }
+}
+
+// ================================================================
+// MODEL DOWNLOAD
+// ================================================================
+
+let _dlPollTimer = null;
+
+async function downloadModel() {
+  const input = document.getElementById('dl-model-input');
+  const modelName = (input?.value ?? '').trim();
+  if (!modelName) { toast('Введите название модели', 'warning'); return; }
+
+  const progressWrap = document.getElementById('dl-progress-wrap');
+  const progressBar  = document.getElementById('dl-progress-bar');
+  const statusText   = document.getElementById('dl-status-text');
+  const successWrap  = document.getElementById('dl-success-wrap');
+  const dlBtn        = document.querySelector('button[onclick="downloadModel()"]');
+
+  // Reset UI
+  progressWrap.style.display = '';
+  successWrap.style.display  = 'none';
+  progressBar.style.width    = '5%';
+  statusText.textContent     = `Скачивание ${modelName}...`;
+  if (dlBtn) { dlBtn.disabled = true; }
+
+  // Stop any existing poll
+  if (_dlPollTimer) { clearInterval(_dlPollTimer); _dlPollTimer = null; }
+
+  try {
+    const r = await api('/api/v1/models/download', {
+      method: 'POST',
+      body: JSON.stringify({ model: modelName })
+    });
+    if (r === null) {
+      statusText.textContent = '❌ Ошибка запуска скачивания';
+      if (dlBtn) dlBtn.disabled = false;
+      return;
+    }
+    toast(`Скачивание ${modelName} запущено...`, 'info');
+  } catch (e) {
+    statusText.textContent = '❌ ' + e.message;
+    if (dlBtn) dlBtn.disabled = false;
+    return;
+  }
+
+  // Poll progress every 3 seconds
+  let elapsed = 0;
+  _dlPollTimer = setInterval(async () => {
+    elapsed += 3;
+    try {
+      const check = await api(`/api/v1/models/download/check/${encodeURIComponent(modelName)}`);
+      if (!check) return;
+
+      // Update progress bar with available info
+      const pct = check.progress ?? check.percent ?? null;
+      if (pct !== null) {
+        progressBar.style.width = Math.min(Math.max(pct, 5), 99) + '%';
+      } else {
+        // Animate indeterminate progress
+        const pseudo = Math.min(5 + elapsed * 1.5, 90);
+        progressBar.style.width = pseudo + '%';
+      }
+
+      const status = check.status ?? check.state ?? '';
+      statusText.textContent = check.message ?? `Скачивание ${modelName}... (${status})`;
+
+      if (check.ready === true || check.done === true || status === 'ready' || status === 'done') {
+        clearInterval(_dlPollTimer);
+        _dlPollTimer = null;
+        progressBar.style.width = '100%';
+        statusText.textContent = '✅ Завершено!';
+        setTimeout(() => { progressWrap.style.display = 'none'; }, 1500);
+        successWrap.style.display = '';
+        if (dlBtn) dlBtn.disabled = false;
+        if (input) input.value = '';
+        toast(`✅ Модель ${modelName} готова!`, 'success');
+        loadModels();
+      }
+    } catch (e) {
+      // Non-fatal poll error — keep trying
+      statusText.textContent = `Ожидание... (${elapsed}с)`;
+    }
+  }, 3000);
+}
+
 
 // ================================================================
 // PROJECTS
