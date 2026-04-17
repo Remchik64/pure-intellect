@@ -624,6 +624,7 @@ class RenameSessionRequest(BaseModel):
 async def list_sessions():
     """Список всех сессий."""
     try:
+        pipeline = get_pipeline()
         return pipeline.get_sessions()
     except Exception as e:
         logger.error(f"List sessions failed: {e}")
@@ -751,6 +752,7 @@ async def search_code(q: str, top_k: int = 5):
 async def code_stats():
     """Статистика Code Module."""
     try:
+        pipeline = get_pipeline()
         if not hasattr(pipeline, '_code_module') or pipeline._code_module is None:
             return {"active": False, "message": "No project indexed"}
         return {"active": True, **pipeline._code_module.stats()}
@@ -845,6 +847,87 @@ async def code_watcher_scan():
         return {"changes": [], "message": "No active project"}
     changes = pipeline._code_module.scan_changes_now()
     return {"changes": changes, "total": len(changes)}
+
+
+# ── Admin Panel: дополнительные endpoints ──────────────────
+
+@router.get("/ollama/models")
+async def ollama_models_proxy():
+    """Прокси к Ollama API — список доступных моделей.
+
+    Решает CORS проблему браузера при обращении к localhost:11434.
+    """
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get("http://localhost:11434/api/tags")
+            return resp.json()
+    except Exception as e:
+        logger.warning(f"Ollama not available: {e}")
+        return {"models": [], "error": str(e)}
+
+
+@router.post("/models/switch")
+async def switch_model(req: dict):
+    """Переключить модель координатора или генератора без перезапуска.
+
+    Body: {"role": "coordinator" | "generator", "model": "qwen2.5:7b"}
+    """
+    try:
+        pipeline = get_pipeline()
+        role = req.get("role")
+        model = req.get("model")
+        if role not in ("coordinator", "generator"):
+            raise HTTPException(status_code=400, detail="role must be coordinator or generator")
+        if not model:
+            raise HTTPException(status_code=400, detail="model is required")
+
+        router_obj = pipeline._router
+        if role == "coordinator":
+            router_obj.coordinator_model = model
+            logger.info(f"[admin] Coordinator switched to {model}")
+        else:
+            router_obj.generator_model = model
+            logger.info(f"[admin] Generator switched to {model}")
+
+        return {"status": "switched", "role": role, "model": model}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Switch model failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/memory/fact/{fact_id}")
+async def delete_memory_fact(fact_id: str):
+    """Удалить конкретный факт из памяти по ID."""
+    try:
+        pipeline = get_pipeline()
+        wm = pipeline.working_memory
+        # Удаляем из WorkingMemory
+        initial_size = wm.size()
+        wm._facts = [f for f in wm._facts if f.id != fact_id]
+        deleted_wm = initial_size - wm.size()
+
+        # Удаляем из MemoryStorage
+        deleted_storage = 0
+        storage = pipeline.memory_storage
+        initial_storage = len(storage._facts)
+        storage._facts = [f for f in storage._facts if f.id != fact_id]
+        deleted_storage = initial_storage - len(storage._facts)
+
+        if deleted_wm + deleted_storage == 0:
+            raise HTTPException(status_code=404, detail=f"Fact {fact_id} not found")
+
+        return {"deleted": True, "fact_id": fact_id, 
+                "from_working_memory": deleted_wm,
+                "from_storage": deleted_storage}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete fact failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 
