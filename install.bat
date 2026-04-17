@@ -111,12 +111,22 @@ mkdir "%APPDIR%" >nul 2>&1
 
 (
     echo @echo off
-    echo title Pure Intellect
-    echo echo Starting Pure Intellect...
+    echo title Pure Intellect Server
+    echo echo.
+    echo echo  Starting Pure Intellect...
+    echo echo  Close this window to stop the server.
+    echo echo.
+    echo :: Start Ollama if not running
     echo curl -s http://localhost:11434 ^>nul 2^>^&1 ^|^| start /b "" ollama serve
     echo timeout /t 2 /nobreak ^>nul
-    echo start http://localhost:8085
-    echo python -m pure_intellect serve --port 8085
+    echo :: Start server in new window and wait for it
+    echo start "Pure Intellect" /min python -m pure_intellect serve --port 8085
+    echo echo Waiting for server to start...
+    echo timeout /t 6 /nobreak ^>nul
+    echo :: Open Edge (built-in on Windows 10/11)
+    echo start microsoft-edge:http://127.0.0.1:8085
+    echo echo Server is running at http://127.0.0.1:8085
+    echo echo Close the minimized server window to stop.
     echo pause
 ) > "%APPDIR%\start.bat"
 
@@ -140,9 +150,16 @@ echo.
 
 set /p GO="Launch now? (Y/N): "
 if /i "!GO!"=="Y" (
-    echo  Starting...
-    start http://localhost:8085
-    python -m pure_intellect serve --port 8085
+    echo  Starting server...
+    start "Pure Intellect" /min python -m pure_intellect serve --port 8085
+    echo  Waiting for server to be ready...
+    timeout /t 6 /nobreak >nul
+    echo  Opening browser...
+    start microsoft-edge:http://127.0.0.1:8085
+    echo.
+    echo  Server is running! Check taskbar for minimized window.
+    echo  Close this window when done.
+    echo.
 )
 if /i "!GO!"=="N" (
     echo.
