@@ -871,6 +871,71 @@ async def ollama_models_proxy():
         return {"models": [], "error": str(e)}
 
 
+@router.get("/models/status")
+async def models_status():
+    """Полный статус всех моделей: скачанные + активные в VRAM.
+
+    Возвращает:
+    - downloaded: все скачанные модели (из /api/tags)
+    - active_in_vram: модели загруженные в VRAM прямо сейчас (из /api/ps)
+    - coordinator/generator: статус назначенных моделей
+
+    Статусы:
+    - 'active'  — загружена в VRAM прямо сейчас 🔥
+    - 'ready'   — скачана, готова к запуску ✅
+    - 'offline' — не скачана, нужно скачать ❌
+    """
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # Все скачанные модели
+            tags_resp = await client.get("http://localhost:11434/api/tags")
+            downloaded = [m["name"] for m in tags_resp.json().get("models", [])]
+
+            # Активные в VRAM прямо сейчас
+            try:
+                ps_resp = await client.get("http://localhost:11434/api/ps")
+                active = [m["name"] for m in ps_resp.json().get("models", [])]
+            except Exception:
+                active = []
+
+            # Назначенные модели из пайплайна
+            try:
+                pipeline = get_pipeline()
+                coordinator = pipeline._router.coordinator_model
+                generator = pipeline._router.generator_model
+            except Exception:
+                coordinator = "qwen2.5:3b"
+                generator = "qwen2.5:7b"
+
+            def get_status(model_name: str) -> str:
+                if model_name in active:
+                    return "active"   # загружена в VRAM
+                elif model_name in downloaded:
+                    return "ready"    # скачана, готова
+                else:
+                    return "offline"  # не скачана
+
+            return {
+                "downloaded": downloaded,
+                "active_in_vram": active,
+                "coordinator": {
+                    "model": coordinator,
+                    "status": get_status(coordinator),
+                },
+                "generator": {
+                    "model": generator,
+                    "status": get_status(generator),
+                },
+            }
+    except Exception as e:
+        logger.warning(f"Models status failed: {e}")
+        return {"error": str(e), "downloaded": [], "active_in_vram": [],
+                "coordinator": {"model": "—", "status": "offline"},
+                "generator": {"model": "—", "status": "offline"}}
+
+
+
 @router.post("/models/switch")
 async def switch_model(req: dict):
     """Переключить модель координатора или генератора без перезапуска.

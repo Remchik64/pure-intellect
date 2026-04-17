@@ -700,9 +700,11 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   background: var(--text-dim);
 }
 
-.status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
-.status-dot.loading { background: var(--yellow); animation: pulse 1.5s infinite; }
-.status-dot.offline { background: var(--red); }
+.status-dot.online  { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+.status-dot.active  { background: #ff8c00; box-shadow: 0 0 8px #ff8c00; animation: pulse 2s infinite; }
+.status-dot.ready   { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
+.status-dot.loading { background: var(--yellow);  animation: pulse 1.5s infinite; }
+.status-dot.offline { background: var(--text-dim); }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -1319,6 +1321,9 @@ tr:hover td { background: rgba(255,255,255,0.02); }
             </div>
           </div>
         </div>
+        <div class="mt-12" style="font-size:12px;color:var(--text-dim);padding:8px 0 2px;border-top:1px solid var(--border);margin-top:12px;">
+          ℹ️ Модели загружаются в VRAM при первом запросе. <strong style="color:var(--text)">✅ Готова</strong> — скачана и назначена. <strong style="color:#ff8c00">🔥 В памяти</strong> — активна в VRAM прямо сейчас.
+        </div>
       </div>
 
       <!-- Ollama Models -->
@@ -1331,11 +1336,12 @@ tr:hover td { background: rgba(255,255,255,0.02); }
                 <th>Модель</th>
                 <th>Размер</th>
                 <th>Изменён</th>
+                <th>Статус</th>
                 <th>Действия</th>
               </tr>
             </thead>
             <tbody id="ollama-tbody">
-              <tr><td colspan="4" class="empty-state">Загрузка...</td></tr>
+              <tr><td colspan="5" class="empty-state">Загрузка...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1611,11 +1617,15 @@ function showSection(name) {
   if (sidebar.classList.contains('open')) sidebar.classList.remove('open');
 
   // Load section data
+  // Stop models polling if leaving models section
+  if (name !== 'models') stopModelsPolling();
+
+  // Load section data
   switch (name) {
     case 'dashboard': loadDashboard(); break;
     case 'chat': loadChatStats(); break;
     case 'memory': loadMemory(); break;
-    case 'models': loadModels(); break;
+    case 'models': loadModels(); startModelsPolling(); break;
     case 'projects': loadProjects(); break;
     case 'connections': loadConnections(); break;
     case 'settings': loadSettings(); break;
@@ -1825,7 +1835,7 @@ async function loadDashboard() {
     api('/api/v1/memory/stats'),
     api('/api/v1/cci/stats'),
     api('/api/v1/session/info'),
-    api('/api/v1/dual-model/stats')
+    api('/api/v1/models/status')  // полный статус: скачана/в VRAM/офлайн
   ]);
 
   // GPU
@@ -1909,8 +1919,27 @@ function updateDualModelUI(stats, prefix) {
 
   const coordName = coord.model ?? coord.name ?? '—';
   const genName = gen.model ?? gen.name ?? '—';
-  const coordOk = coord.ready ?? coord.loaded ?? coord.status === 'ready';
-  const genOk = gen.ready ?? gen.loaded ?? gen.status === 'ready';
+
+  // Определяем статус: поддерживаем оба формата
+  // Новый формат: coord.status = 'active'|'ready'|'offline'
+  // Старый формат: coord.ready/loaded = boolean
+  function resolveStatus(role) {
+    if (role.status === 'active')  return 'active';
+    if (role.status === 'ready')   return 'ready';
+    if (role.status === 'offline') return 'offline';
+    // legacy fallback: boolean ready/loaded
+    const ok = role.ready ?? role.loaded ?? false;
+    return ok ? 'ready' : 'offline';
+  }
+
+  const STATUS_LABEL = {
+    active:  '🔥 В памяти',
+    ready:   '✅ Готова',
+    offline: '❌ Не скачана',
+  };
+
+  const coordStatus = resolveStatus(coord);
+  const genStatus   = resolveStatus(gen);
 
   const cn = document.getElementById(`${prefix}-coord-name`);
   const gn = document.getElementById(`${prefix}-gen-name`);
@@ -1921,10 +1950,10 @@ function updateDualModelUI(stats, prefix) {
 
   if (cn) cn.textContent = coordName;
   if (gn) gn.textContent = genName;
-  if (cd) cd.className = 'status-dot ' + (coordOk ? 'online' : 'offline');
-  if (gd) gd.className = 'status-dot ' + (genOk ? 'online' : 'offline');
-  if (cs) cs.textContent = coordOk ? 'Online' : 'Offline';
-  if (gs) gs.textContent = genOk ? 'Online' : 'Offline';
+  if (cd) cd.className = 'status-dot ' + coordStatus;
+  if (gd) gd.className = 'status-dot ' + genStatus;
+  if (cs) cs.textContent = STATUS_LABEL[coordStatus] ?? coordStatus;
+  if (gs) gs.textContent = STATUS_LABEL[genStatus]   ?? genStatus;
 }
 
 async function loadSessions() {
@@ -2150,34 +2179,67 @@ async function clearMemory() {
 // MODELS
 // ================================================================
 
-async function loadModels() {
-  // Active models
-  const dualData = await api('/api/v1/dual-model/stats');
-  if (dualData) updateDualModelUI(dualData, 'm');
+let _modelsStatusInterval = null;
 
-  // Ollama models
-  const ollamaData = await apiOllama('/api/tags');
+async function loadModels() {
+  // 1. Получаем полный статус моделей (скачанные + VRAM + назначенные)
+  const statusData = await api('/api/v1/models/status');
+  if (statusData && !statusData.error) {
+    // Обновляем карточки "Активные модели" (prefix='m')
+    updateDualModelUI(statusData, 'm');
+
+    // Сохраняем список активных в VRAM для таблицы
+    window._modelsActiveInVram = new Set(statusData.active_in_vram ?? []);
+    window._modelsDownloaded   = new Set(statusData.downloaded ?? []);
+    window._modelsCoordinator  = statusData.coordinator?.model ?? '';
+    window._modelsGenerator    = statusData.generator?.model ?? '';
+  } else {
+    // Fallback: старый endpoint
+    const dualData = await api('/api/v1/dual-model/stats');
+    if (dualData) updateDualModelUI(dualData, 'm');
+  }
+
+  // 2. Список скачанных моделей Ollama (через наш прокси)
+  const ollamaData = await api('/api/v1/ollama/models');
   const tbody = document.getElementById('ollama-tbody');
 
   if (!ollamaData) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="empty-icon">⚠️</div>Ollama недоступен</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="empty-icon">⚠️</div>Ollama недоступен</td></tr>';
     return;
   }
 
   const models = ollamaData.models ?? [];
   if (!models.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Нет моделей</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Нет моделей</td></tr>';
     return;
   }
 
+  const active  = window._modelsActiveInVram ?? new Set();
+  const coord   = window._modelsCoordinator ?? '';
+  const gen     = window._modelsGenerator ?? '';
+
+  function modelStatusBadge(name) {
+    if (active.has(name))         return '<span style="color:#ff8c00" title="Загружена в VRAM">🔥 В памяти</span>';
+    if (name === coord || name === gen) return '<span style="color:var(--accent)" title="Скачана, назначена">✅ Готова</span>';
+    return '<span style="color:var(--text-dim)" title="Скачана, не назначена">💾 Скачана</span>';
+  }
+
+  function roleTag(name) {
+    const tags = [];
+    if (name === coord) tags.push('<span style="font-size:10px;background:rgba(88,166,255,.2);color:var(--accent);padding:1px 6px;border-radius:4px;">🎯 Координатор</span>');
+    if (name === gen)   tags.push('<span style="font-size:10px;background:rgba(188,140,255,.2);color:#bc8cff;padding:1px 6px;border-radius:4px;">⚡ Генератор</span>');
+    return tags.join(' ');
+  }
+
   tbody.innerHTML = models.map(m => {
-    const name = m.name ?? m.model ?? '—';
-    const size = fmtSize(m.size);
+    const name     = m.name ?? m.model ?? '—';
+    const size     = fmtSize(m.size);
     const modified = fmtDate(m.modified_at ?? m.modified);
     return `<tr class="ollama-model-row">
-      <td><strong>${esc(name)}</strong></td>
+      <td><strong>${esc(name)}</strong><br><small>${roleTag(name)}</small></td>
       <td class="text-dim">${size}</td>
       <td class="text-dim">${modified}</td>
+      <td>${modelStatusBadge(name)}</td>
       <td>
         <div class="btn-group">
           <button class="btn" onclick="setModel('coordinator','${esc(name)}')">🎯 Координатор</button>
@@ -2188,24 +2250,33 @@ async function loadModels() {
   }).join('');
 }
 
-async function setModel(role, name) {
-  // Try PATCH /api/v1/dual-model/stats or config update
-  const payload = {};
-  if (role === 'coordinator') payload.coordinator_model = name;
-  else payload.generator_model = name;
+// Запускаем/останавливаем polling статусов при переключении секций
+function startModelsPolling() {
+  if (_modelsStatusInterval) return;
+  _modelsStatusInterval = setInterval(loadModels, 10000);
+}
+function stopModelsPolling() {
+  if (_modelsStatusInterval) { clearInterval(_modelsStatusInterval); _modelsStatusInterval = null; }
+}
 
-  const r = await api('/api/v1/config', { method: 'PATCH', body: JSON.stringify(payload) });
-  if (r !== null) {
-    toast(`${role} → ${name}`, 'success');
-    loadModels();
+async function setModel(role, name) {
+  // POST /api/v1/models/switch — прямое переключение без перезапуска
+  const r = await api('/api/v1/models/switch', {
+    method: 'POST',
+    body: JSON.stringify({ role, model: name })
+  });
+  if (r !== null && r.status === 'switched') {
+    toast(`${role === 'coordinator' ? '🎯 Координатор' : '⚡ Генератор'} → ${name}`, 'success');
+    loadModels();  // обновим статусы сразу после смены
   } else {
-    // Fallback: update settings form
-    if (role === 'coordinator') document.getElementById('cfg-coord').value = name;
-    else document.getElementById('cfg-gen').value = name;
-    toast(`Модель выбрана: ${name}. Сохраните настройки.`, 'info');
+    // Fallback: обновляем поле в настройках
+    if (role === 'coordinator') { const el = document.getElementById('cfg-coord'); if (el) el.value = name; }
+    else                        { const el = document.getElementById('cfg-gen');   if (el) el.value = name; }
+    toast(`Модель выбрана: ${name}. Нажмите «Сохранить настройки».`, 'info');
     showSection('settings');
   }
 }
+
 
 // ================================================================
 // HARDWARE DETECTION
