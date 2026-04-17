@@ -1049,8 +1049,90 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             },
         }
 
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"OpenAI endpoint failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Hardware Detection ────────────────────────────────────────────────────────
+
+@router.get("/hardware/detect")
+async def hardware_detect():
+    """Определяет железо пользователя и возвращает рекомендации по моделям."""
+    try:
+        from pure_intellect.utils.hardware_detector import detect_hardware
+        return detect_hardware()
+    except Exception as e:
+        logger.error(f"Hardware detection failed: {e}")
+        return {
+            "hardware": {"os": "unknown", "ram_gb": 0, "gpu": None},
+            "recommendation": {
+                "coordinator": "qwen2.5:3b",
+                "generator": "qwen2.5:3b",
+                "mode": "CPU ONLY",
+                "speed_estimate": "~2 tok/sec",
+                "status": "⚠️",
+                "status_label": "Не определено",
+                "num_gpu": 0,
+                "warnings": [str(e)],
+                "notes": "",
+            },
+            "errors": [str(e)],
+        }
+
+
+# ── Model Download (через Ollama) ─────────────────────────────────────────────
+
+@router.post("/models/download")
+async def download_model(req: dict):
+    """Скачать модель через Ollama.
+
+    Body: {"model": "qwen2.5:3b"}
+    Возвращает статус запуска — сам pull идёт в фоне.
+    Прогресс можно отслеживать через GET /models/download/status
+    """
+    import asyncio
+    model = req.get("model", "").strip()
+    if not model:
+        raise HTTPException(status_code=400, detail="model is required")
+
+    # Запускаем ollama pull в фоне
+    async def _pull():
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "ollama", "pull", model,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            if proc.returncode == 0:
+                logger.info(f"[model_download] {model} downloaded successfully")
+            else:
+                logger.error(f"[model_download] {model} failed: {stderr.decode()}")
+        except Exception as e:
+            logger.error(f"[model_download] Exception: {e}")
+
+    asyncio.create_task(_pull())
+    return {"status": "downloading", "model": model, "message": f"Скачивание {model} запущено в фоне"}
+
+
+@router.get("/models/download/check/{model_name:path}")
+async def check_model_downloaded(model_name: str):
+    """Проверить загружена ли модель в Ollama."""
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get("http://localhost:11434/api/tags")
+            data = resp.json()
+            models = [m["name"] for m in data.get("models", [])]
+            # Проверяем точное или частичное совпадение
+            is_ready = any(
+                model_name == m or m.startswith(model_name)
+                for m in models
+            )
+            return {"model": model_name, "ready": is_ready, "available_models": models}
+    except Exception as e:
+        return {"model": model_name, "ready": False, "error": str(e)}
