@@ -216,16 +216,24 @@ class TestDetectAndRecommend:
         assert result["hardware"]["gpu"] is None
 
     def test_with_gpu_output(self):
-        """С GPU gpu содержит нужные поля."""
+        """С GPU: gpu — строка с именем, gpu_info — dict с деталями."""
         d = HardwareDetector()
         with patch.object(d, "detect", return_value=make_info(vram_mb=8*1024, vendor="nvidia")):
             result = d.detect_and_recommend()
-        gpu = result["hardware"]["gpu"]
-        assert gpu is not None
-        assert "name" in gpu
-        assert "vram_gb" in gpu
-        assert "vendor" in gpu
-        assert "cuda_available" in gpu
+        hw = result["hardware"]
+        # gpu должен быть строкой (имя GPU), а не объектом
+        assert hw["gpu"] is not None
+        assert isinstance(hw["gpu"], str), f"Expected str, got {type(hw['gpu'])}: {hw['gpu']}"
+        # gpu_info содержит детальную информацию
+        gpu_info = hw.get("gpu_info")
+        assert gpu_info is not None
+        assert "name" in gpu_info
+        assert "vram_gb" in gpu_info
+        assert "vendor" in gpu_info
+        assert "cuda_available" in gpu_info
+        # vram_gb доступен на верхнем уровне hardware
+        assert isinstance(hw["vram_gb"], (int, float))
+        assert hw["vram_gb"] > 0
 
 
 # ── detect_hardware() convenience function ────────────────────────────────────

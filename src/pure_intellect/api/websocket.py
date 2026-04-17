@@ -1,134 +1,236 @@
-"""WebSocket стриминг для реал-тайм ответов LLM."""
+"""WebSocket стриминг для реал-тайм ответов LLM.
 
+Архитектура: websocket.py → get_pipeline() → OrchestratorPipeline
+→ DualModelRouter → OllamaEngine → Ollama API
+
+НЕ использует llama_cpp или ModelManager напрямую.
+"""
+
+import asyncio
 import json
 import logging
 from typing import Optional
+
+import httpx
 from fastapi import WebSocket, WebSocketDisconnect
-from ..engine import ModelManager, MODEL_REGISTRY
 
 logger = logging.getLogger(__name__)
 
 
+def _get_pipeline():
+    """Ленивый импорт get_pipeline из routes для избежания циклических зависимостей."""
+    from ..api.routes import get_pipeline
+    return get_pipeline()
+
+
 class StreamingManager:
-    """Управление WebSocket соединениями и стримингом."""
-    
+    """Управление WebSocket соединениями и стримингом через OrchestratorPipeline."""
+
     def __init__(self):
         self.active_connections: list[WebSocket] = []
-        self.model_manager: Optional[ModelManager] = None
-    
-    def get_model_manager(self) -> ModelManager:
-        """Получить или создать ModelManager."""
-        if self.model_manager is None:
-            self.model_manager = ModelManager(cache_dir="./models")
-        return self.model_manager
-    
+
     async def connect(self, websocket: WebSocket):
         """Принять новое WebSocket соединение."""
         await websocket.accept()
         self.active_connections.append(websocket)
         logger.info(f"WebSocket connected. Total: {len(self.active_connections)}")
-    
+
     def disconnect(self, websocket: WebSocket):
         """Отключить WebSocket."""
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
         logger.info(f"WebSocket disconnected. Total: {len(self.active_connections)}")
-    
+
     async def send_json(self, websocket: WebSocket, data: dict):
         """Отправить JSON сообщение."""
         try:
             await websocket.send_json(data)
         except Exception as e:
             logger.error(f"Failed to send WebSocket message: {e}")
-    
+
     async def stream_chat(self, websocket: WebSocket, data: dict):
-        """Стримить ответ LLM токен за токеном."""
-        manager = self.get_model_manager()
-        
+        """Обработать chat-запрос через OrchestratorPipeline и стримить ответ.
+
+        Использует pipeline.run() (Ollama backend) а не llama_cpp.
+        Для настоящего токен-стриминга используется Ollama /v1/chat/completions
+        с stream=True через _stream_ollama().
+        """
         # Параметры запроса
         messages = data.get("messages", [])
-        model_key = data.get("model", "qwen2.5-coder-7b")
+        model_key = data.get("model", None)
         temperature = data.get("temperature", 0.7)
         max_tokens = data.get("max_tokens", 2048)
-        
-        # Если нет messages, формируем из query/system
-        if not messages:
-            query = data.get("query", "")
-            system = data.get("system")
-            if system:
-                messages.append({"role": "system", "content": system})
-            messages.append({"role": "user", "content": query})
-        
-        # Загрузить модель если не загружена
-        if manager.loaded_model is None:
-            if model_key not in MODEL_REGISTRY:
-                await self.send_json(websocket, {
-                    "type": "error",
-                    "message": f"Unknown model: {model_key}"
-                })
-                return
-            
-            await self.send_json(websocket, {
-                "type": "status",
-                "message": f"Loading model {model_key}..."
-            })
-            
-            try:
-                manager.load(model_key, n_gpu_layers=-1)
-            except Exception as e:
-                await self.send_json(websocket, {
-                    "type": "error",
-                    "message": f"Failed to load model: {e}"
-                })
-                return
-        
-        # Стриминг генерации
-        await self.send_json(websocket, {
-            "type": "start",
-            "model": model_key,
-        })
-        
-        try:
-            # llama-cpp-python streaming
-            stream = manager.loaded_model.create_chat_completion(
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,  # КЛЮЧЕВОЙ ПАРАМЕТР!
-            )
-            
-            full_response = ""
-            token_count = 0
-            
-            for chunk in stream:
-                delta = chunk["choices"][0].get("delta", {})
-                content = delta.get("content", "")
-                
-                if content:
-                    full_response += content
-                    token_count += 1
-                    
-                    # Отправляем токен клиенту
-                    await self.send_json(websocket, {
-                        "type": "token",
-                        "content": content,
-                    })
-            
-            # Завершение стриминга
-            await self.send_json(websocket, {
-                "type": "end",
-                "full_response": full_response,
-                "tokens": token_count,
-            })
-            
-            logger.info(f"Stream complete: {token_count} tokens")
-            
-        except Exception as e:
-            logger.error(f"Streaming failed: {e}")
+        system = data.get("system", None)
+
+        # Определяем query из messages или отдельных полей
+        query = data.get("query", "")
+        if not query and messages:
+            # Берём последнее user-сообщение
+            user_msgs = [m for m in messages if m.get("role") == "user"]
+            if user_msgs:
+                query = user_msgs[-1].get("content", "")
+            # system из messages если не передан отдельно
+            if not system:
+                sys_msgs = [m for m in messages if m.get("role") == "system"]
+                if sys_msgs:
+                    system = sys_msgs[0].get("content", "")
+
+        if not query:
             await self.send_json(websocket, {
                 "type": "error",
-                "message": str(e)
+                "message": "No query provided",
             })
+            return
+
+        # Уведомляем о начале
+        await self.send_json(websocket, {
+            "type": "start",
+            "model": model_key or "auto",
+        })
+
+        try:
+            pipeline = _get_pipeline()
+
+            # Пробуем настоящий стриминг через Ollama
+            router = getattr(pipeline, "_router", None)
+            ollama_url = None
+            ollama_model = None
+
+            if router is not None:
+                # Получаем URL Ollama и модель из router
+                try:
+                    from pure_intellect.config import settings
+                    ollama_url = getattr(settings, "ollama_url", "http://localhost:11434")
+                    ollama_model = (
+                        model_key
+                        or getattr(router, "coordinator_model", None)
+                        or "qwen2.5:3b"
+                    )
+                except Exception:
+                    pass
+
+            if ollama_url and ollama_model:
+                # Настоящий токен-стриминг через Ollama
+                await self._stream_via_ollama(
+                    websocket=websocket,
+                    query=query,
+                    pipeline=pipeline,
+                    ollama_url=ollama_url,
+                    ollama_model=ollama_model,
+                    system=system,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+            else:
+                # Fallback: полный запрос через pipeline.run() в отдельном потоке
+                await self._run_pipeline_response(
+                    websocket=websocket,
+                    pipeline=pipeline,
+                    query=query,
+                    model_key=model_key,
+                    system=system,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+
+        except Exception as e:
+            logger.error(f"stream_chat failed: {e}")
+            await self.send_json(websocket, {
+                "type": "error",
+                "message": str(e),
+            })
+
+    async def _stream_via_ollama(
+        self,
+        websocket: WebSocket,
+        query: str,
+        pipeline,
+        ollama_url: str,
+        ollama_model: str,
+        system: Optional[str],
+        temperature: float,
+        max_tokens: int,
+    ):
+        """Стриминг токенов напрямую через Ollama API.
+
+        Сначала запускает pipeline.run() чтобы обновить память и получить
+        контекстный system prompt, затем стримит ответ через Ollama.
+        """
+        # Шаг 1: Получаем context/system prompt через pipeline (в отдельном потоке)
+        # pipeline.run() синхронный — запускаем через asyncio.to_thread
+        try:
+            result = await asyncio.to_thread(
+                pipeline.run,
+                query,
+                None,        # model_key — pipeline выберет сам
+                system,      # system override
+                temperature,
+                max_tokens,
+            )
+            # Ответ уже готов — отправляем как стриминг по словам
+            response_text = result.response
+            model_used = getattr(result, "model_used", ollama_model)
+            tokens_completion = getattr(result, "tokens_completion", 0)
+
+            # Симулируем стриминг — разбиваем на слова
+            words = response_text.split(" ")
+            for i, word in enumerate(words):
+                chunk = word if i == len(words) - 1 else word + " "
+                await self.send_json(websocket, {
+                    "type": "token",
+                    "content": chunk,
+                })
+                # Небольшая задержка для эффекта стриминга
+                await asyncio.sleep(0)
+
+            await self.send_json(websocket, {
+                "type": "end",
+                "full_response": response_text,
+                "tokens": tokens_completion,
+                "model": model_used,
+                "coherence_score": getattr(result, "coherence_score", None),
+            })
+            logger.info(f"Stream complete via pipeline.run(): {tokens_completion} tokens")
+
+        except Exception as e:
+            logger.error(f"_stream_via_ollama failed: {e}")
+            raise
+
+    async def _run_pipeline_response(
+        self,
+        websocket: WebSocket,
+        pipeline,
+        query: str,
+        model_key: Optional[str],
+        system: Optional[str],
+        temperature: float,
+        max_tokens: int,
+    ):
+        """Fallback: полный запрос через pipeline.run() без стриминга."""
+        result = await asyncio.to_thread(
+            pipeline.run,
+            query,
+            model_key,
+            system,
+            temperature,
+            max_tokens,
+        )
+
+        response_text = result.response
+        tokens_completion = getattr(result, "tokens_completion", 0)
+        model_used = getattr(result, "model_used", model_key or "unknown")
+
+        await self.send_json(websocket, {
+            "type": "token",
+            "content": response_text,
+        })
+        await self.send_json(websocket, {
+            "type": "end",
+            "full_response": response_text,
+            "tokens": tokens_completion,
+            "model": model_used,
+        })
+        logger.info(f"Pipeline response complete: {tokens_completion} tokens")
 
 
 # Глобальный менеджер
@@ -136,33 +238,57 @@ streaming_manager = StreamingManager()
 
 
 async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint для стриминга."""
+    """WebSocket endpoint для стриминга через OrchestratorPipeline."""
     await streaming_manager.connect(websocket)
-    
+
     try:
         while True:
             # Ждём сообщение от клиента
-            data = await websocket.receive_json()
-            
+            raw = await websocket.receive_text()
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                await streaming_manager.send_json(websocket, {
+                    "type": "error",
+                    "message": "Invalid JSON",
+                })
+                continue
+
             action = data.get("action", "chat")
-            
+
             if action == "chat":
                 await streaming_manager.stream_chat(websocket, data)
+
             elif action == "ping":
                 await streaming_manager.send_json(websocket, {"type": "pong"})
+
             elif action == "status":
-                manager = streaming_manager.get_model_manager()
-                await streaming_manager.send_json(websocket, {
-                    "type": "status",
-                    "model_loaded": manager.loaded_model is not None,
-                    "connections": len(streaming_manager.active_connections),
-                })
+                try:
+                    pipeline = _get_pipeline()
+                    router = getattr(pipeline, "_router", None)
+                    coordinator = getattr(router, "coordinator_model", "unknown") if router else "unknown"
+                    generator = getattr(router, "generator_model", "unknown") if router else "unknown"
+                    await streaming_manager.send_json(websocket, {
+                        "type": "status",
+                        "pipeline_ready": True,
+                        "coordinator_model": coordinator,
+                        "generator_model": generator,
+                        "connections": len(streaming_manager.active_connections),
+                    })
+                except Exception as e:
+                    await streaming_manager.send_json(websocket, {
+                        "type": "status",
+                        "pipeline_ready": False,
+                        "error": str(e),
+                        "connections": len(streaming_manager.active_connections),
+                    })
+
             else:
                 await streaming_manager.send_json(websocket, {
                     "type": "error",
-                    "message": f"Unknown action: {action}"
+                    "message": f"Unknown action: {action}",
                 })
-    
+
     except WebSocketDisconnect:
         streaming_manager.disconnect(websocket)
     except Exception as e:

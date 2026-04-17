@@ -293,9 +293,31 @@ class HardwareDetector:
         return rec
 
     def detect_and_recommend(self) -> dict:
-        """Полный цикл: определение + рекомендации. Возвращает dict для API."""
+        """Полный цикл: определение + рекомендации. Возвращает dict для API.
+
+        ФОРМАТ HARDWARE:
+          gpu       — str  | None  — имя GPU ("NVIDIA GeForce RTX 3060") или None
+          gpu_info  — dict | None  — детали GPU (vram_gb, vendor, cuda...)
+          vram_gb   — float        — VRAM в GB (0 если GPU не найден)
+          ram_gb    — float        — RAM в GB
+        """
         info = self.detect()
         rec = self.recommend(info)
+
+        # gpu → строка с именем (или None), gpu_info → полный dict
+        gpu_name: str | None = None
+        vram_gb: float = 0.0
+        gpu_info = None
+        if info.gpu:
+            gpu_name = info.gpu.name        # строка!
+            vram_gb = info.gpu.vram_gb      # число!
+            gpu_info = {
+                "name": info.gpu.name,
+                "vram_gb": info.gpu.vram_gb,
+                "vendor": info.gpu.vendor,
+                "cuda_available": info.gpu.cuda_available,
+                "driver_version": info.gpu.driver_version,
+            }
 
         return {
             "hardware": {
@@ -304,14 +326,10 @@ class HardwareDetector:
                 "python_version": info.python_version,
                 "cpu": info.cpu,
                 "cpu_cores": info.cpu_cores,
-                "ram_gb": info.ram_gb,
-                "gpu": {
-                    "name": info.gpu.name,
-                    "vram_gb": info.gpu.vram_gb,
-                    "vendor": info.gpu.vendor,
-                    "cuda_available": info.gpu.cuda_available,
-                    "driver_version": info.gpu.driver_version,
-                } if info.gpu else None,
+                "ram_gb": info.ram_gb,      # число!
+                "gpu": gpu_name,            # строка или None — НЕ объект!
+                "gpu_info": gpu_info,        # полный dict для детальной инфо
+                "vram_gb": vram_gb,          # число на верхнем уровне
                 "ollama_available": info.ollama_available,
             },
             "recommendation": {
