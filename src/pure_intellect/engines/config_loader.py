@@ -104,15 +104,39 @@ class AppConfig:
 
 def _find_config_yaml() -> Path | None:
     """Найти config.yaml в стандартных местах."""
-    candidates = [
-        Path(os.environ.get("PURE_INTELLECT_CONFIG", "")),
-        Path.cwd() / "config.yaml",
-        Path(__file__).parent.parent.parent.parent / "config.yaml",  # project root
-        Path("/etc/pure-intellect/config.yaml"),
-    ]
+    candidates: list[Path] = []
+
+    # 1. Env variable (highest priority)
+    env_val = os.environ.get("PURE_INTELLECT_CONFIG", "")
+    if env_val:
+        candidates.append(Path(env_val))
+
+    # 2. Windows AppData
+    appdata = os.environ.get("APPDATA", "")
+    if appdata:
+        candidates.append(Path(appdata) / "PureIntellect" / "config.yaml")
+
+    # 3. Linux/macOS XDG
+    candidates.append(Path.home() / ".config" / "pure-intellect" / "config.yaml")
+
+    # 4. Current working directory (may raise PermissionError)
+    try:
+        candidates.append(Path.cwd() / "config.yaml")
+    except PermissionError:
+        pass
+
+    # 5. Project root (next to src/)
+    candidates.append(Path(__file__).parent.parent.parent.parent / "config.yaml")
+
+    # 6. System-wide
+    candidates.append(Path("/etc/pure-intellect/config.yaml"))
+
     for path in candidates:
-        if path and path.exists():
-            return path
+        try:
+            if path.exists():
+                return path
+        except (PermissionError, OSError):
+            continue
     return None
 
 

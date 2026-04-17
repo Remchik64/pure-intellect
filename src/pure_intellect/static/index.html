@@ -2225,26 +2225,33 @@ async function detectHardware() {
     }
     _hwData = data;
 
-    // GPU info
-    const gpuName = data.gpu?.name ?? data.gpu_name ?? 'Нет GPU';
-    const vram = data.gpu?.vram_gb ?? data.vram_gb ?? data.gpu?.memory_gb ?? null;
-    document.getElementById('hw-gpu').textContent = gpuName;
-    document.getElementById('hw-vram').textContent = vram ? `${vram} GB` : '';
+    // API response structure:
+    // { hardware: {gpu, vram_gb, ram_gb, os, cpu, ...},
+    //   recommendation: {coordinator, generator, mode, speed_estimate, status, ...} }
+    console.log('[detectHardware] raw response:', JSON.stringify(data, null, 2));
+
+    const hw  = data.hardware  ?? {};
+    const rec = data.recommendation ?? data.rec ?? {};
+
+    // GPU info — hw.gpu is a string e.g. "NVIDIA RTX 3080"
+    const gpuName = hw.gpu ?? hw.gpu_name ?? hw.gpu_model ?? 'Net GPU';
+    const vram    = hw.vram_gb ?? hw.gpu_vram_gb ?? null;
+    document.getElementById('hw-gpu').textContent  = gpuName;
+    document.getElementById('hw-vram').textContent = vram != null ? vram + ' GB' : '';
 
     // RAM + OS
-    const ram = data.ram_gb ?? data.ram ?? data.system?.ram_gb ?? '—';
-    const os  = data.os ?? data.system?.os ?? data.platform ?? '—';
-    document.getElementById('hw-ram').textContent = typeof ram === 'number' ? ram.toFixed(1) + ' GB' : ram;
+    const ram = hw.ram_gb ?? hw.ram ?? null;
+    const os  = hw.os ?? hw.platform ?? '—';
+    document.getElementById('hw-ram').textContent = ram != null ? Number(ram).toFixed(1) + ' GB' : '—';
     document.getElementById('hw-os').textContent  = os;
 
-    // Recommendation
-    const rec = data.recommendation ?? data.rec ?? {};
-    const label = rec.label ?? rec.tier ?? rec.mode ?? data.tier ?? '—';
-    document.getElementById('hw-rec-label').textContent = label;
+    // Recommendation — rec.mode e.g. "GPU FULL", rec.status e.g. "✅ Отлично"
+    const recLabel = rec.status ?? rec.mode ?? rec.tier ?? rec.label ?? '—';
+    document.getElementById('hw-rec-label').textContent = recLabel;
     document.getElementById('hw-rec-coord').textContent = rec.coordinator ?? rec.coordinator_model ?? '—';
     document.getElementById('hw-rec-gen').textContent   = rec.generator   ?? rec.generator_model   ?? '—';
-    const speed = rec.speed ?? rec.tokens_per_sec ?? data.speed ?? null;
-    document.getElementById('hw-rec-speed').textContent = speed ? `~${speed} tok/sec` : '—';
+    const speed = rec.speed_estimate ?? rec.speed ?? rec.tokens_per_sec ?? null;
+    document.getElementById('hw-rec-speed').textContent = speed ? speed : '—';
 
     document.getElementById('hw-result-card').style.display = '';
     toast('Железо определено!', 'success');
@@ -2350,20 +2357,34 @@ async function downloadModel() {
       const check = await api(`/api/v1/models/download/check/${encodeURIComponent(modelName)}`);
       if (!check) return;
 
-      // Update progress bar with available info
-      const pct = check.progress ?? check.percent ?? null;
-      if (pct !== null) {
+      // Update progress bar — check.percent is real progress from Ollama streaming
+      const pct = check.percent ?? check.progress ?? null;
+      if (pct !== null && pct > 0) {
         progressBar.style.width = Math.min(Math.max(pct, 5), 99) + '%';
       } else {
-        // Animate indeterminate progress
-        const pseudo = Math.min(5 + elapsed * 1.5, 90);
+        // Indeterminate animation until first real percent arrives
+        const pseudo = Math.min(5 + elapsed * 1.2, 60);
         progressBar.style.width = pseudo + '%';
       }
 
-      const status = check.status ?? check.state ?? '';
-      statusText.textContent = check.message ?? `Скачивание ${modelName}... (${status})`;
+      // Status text: show speed + percent when available
+      const status = check.status ?? '';
+      const speedStr = check.speed ? ` — ${check.speed}` : '';
+      const pctStr   = pct != null && pct > 0 ? ` (${pct}%)` : '';
+      const msgStr   = check.status_msg || check.message || `Скачиваем ${modelName}...`;
+      statusText.textContent = msgStr + pctStr + speedStr;
 
-      if (check.ready === true || check.done === true || status === 'ready' || status === 'done') {
+      // Stop polling on error
+      if (status === 'error') {
+        clearInterval(_dlPollTimer);
+        _dlPollTimer = null;
+        statusText.textContent = '❌ Ошибка: ' + (check.error || 'неизвестно');
+        if (dlBtn) dlBtn.disabled = false;
+        return;
+      }
+
+      // Stop polling when done
+      if (check.ready === true || status === 'done' || status === 'ready') {
         clearInterval(_dlPollTimer);
         _dlPollTimer = null;
         progressBar.style.width = '100%';
@@ -2377,7 +2398,7 @@ async function downloadModel() {
       }
     } catch (e) {
       // Non-fatal poll error — keep trying
-      statusText.textContent = `Ожидание... (${elapsed}с)`;
+      statusText.textContent = `Ожидаем... (${elapsed}с)`;
     }
   }, 3000);
 }

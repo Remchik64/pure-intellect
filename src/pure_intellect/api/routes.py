@@ -16,6 +16,10 @@ _pipeline = None
 import threading
 _pipeline_lock = threading.Lock()
 
+# ── Download progress tracking ────────────────────────────────────────────────
+# model_name → {"status": str, "percent": int, "speed": str, "error": str|None}
+_download_progress: dict[str, dict] = {}
+
 
 def get_model_manager() -> ModelManager:
     """Получить thread-safe singleton ModelManager."""
@@ -1088,51 +1092,151 @@ async def hardware_detect():
 
 @router.post("/models/download")
 async def download_model(req: dict):
-    """Скачать модель через Ollama.
+    """Скачать модель через Ollama со streaming прогрессом.
 
     Body: {"model": "qwen2.5:3b"}
-    Возвращает статус запуска — сам pull идёт в фоне.
-    Прогресс можно отслеживать через GET /models/download/status
+    Прогресс доступен через GET /models/download/check/{model}
     """
     import asyncio
+    import json as _json
+    import time as _time
+
     model = req.get("model", "").strip()
     if not model:
         raise HTTPException(status_code=400, detail="model is required")
 
-    # Запускаем ollama pull в фоне
-    async def _pull():
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "ollama", "pull", model,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await proc.communicate()
-            if proc.returncode == 0:
-                logger.info(f"[model_download] {model} downloaded successfully")
-            else:
-                logger.error(f"[model_download] {model} failed: {stderr.decode()}")
-        except Exception as e:
-            logger.error(f"[model_download] Exception: {e}")
+    # Если уже качается — не запускаем повторно
+    if _download_progress.get(model, {}).get("status") == "downloading":
+        return {"status": "already_downloading", "model": model}
 
-    asyncio.create_task(_pull())
-    return {"status": "downloading", "model": model, "message": f"Скачивание {model} запущено в фоне"}
+    _download_progress[model] = {
+        "status": "starting",
+        "percent": 0,
+        "speed": "",
+        "error": None,
+        "started_at": _time.time(),
+    }
+
+    async def _pull_with_progress():
+        """Streaming pull через Ollama HTTP API с парсингом прогресса."""
+        import httpx
+        _download_progress[model]["status"] = "downloading"
+        last_speed_check = _time.time()
+        last_completed = 0
+
+        try:
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream(
+                    "POST",
+                    "http://localhost:11434/api/pull",
+                    json={"name": model, "stream": True},
+                    timeout=None,
+                ) as resp:
+                    async for line in resp.aiter_lines():
+                        if not line.strip():
+                            continue
+                        try:
+                            data = _json.loads(line)
+                        except _json.JSONDecodeError:
+                            continue
+
+                        status_msg = data.get("status", "")
+                        completed = data.get("completed", 0)
+                        total = data.get("total", 0)
+
+                        # Вычисляем процент
+                        percent = 0
+                        if total and total > 0:
+                            percent = int(completed / total * 100)
+
+                        # Вычисляем скорость (bytes/sec)
+                        now = _time.time()
+                        elapsed = now - last_speed_check
+                        speed_str = ""
+                        if elapsed >= 1.0 and completed > last_completed:
+                            bytes_per_sec = (completed - last_completed) / elapsed
+                            if bytes_per_sec >= 1_048_576:
+                                speed_str = f"{bytes_per_sec / 1_048_576:.1f} MB/s"
+                            elif bytes_per_sec >= 1024:
+                                speed_str = f"{bytes_per_sec / 1024:.1f} KB/s"
+                            else:
+                                speed_str = f"{bytes_per_sec:.0f} B/s"
+                            last_speed_check = now
+                            last_completed = completed
+
+                        _download_progress[model].update({
+                            "status": "downloading",
+                            "percent": percent,
+                            "speed": speed_str,
+                            "status_msg": status_msg,
+                            "completed": completed,
+                            "total": total,
+                            "error": None,
+                        })
+
+                        # Ollama сигнализирует об успехе через status == "success"
+                        if status_msg == "success":
+                            break
+
+            _download_progress[model]["status"] = "done"
+            _download_progress[model]["percent"] = 100
+            _download_progress[model]["speed"] = ""
+            logger.info(f"[model_download] {model} downloaded successfully")
+
+        except Exception as e:
+            _download_progress[model]["status"] = "error"
+            _download_progress[model]["error"] = str(e)
+            logger.error(f"[model_download] {model} failed: {e}")
+
+    asyncio.create_task(_pull_with_progress())
+    return {"status": "downloading", "model": model, "message": f"Скачивание {model} запущено"}
 
 
 @router.get("/models/download/check/{model_name:path}")
 async def check_model_downloaded(model_name: str):
-    """Проверить загружена ли модель в Ollama."""
+    """Прогресс скачивания и статус модели в Ollama.
+
+    Возвращает реальный прогресс из _download_progress,
+    а также проверяет наличие модели в Ollama tags.
+    """
+    # Сначала отдаём прогресс если есть активное скачивание
+    progress = _download_progress.get(model_name)
+
+    # Проверяем готовность через Ollama
     try:
         import httpx
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get("http://localhost:11434/api/tags")
             data = resp.json()
-            models = [m["name"] for m in data.get("models", [])]
-            # Проверяем точное или частичное совпадение
+            available = [m["name"] for m in data.get("models", [])]
             is_ready = any(
                 model_name == m or m.startswith(model_name)
-                for m in models
+                for m in available
             )
-            return {"model": model_name, "ready": is_ready, "available_models": models}
     except Exception as e:
-        return {"model": model_name, "ready": False, "error": str(e)}
+        available = []
+        is_ready = False
+
+    if progress is not None:
+        return {
+            "model": model_name,
+            "ready": is_ready or progress.get("status") == "done",
+            "status": progress.get("status", "unknown"),
+            "percent": progress.get("percent", 0),
+            "speed": progress.get("speed", ""),
+            "status_msg": progress.get("status_msg", ""),
+            "error": progress.get("error"),
+            "available_models": available,
+        }
+
+    # Нет записи в прогрессе — просто проверяем наличие
+    return {
+        "model": model_name,
+        "ready": is_ready,
+        "status": "ready" if is_ready else "not_downloaded",
+        "percent": 100 if is_ready else 0,
+        "speed": "",
+        "status_msg": "",
+        "error": None,
+        "available_models": available,
+    }
