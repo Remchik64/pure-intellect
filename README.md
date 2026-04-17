@@ -76,11 +76,20 @@ Pure Intellect solves the fundamental problem of LLM context limitation — **co
 ### Option 1: Installer Script (Recommended)
 
 **Windows:**
-```batch
-# Download install.bat from releases
-# Right-click → Run as Administrator
-install.bat
+
+📥 [**Скачать install.bat**](https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat) — или через PowerShell:
+
+```powershell
+# Открыть PowerShell и выполнить:
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat -OutFile install.bat
+# Затем Right-click → Запуск от имени администратора
+# или:
+.\install.bat
 ```
+
+> **Прямая ссылка на файл:**
+> `https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat`
+
 
 **Linux / macOS:**
 ```bash
