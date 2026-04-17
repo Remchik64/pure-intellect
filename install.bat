@@ -10,7 +10,28 @@ echo   Local AI with unlimited memory
 echo  ================================================
 echo.
 
+:: ── GitHub Token Input ───────────────────────────────────────────────────────
+echo  This installer needs your GitHub Personal Access Token
+echo  to download Pure Intellect from the private repository.
+echo.
+echo  How to get a token:
+echo  1. Go to: https://github.com/settings/tokens
+echo  2. Generate new token (classic)
+echo  3. Select scope: repo
+echo  4. Copy and paste it below
+echo.
+set /p GHTOKEN="  Enter GitHub token (paste and press Enter): "
+echo.
+
+if "!GHTOKEN!"=="" (
+    echo  ERROR: Token cannot be empty!
+    pause
+    exit /b 1
+)
+echo  OK: Token received
+
 :: ── Step 1: Check Python ────────────────────────────────────────────────────
+echo.
 echo [1/4] Checking Python...
 python --version >nul 2>&1
 if errorlevel 1 (
@@ -59,22 +80,23 @@ if errorlevel 1 (
 :: ── Step 3: Install Pure Intellect ──────────────────────────────────────────
 echo.
 echo [3/4] Installing Pure Intellect...
-echo  Please wait 5-15 minutes...
+echo  Please wait 5-15 minutes (downloading PyTorch, ChromaDB...).
 echo.
 
-:: Install from GitHub (public) or with token (private)
-pip install git+https://github.com/Remchik64/pure-intellect.git
+pip install git+https://!GHTOKEN!@github.com/Remchik64/pure-intellect.git
 if errorlevel 1 (
     echo.
-    echo  ERROR: pip install failed!
-    echo  If repo is private, run manually:
-    echo    pip install git+https://TOKEN@github.com/Remchik64/pure-intellect.git
+    echo  ERROR: Installation failed!
+    echo  Check that your token has 'repo' access scope.
     echo.
     pause
     exit /b 1
 )
 echo.
 echo  OK: Pure Intellect installed!
+
+:: Clear token from memory
+set GHTOKEN=
 
 :: Add Scripts to PATH for this session
 for /f "delims=" %%p in ('python -c "import sys,os;print(os.path.join(os.path.dirname(sys.executable),'Scripts'))"') do set SCRIPTS=%%p
@@ -103,7 +125,7 @@ powershell -NoProfile -Command "$ws=New-Object -ComObject WScript.Shell;$s=$ws.C
 if exist "%USERPROFILE%\Desktop\Pure Intellect.lnk" (
     echo  OK: Shortcut created on Desktop
 ) else (
-    echo  OK: Launcher saved to %APPDIR%\start.bat
+    echo  OK: Launcher saved: %APPDIR%\start.bat
 )
 
 :: ── Launch ───────────────────────────────────────────────────────────────────
@@ -111,22 +133,21 @@ echo.
 echo  ================================================
 echo   Done! Pure Intellect installed.
 echo.
-echo   Next step: download a model in Admin Panel
-echo   Models section -> type qwen2.5:3b -> Download
+echo   Next: open Admin Panel - Models section
+echo   Download model: qwen2.5:3b (2GB) to start
 echo  ================================================
 echo.
 
 set /p GO="Launch now? (Y/N): "
 if /i "!GO!"=="Y" (
-    echo  Opening browser and starting server...
+    echo  Starting...
     start http://localhost:8085
     python -m pure_intellect serve --port 8085
 )
-
 if /i "!GO!"=="N" (
     echo.
     echo  To start later: double-click Pure Intellect on Desktop
-    echo  Or run: python -m pure_intellect serve
+    echo  Or: python -m pure_intellect serve
     echo.
     pause
 )
