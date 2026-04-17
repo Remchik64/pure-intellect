@@ -84,6 +84,13 @@ class OrchestratorPipeline:
         self._turn: int = 0  # счётчик turns
         self._chat_history: list = []  # rolling window разговора
         self._context_window_size: int = 12  # max messages (6 turns)
+
+        # ── F3: Адаптивный Soft Reset ──
+        self._turns_since_reset: int = 0          # turns с последнего reset
+        self._adaptive_reset_enabled: bool = True  # включить адаптивный режим
+        self._cci_reset_threshold: float = 0.55   # CCI ниже → reset
+        self._min_turns_between_resets: int = 4   # минимум turns между reset'ами
+        self._max_turns_without_reset: int = 16   # жёсткий лимит
         
         # ── CCI Tracker ──
         self.cci_tracker = CCITracker(
@@ -277,6 +284,39 @@ class OrchestratorPipeline:
             logger.error(f"[meta_coord] Failed to create meta-coordinate: {e}")
             return "МЕТА: " + " | ".join(c[:80] for c in all_contents[:3])
 
+
+    def _should_soft_reset(self, cci_score: float) -> tuple[bool, str]:
+        """F3: Адаптивный soft reset — решаем нужен ли reset прямо сейчас.
+
+        Логика (приоритет по убыванию):
+        1. Hard limit: turns >= max_turns_without_reset → всегда reset
+        2. History overflow: история > context_window → reset
+        3. Adaptive: CCI < threshold AND turns >= min_turns_between_resets → reset
+        4. Иначе: не сбрасывать
+
+        Args:
+            cci_score: текущий CCI score (0.0 - 1.0)
+
+        Returns:
+            (should_reset: bool, reason: str)
+        """
+        turns = self._turns_since_reset
+
+        # 1. Жёсткий лимит — сбрасываем в любом случае
+        if turns >= self._max_turns_without_reset:
+            return True, f"hard_limit (turns={turns} >= {self._max_turns_without_reset})"
+
+        # 2. История переполнена — классический триггер
+        if len(self._chat_history) > self._context_window_size:
+            return True, f"history_overflow (len={len(self._chat_history)} > {self._context_window_size})"
+
+        # 3. Адаптивный: низкий CCI + прошло минимальное число turns
+        if self._adaptive_reset_enabled:
+            if cci_score < self._cci_reset_threshold and turns >= self._min_turns_between_resets:
+                return True, f"low_coherence (cci={cci_score:.3f} < {self._cci_reset_threshold}, turns={turns})"
+
+        return False, "ok"
+
     def run(
         self,
         query: str,
@@ -293,18 +333,22 @@ class OrchestratorPipeline:
         # ── Rolling Window: добавляем запрос в историю ──
         self._chat_history.append({"role": "user", "content": query})
         
-        # ── Soft Reset: если история превысила лимит — создаём координату ──
-        if len(self._chat_history) > self._context_window_size:
-            self._soft_reset()
-        
-        
-        # ── CCI: Оценка связности контекста ──
+        # ── F3: CCI оценка ПЕРВОЙ — нужна для адаптивного reset ──
         coherence_result = self.cci_tracker.evaluate(query)
         logger.info(
             f"  [cci] score={coherence_result.score:.3f}, "
             f"signal={coherence_result.signal}"
         )
-        
+
+        # ── Адаптивный Soft Reset (F3) ────────────────────────────────────
+        should_reset, reset_reason = self._should_soft_reset(coherence_result.score)
+        if should_reset:
+            logger.info(f"  [soft_reset] Triggered: {reset_reason}")
+            self._soft_reset()
+            self._turns_since_reset = 0
+        else:
+            self._turns_since_reset += 1
+
         # При потере coherence — подсказываем памяти что нужно восстановить контекст
         if coherence_result.needs_context_restore():
             logger.info("  [cci] Low coherence detected — restoring context from memory")
@@ -316,7 +360,7 @@ class OrchestratorPipeline:
                 for fact in restored:
                     self.working_memory.add(fact)
                 logger.info(f"  [cci] Restored {len(restored)} facts from storage")
-        
+
         # ── Шаг 1: Определить Intent ──
         logger.info("  [1/5] Intent detection...")
         intent = self.intent_detector.detect(query, use_llm=use_llm_intent)

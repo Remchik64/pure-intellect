@@ -72,6 +72,14 @@ memory:
   max_hot_facts: 50          # максимум фактов в RAM
   hot_evict_threshold: 0.2   # факты с вниманием < 0.2 → выгружать
 
+
+  # ── Адаптивный Soft Reset (F3) ────────────────────────────────────
+  # Сбрасывает контекст умно: по CCI а не только по счётчику turns
+  adaptive_reset:
+    enabled: true
+    cci_threshold: 0.55        # CCI ниже порога → reset нужен
+    min_turns_between_resets: 4  # Не сбрасывать слишком часто
+    max_turns_without_reset: 16  # Жёсткий лимит (даже при хорошем CCI)
   # Long-term storage
   max_storage_facts: 1000
 
