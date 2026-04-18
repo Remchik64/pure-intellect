@@ -15,7 +15,7 @@ models:
   # Можно использовать 3B для скорости или 7B для качества
   coordinator:
     provider: ollama
-    model: qwen2.5:3b        # Меняй на qwen2.5:7b для лучших координат
+    model: qwen3.5:2b        # Новое поколение — быстрее и эффективнее
     gpu_layers: auto         # auto | -1 (всё GPU) | 0 (только CPU) | N (N слоёв)
     temperature: 0.2         # Низкая для точной структуры
     max_tokens: 400
