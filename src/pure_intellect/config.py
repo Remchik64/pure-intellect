@@ -19,11 +19,11 @@ class Settings(BaseSettings):
     
     # Models
     orchestrator_model: str = Field(
-        default="qwen2.5-3b",
+        default="qwen2.5:3b",
         description="Модель для внутренней логики Оркестратора"
     )
     chat_model: str = Field(
-        default="qwen2.5-coder-7b",
+        default="qwen2.5:7b",
         description="Модель для ответов пользователю"
     )
     model_cache_dir: str = Field(
