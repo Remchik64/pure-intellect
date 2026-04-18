@@ -63,7 +63,7 @@ class StreamingManager:
         system = data.get("system", None)
 
         # Определяем query из messages или отдельных полей
-        query = data.get("query", "")
+        query = data.get("query", "") or data.get("message", "") or data.get("content", "")
         if not query and messages:
             # Берём последнее user-сообщение
             user_msgs = [m for m in messages if m.get("role") == "user"]
