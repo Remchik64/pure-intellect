@@ -1129,17 +1129,78 @@ async def openai_chat_completions(req: OpenAIChatRequest):
         system_messages = [m for m in req.messages if m.role == "system"]
         system_override = system_messages[0].content if system_messages else None
 
-        # Прогоняем через OrchestratorPipeline с ПАМЯТЬЮ
-        result = pipe.run(
-            query=query,
-            temperature=req.temperature,
-            max_tokens=req.max_tokens,
-            system=system_override,
+        # ── AGENT ZERO режим: system_override + история в messages ─────────────
+        # Когда Agent Zero передаёт полную историю через messages[],
+        # мы должны передавать её напрямую в модель БЕЗ PI _chat_history!
+        # Иначе история дублируется → модель зависает в цикле.
+        has_conversation_history = (
+            len(req.messages) > 2  # есть assistant сообщения в истории
+            and any(m.role == "assistant" for m in req.messages)
         )
 
-        response_text = result.response
-        prompt_tokens = result.tokens_prompt or len(query.split()) * 2
-        completion_tokens = result.tokens_completion or len(response_text.split()) * 2
+        if system_override and has_conversation_history:
+            # Agent Zero режим: прямой вызов через dual_model с полными messages
+            # Добавляем PI memory facts как дополнение к system промпту
+            import httpx
+
+            # Инжектируем факты памяти PI в system message
+            memory_facts = []
+            if pipe.working_memory.size() > 0:
+                facts = pipe.working_memory.get_recent(10)
+                if facts:
+                    memory_summary = "\n".join(f"- {f.content}" for f in facts[:5])
+                    enhanced_system = system_override + f"\n\n[Memory context]:\n{memory_summary}"
+                else:
+                    enhanced_system = system_override
+            else:
+                enhanced_system = system_override
+
+            # Собираем messages с enhanced system
+            all_messages = [{"role": "system", "content": enhanced_system}]
+            for m in req.messages:
+                if m.role != "system":  # пропускаем оригинальный system (уже добавили)
+                    all_messages.append({"role": m.role, "content": m.content})
+
+            ollama_payload = {
+                "model": getattr(getattr(pipe, 'dual_model', None), 'generator_model', None) or "qwen2.5:7b",
+                "messages": all_messages,
+                "temperature": req.temperature,
+                "stream": False,
+                "options": {"num_ctx": 8192, "num_predict": req.max_tokens},
+            }
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                resp = await client.post(
+                    "http://localhost:11434/v1/chat/completions",
+                    json=ollama_payload,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    response_text = data["choices"][0]["message"]["content"]
+                else:
+                    raise HTTPException(status_code=resp.status_code, detail=f"Ollama failed: {resp.text[:200]}")
+
+            # Сохраняем факт в память PI (асинхронно, не блокируем ответ)
+            try:
+                from pure_intellect.core.memory.fact import Fact, FactType
+                fact = Fact(content=f"AgentZero: {query[:100]}", fact_type=FactType.TRANSIENT)
+                pipe.working_memory.add(fact)
+            except Exception:
+                pass
+
+            prompt_tokens = data.get("usage", {}).get("prompt_tokens", len(query.split()) * 2)
+            completion_tokens = data.get("usage", {}).get("completion_tokens", len(response_text.split()) * 2)
+
+        else:
+            # ── Обычный PI режим (Web UI, прямые API вызовы) ──────────────────
+            result = pipe.run(
+                query=query,
+                temperature=req.temperature,
+                max_tokens=req.max_tokens,
+                system=system_override,
+            )
+            response_text = result.response
+            prompt_tokens = result.tokens_prompt or len(query.split()) * 2
+            completion_tokens = result.tokens_completion or len(response_text.split()) * 2
 
         # Возвращаем в формате OpenAI
         return {
@@ -1163,11 +1224,6 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "total_tokens": prompt_tokens + completion_tokens,
             },
             "system_fingerprint": "pure-intellect-v1",
-            "pure_intellect": {
-                "coherence_score": result.coherence_score,
-                "reset_occurred": result.reset_occurred,
-                "memory_facts": pipe.working_memory.size(),
-            },
         }
 
     except HTTPException:
