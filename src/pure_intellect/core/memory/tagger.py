@@ -139,16 +139,16 @@ class ImportanceTagger:
         try:
             payload = json.dumps({
                 "model": self._model,
-                "prompt": prompt,
+                "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
                 "options": {
-                    "temperature": 0.1,  # Низкая температура для JSON
+                    "temperature": 0.1,
                     "num_predict": 200,
                 }
             }).encode("utf-8")
             
             req = urllib.request.Request(
-                f"{self._ollama_url}/api/generate",
+                f"{self._ollama_url}/api/chat",
                 data=payload,
                 headers={"Content-Type": "application/json"},
                 method="POST"
@@ -156,7 +156,7 @@ class ImportanceTagger:
             
             with urllib.request.urlopen(req, timeout=self._timeout) as resp:
                 data = json.loads(resp.read())
-                raw = data.get("response", "").strip()
+                raw = data.get("message", {}).get("content", "").strip()
                 
                 # Парсим JSON из ответа
                 parsed = self._parse_json(raw)
