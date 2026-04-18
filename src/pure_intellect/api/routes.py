@@ -5,6 +5,7 @@ import logging
 from typing import Optional, List
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from ..api.schemas import ChatRequest, ChatResponse, HealthResponse, ModelListResponse, OrchestrateRequest
 from ..engine import ModelManager, MODEL_REGISTRY
@@ -1038,6 +1039,32 @@ async def delete_memory_fact(fact_id: str):
 # Позволяет использовать Pure Intellect как OpenAI-совместимый сервер
 # Agent Zero config: api_base = http://localhost:7860/v1
 
+
+import json as _json_module
+
+
+async def _sse_stream(content: str, model: str, req_id: str):
+    """Fake SSE streaming для OpenAI-совместимых клиентов."""
+    words = content.split(" ")
+    for i, word in enumerate(words):
+        token = word if i == 0 else " " + word
+        chunk = {
+            "id": req_id,
+            "object": "chat.completion.chunk",
+            "model": model,
+            "choices": [{"index": 0, "delta": {"content": token}, "finish_reason": None}]
+        }
+        yield f"data: {_json_module.dumps(chunk, ensure_ascii=False)}\n\n"
+    final = {
+        "id": req_id,
+        "object": "chat.completion.chunk",
+        "model": model,
+        "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]
+    }
+    yield f"data: {_json_module.dumps(final)}\n\n"
+    yield "data: [DONE]\n\n"
+
+
 openai_router = APIRouter(prefix="/v1", tags=["openai-compatible"])
 
 
@@ -1271,8 +1298,9 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             completion_tokens = result.tokens_completion or len(response_text.split()) * 2
 
         # Возвращаем в формате OpenAI
-        return {
-            "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+        req_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
+        response_body = {
+            "id": req_id,
             "object": "chat.completion",
             "created": int(time.time()),
             "model": req.model,
@@ -1293,6 +1321,14 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             },
             "system_fingerprint": "pure-intellect-v1",
         }
+        # Streaming: возвращаем SSE если клиент запросил stream=True
+        if req.stream:
+            return StreamingResponse(
+                _sse_stream(response_text, req.model, req_id),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+        return response_body
 
     except HTTPException:
         raise
