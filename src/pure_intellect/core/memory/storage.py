@@ -105,11 +105,11 @@ def _get_ollama_embedding(text: str) -> list[float] | None:
     try:
         payload = json.dumps({
             "model": OLLAMA_EMBED_MODEL,
-            "prompt": text[:2000]
+            "input": text[:2000]
         }).encode("utf-8")
         
         req = urllib.request.Request(
-            f"{OLLAMA_BASE_URL}/api/embeddings",
+            f"{OLLAMA_BASE_URL}/api/embed",
             data=payload,
             headers={"Content-Type": "application/json"},
             method="POST"
@@ -117,7 +117,7 @@ def _get_ollama_embedding(text: str) -> list[float] | None:
         
         with urllib.request.urlopen(req, timeout=EMBED_TIMEOUT) as resp:
             data = json.loads(resp.read())
-            embedding = data.get("embedding", [])
+            embedding = (data.get("embeddings") or [data.get("embedding", [])])[0]
             return embedding if embedding else None
     except (urllib.error.URLError, TimeoutError, Exception) as e:
         logger.debug(f"Ollama embedding unavailable: {e}")
