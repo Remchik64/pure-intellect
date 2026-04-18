@@ -1129,17 +1129,20 @@ async def openai_chat_completions(req: OpenAIChatRequest):
         system_messages = [m for m in req.messages if m.role == "system"]
         system_override = system_messages[0].content if system_messages else None
 
-        # ── AGENT ZERO режим: system_override + история в messages ─────────────
-        # Когда Agent Zero передаёт полную историю через messages[],
-        # мы должны передавать её напрямую в модель БЕЗ PI _chat_history!
-        # Иначе история дублируется → модель зависает в цикле.
-        has_conversation_history = (
-            len(req.messages) > 2  # есть assistant сообщения в истории
-            and any(m.role == "assistant" for m in req.messages)
+        # ── AGENT ZERO режим: детектируем по system_override ───────────────────
+        # Agent Zero ВСЕГДА передаёт system_override (свой системный промпт).
+        # Мы должны передавать ВСЕ messages[] напрямую в Ollama — иначе:
+        #   - pipe.run() добавит PI _chat_history → дублирование
+        #   - ответ будет текстом, не JSON → Agent Zero misformat → цикл
+        # Признак Agent Zero: длинный system_override (>500 символов)
+        is_agent_zero = (
+            system_override is not None
+            and len(system_override) > 500  # Agent Zero system prompt ~6000 символов
         )
 
-        if system_override and has_conversation_history:
+        if is_agent_zero:
             # Agent Zero режим: прямой вызов через dual_model с полными messages
+            # Добавляем PI memory facts как дополнение к system промпту
             # Добавляем PI memory facts как дополнение к system промпту
             import httpx
 
