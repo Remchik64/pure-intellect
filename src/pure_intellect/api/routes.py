@@ -1135,10 +1135,10 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "max_tokens": req.max_tokens,
                 "stream": False,
                 "options": {
-                    "num_ctx": 8192,  # предотвращаем truncation Agent Zero промптов
+                    "num_ctx": 32768,  # Large context for documents/tool results
                 },
             }
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
                     "http://localhost:11434/v1/chat/completions",
                     json=ollama_payload,
@@ -1153,7 +1153,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                     "options": {
                         "temperature": req.temperature,
                         "num_predict": req.max_tokens,
-                        "num_ctx": 8192,
+                        "num_ctx": 32768,
                     },
                 }
                 resp2 = await client.post(
@@ -1211,34 +1211,24 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             except Exception:
                 memory_context = ""
 
-            # Заменяем сложный system prompt Agent Zero на упрощённый
-            # qwen2.5:7b не справляется с 6000-символьным промптом → зависание
-            # Упрощённый промпт гарантирует правильный JSON формат
-            simplified_system = (
-                "You are a helpful AI assistant with memory capabilities."
-                " ALWAYS respond with this EXACT JSON format, no exceptions:\n"
-                '{"thoughts":["your reasoning"],"tool_name":"response","tool_args":{"text":"your answer here"}}\n'
-                "Never use plain text. Always use the JSON format above."
-                + memory_context
-            )
+            # Передаём ОРИГИНАЛЬНЫЙ system prompt Agent Zero (содержит определения инструментов)
+            # Только добавляем контекст памяти PI в конец — не заменяем!
+            # Ранее заменяли на simplified_system → модель не знала о своих инструментах
+            full_system = system_override + memory_context
 
-            # Берём только последний user message — избегаем накопления fw_misformat
-            user_messages = [m for m in req.messages if m.role == "user"]
-            last_user = user_messages[-1].content if user_messages else ""
-
-            # Строим чистые messages: system + краткая история + последний вопрос
-            all_messages = [{"role": "system", "content": simplified_system}]
-            # Добавляем до 4 последних assistant/user сообщений для контекста (без fw_misformat)
+            # Строим чистые messages: system + фильтрованная история
+            all_messages = [{"role": "system", "content": full_system}]
+            # Фильтруем служебные сообщения об ошибках форматирования
             history_messages = [
                 m for m in req.messages
                 if m.role != "system"
-                and not (m.role == "user" and ("JSON" in (m.content or "") and "tool_name" in (m.content or "")))
                 and not (m.role == "user" and "same message" in (m.content or "").lower())
                 and not (m.role == "user" and "fw." in (m.content or ""))
             ]
-            # Берём последние 6 сообщений истории
-            for m in history_messages[-6:]:
+            # Берём последние 10 сообщений истории для большего контекста
+            for m in history_messages[-10:]:
                 all_messages.append({"role": m.role, "content": m.content})
+
 
 
             ollama_payload = {
@@ -1246,9 +1236,9 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "messages": all_messages,
                 "temperature": req.temperature,
                 "stream": False,
-                "options": {"num_ctx": 8192, "num_predict": req.max_tokens},
+                "options": {"num_ctx": 32768, "num_predict": req.max_tokens},
             }
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
                     "http://localhost:11434/v1/chat/completions",
                     json=ollama_payload,
