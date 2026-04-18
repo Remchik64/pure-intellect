@@ -122,34 +122,63 @@ class HardwareDetector:
         return None
 
     def _detect_nvidia(self) -> Optional[GPUInfo]:
+        import sys
+        # Список путей для nvidia-smi (включая типичные Windows пути)
+        nvidia_smi_paths = ["nvidia-smi"]
+        if sys.platform == "win32":
+            nvidia_smi_paths += [
+                r"C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi.exe",
+                r"C:\Windows\System32\nvidia-smi.exe",
+            ]
+
+        for smi_path in nvidia_smi_paths:
+            try:
+                result = subprocess.run(
+                    [
+                        smi_path,
+                        "--query-gpu=name,memory.total,driver_version",
+                        "--format=csv,noheader,nounits",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    lines = result.stdout.strip().split("\n")
+                    parts = lines[0].split(",")
+                    if len(parts) >= 2:
+                        name = parts[0].strip()
+                        vram_mb = int(parts[1].strip())
+                        driver = parts[2].strip() if len(parts) > 2 else ""
+                        return GPUInfo(
+                            name=name,
+                            vram_mb=vram_mb,
+                            vendor="nvidia",
+                            cuda_available=True,
+                            driver_version=driver,
+                        )
+            except (FileNotFoundError, subprocess.TimeoutExpired, ValueError, OSError):
+                continue
+
+        # Ollama fallback: если Ollama использует GPU — берём инфо оттуда
         try:
-            result = subprocess.run(
-                [
-                    "nvidia-smi",
-                    "--query-gpu=name,memory.total,driver_version",
-                    "--format=csv,noheader,nounits",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                lines = result.stdout.strip().split("\n")
-                # Берём первую GPU
-                parts = lines[0].split(",")
-                if len(parts) >= 2:
-                    name = parts[0].strip()
-                    vram_mb = int(parts[1].strip())
-                    driver = parts[2].strip() if len(parts) > 2 else ""
+            import urllib.request, json as _json
+            req = urllib.request.urlopen("http://localhost:11434/api/ps", timeout=3)
+            data = _json.loads(req.read())
+            models = data.get("models", [])
+            for m in models:
+                vram = m.get("size_vram", 0)
+                if vram and vram > 0:
                     return GPUInfo(
-                        name=name,
-                        vram_mb=vram_mb,
+                        name="NVIDIA GPU (via Ollama)",
+                        vram_mb=int(vram / 1024 / 1024),
                         vendor="nvidia",
                         cuda_available=True,
-                        driver_version=driver,
+                        driver_version="",
                     )
-        except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+        except Exception:
             pass
+
         return None
 
     def _detect_apple_silicon(self) -> Optional[GPUInfo]:

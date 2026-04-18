@@ -204,6 +204,13 @@ class StreamingManager:
             except Exception:
                 pass
 
+            # Отправляем маркер soft reset если он произошёл
+            if getattr(result, 'reset_occurred', False):
+                await self.send_json(websocket, {
+                    "type": "reset_marker",
+                    "turn": getattr(result, 'reset_turn', 0),
+                })
+
             await self.send_json(websocket, {
                 "type": "end",
                 "full_response": response_text,

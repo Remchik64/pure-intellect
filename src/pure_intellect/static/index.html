@@ -421,6 +421,25 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .chat-badge.cci { color: var(--accent); border-color: var(--accent); }
 .chat-badge.turn { color: var(--green); border-color: var(--green); }
 
+.reset-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  opacity: 0.8;
+}
+.reset-divider::before,
+.reset-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.4;
+}
+.reset-divider .reset-icon { font-size: 14px; }
+
 #messages {
   flex: 1;
   overflow-y: auto;
@@ -1851,6 +1870,8 @@ function handleWSMessage(msg) {
     updateChatStats(msg);
     // Обновляем статистику из API (turn, cci могут быть точнее)
     loadChatStats();
+  } else if (msg.type === 'reset_marker') {
+    appendResetDivider(msg.turn || 0);
   } else if (msg.type === 'response' || msg.type === 'message') {
     hideTyping();
     appendMessage('assistant', msg.content || msg.message || '');
@@ -2055,6 +2076,15 @@ function appendMessage(role, content) {
       <div class="bubble">${isUser ? esc(content) : renderMarkdown(content)}</div>
       <div class="time">${time}</div>
     </div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function appendResetDivider(turn) {
+  const el = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'reset-divider';
+  div.innerHTML = `<span class="reset-icon">🔄</span> Контекст обновлён (Turn ${turn}) — факты сохранены в памяти`;
   el.appendChild(div);
   el.scrollTop = el.scrollHeight;
 }

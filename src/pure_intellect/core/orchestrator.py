@@ -33,6 +33,7 @@ class OrchestrationResult:
     tokens_completion: int = 0
     coherence_score: float = 1.0
     coherence_signal: str = "coherent"
+    reset_occurred: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -460,6 +461,8 @@ class OrchestratorPipeline:
             tokens_completion=tokens_completion,
             coherence_score=coherence_result.score,
             coherence_signal=coherence_result.signal,
+            reset_occurred=should_reset,
+            reset_turn=self._turn,
         )
         
         # ── Memory Update ──
