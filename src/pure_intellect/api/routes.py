@@ -1144,15 +1144,14 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             import httpx
 
             # Инжектируем факты памяти PI в system message
-            memory_facts = []
-            if pipe.working_memory.size() > 0:
-                facts = pipe.working_memory.get_recent(10)
-                if facts:
-                    memory_summary = "\n".join(f"- {f.content}" for f in facts[:5])
+            try:
+                all_facts = pipe.working_memory.get_facts()
+                if all_facts:
+                    memory_summary = "\n".join(f"- {f.content}" for f in all_facts[:5])
                     enhanced_system = system_override + f"\n\n[Memory context]:\n{memory_summary}"
                 else:
                     enhanced_system = system_override
-            else:
+            except Exception:
                 enhanced_system = system_override
 
             # Собираем messages с enhanced system
