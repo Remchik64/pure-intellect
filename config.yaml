@@ -25,7 +25,7 @@ models:
   # Используй самую мощную доступную модель
   generator:
     provider: ollama
-    model: qwen2.5:7b        # Меняй на llama3.1:8b, mistral:7b и т.д.
+    model: llama3.1:8b        # Заменено с qwen2.5:7b для лучшей поддержки Agent Zero JSON
     gpu_layers: auto         # auto определит сколько влезет в VRAM
     temperature: 0.7
     max_tokens: 2048
