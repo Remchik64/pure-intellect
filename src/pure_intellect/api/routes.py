@@ -1176,6 +1176,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             and len(system_override) > 500  # Agent Zero system prompt ~6000 символов
         )
 
+        if is_agent_zero:
             # Инжектируем факты памяти PI в system message
             try:
                 all_facts = pipe.working_memory.get_facts()
