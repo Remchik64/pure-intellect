@@ -109,26 +109,17 @@ echo [4/4] Creating launcher...
 set APPDIR=%APPDATA%\PureIntellect
 mkdir "%APPDIR%" >nul 2>&1
 
-(
-    echo @echo off
-    echo title Pure Intellect Server
-    echo echo.
-    echo echo  Starting Pure Intellect...
-    echo echo  Close this window to stop the server.
-    echo echo.
-    echo :: Start Ollama if not running
-    echo curl -s http://localhost:11434 ^>nul 2^>^&1 ^|^| start /b "" ollama serve
-    echo timeout /t 2 /nobreak ^>nul
-    echo :: Start server in new window and wait for it
-    echo start "Pure Intellect" /min python -m pure_intellect serve --port 8085
-    echo echo Waiting for server to start...
-    echo timeout /t 6 /nobreak ^>nul
-    echo :: Open Edge (built-in on Windows 10/11)
-    echo start microsoft-edge:http://127.0.0.1:8085
-    echo echo Server is running at http://127.0.0.1:8085
-    echo echo Close the minimized server window to stop.
-    echo pause
-) > "%APPDIR%\start.bat"
+echo  Downloading start.bat...
+curl -s -L "https://raw.githubusercontent.com/Remchik64/pure-intellect/main/start.bat" -o "%APPDIR%\start.bat"
+if errorlevel 1 (
+    echo  WARNING: Could not download start.bat, creating basic launcher...
+    (
+        echo @echo off
+        echo python -m pure_intellect serve --port 8085
+        echo pause
+    ) > "%APPDIR%\start.bat"
+)
+echo  OK: Launcher ready
 
 powershell -NoProfile -Command "$ws=New-Object -ComObject WScript.Shell;$s=$ws.CreateShortcut('%USERPROFILE%\Desktop\Pure Intellect.lnk');$s.TargetPath='%APPDIR%\start.bat';$s.Description='Pure Intellect AI';$s.Save()" >nul 2>&1
 
