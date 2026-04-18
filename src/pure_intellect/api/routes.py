@@ -1074,6 +1074,9 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "temperature": req.temperature,
                 "max_tokens": req.max_tokens,
                 "stream": False,
+                "options": {
+                    "num_ctx": 8192,  # предотвращаем truncation Agent Zero промптов
+                },
             }
             async with httpx.AsyncClient(timeout=120.0) as client:
                 resp = await client.post(
@@ -1087,7 +1090,11 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                     "model": req.model,
                     "messages": [m.dict() for m in req.messages],
                     "stream": False,
-                    "options": {"temperature": req.temperature, "num_predict": req.max_tokens},
+                    "options": {
+                        "temperature": req.temperature,
+                        "num_predict": req.max_tokens,
+                        "num_ctx": 8192,
+                    },
                 }
                 resp2 = await client.post(
                     "http://localhost:11434/api/chat",

@@ -176,6 +176,9 @@ class DualModelRouter:
             "temperature": temperature,
             "max_tokens": max_tokens,
             "stream": False,
+            "options": {
+                "num_ctx": 8192,   # увеличиваем контекстное окно для Agent Zero
+            },
         }).encode("utf-8")
 
         req = urllib.request.Request(
