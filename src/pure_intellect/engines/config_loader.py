@@ -223,3 +223,56 @@ def reload_config() -> AppConfig:
     global _app_config
     _app_config = load_config()
     return _app_config
+
+def save_model_to_config(role: str, model_name: str) -> bool:
+    """Сохранить выбранную модель в config.yaml.
+
+    Args:
+        role: 'coordinator' | 'generator'
+        model_name: имя модели (например 'llama3.1:8b')
+
+    Returns:
+        True если успешно сохранено, False при ошибке.
+    """
+    if not HAS_YAML:
+        return False
+
+    config_path = _find_config_yaml()
+
+    # Если config.yaml не найден — создаём в подходящем месте
+    if config_path is None:
+        appdata = os.environ.get("APPDATA", "")
+        if appdata:
+            config_dir = Path(appdata) / "PureIntellect"
+        else:
+            config_dir = Path.home() / ".config" / "pure-intellect"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.yaml"
+
+    try:
+        # Загружаем существующий YAML или создаём пустой dict
+        if config_path.exists():
+            with open(config_path, "r", encoding="utf-8") as f:
+                raw = yaml.safe_load(f) or {}
+        else:
+            raw = {}
+
+        # Обновляем нужную роль
+        if "models" not in raw:
+            raw["models"] = {}
+        if role not in raw["models"]:
+            raw["models"][role] = {}
+        raw["models"][role]["model"] = model_name
+
+        # Сохраняем обратно
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(raw, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+        # Обновляем singleton
+        reload_config()
+        return True
+
+    except Exception as e:
+        import warnings
+        warnings.warn(f"[config_loader] Failed to save config.yaml: {e}")
+        return False

@@ -959,7 +959,17 @@ async def switch_model(req: dict):
             router_obj.generator_model = model
             logger.info(f"[admin] Generator switched to {model}")
 
-        return {"status": "switched", "role": role, "model": model}
+        # Сохраняем в config.yaml — чтобы выбор сохранялся после перезапуска
+        try:
+            from pure_intellect.engines.config_loader import save_model_to_config
+            saved = save_model_to_config(role, model)
+            save_status = "saved to config.yaml" if saved else "runtime only (config save failed)"
+            logger.info(f"[admin] Config {'saved' if saved else 'not saved'}: {role}={model}")
+        except Exception as e:
+            save_status = f"runtime only ({e})"
+            logger.warning(f"[admin] Could not save config: {e}")
+
+        return {"status": "switched", "role": role, "model": model, "persistence": save_status}
     except HTTPException:
         raise
     except Exception as e:
