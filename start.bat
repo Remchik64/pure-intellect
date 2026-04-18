@@ -5,81 +5,98 @@ color 0A
 
 echo.
 echo  ================================================
-echo   Pure Intellect - Starting...
+echo   Pure Intellect - Starting
 echo  ================================================
 echo.
 
-:: ── Step 1: Kill any existing process on port 8085 ─────────────────────────
-echo [1/4] Checking port 8085...
-for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":8085 " ^| findstr "LISTENING"') do (
-    echo  Found old process (PID %%a), stopping it...
-    taskkill /F /PID %%a >nul 2>&1
-    timeout /t 1 /nobreak >nul
-)
+:: ── Step 1: Kill old process on port 8085 ───────────────────────────────────
+echo [1/4] Freeing port 8085...
+call :kill_port
 echo  OK: Port 8085 is free
 
-:: ── Step 2: Start Ollama if not running ─────────────────────────────────────
+:: ── Step 2: Check Ollama ────────────────────────────────────────────────────
 echo.
 echo [2/4] Checking Ollama...
-curl -s http://localhost:11434 >nul 2>&1
-if errorlevel 1 (
-    echo  Starting Ollama...
-    start /b "" ollama serve
-    echo  Waiting for Ollama to start...
-    :wait_ollama
-    timeout /t 1 /nobreak >nul
-    curl -s http://localhost:11434 >nul 2>&1
-    if errorlevel 1 goto wait_ollama
-    echo  OK: Ollama started
-) else (
-    echo  OK: Ollama already running
-)
+call :check_ollama
 
-:: ── Step 3: Start Pure Intellect server ─────────────────────────────────────
+:: ── Step 3: Start server and wait ──────────────────────────────────────────
 echo.
-echo [3/4] Starting Pure Intellect server...
-start "Pure Intellect Server" /min python -m pure_intellect serve --port 8085
-
-:: Wait until server actually responds (not just a timer!)
-echo  Waiting for server to be ready...
-set ATTEMPTS=0
-:wait_server
-set /a ATTEMPTS+=1
-if !ATTEMPTS! GTR 30 (
+echo [3/4] Starting Pure Intellect...
+start "Pure Intellect Server" /min cmd /c "python -m pure_intellect serve --port 8085 & pause"
+call :wait_server
+if errorlevel 1 (
     echo.
-    echo  ERROR: Server failed to start after 30 seconds!
-    echo  Check the minimized window for error messages.
+    echo  ERROR: Server did not start in 30 seconds!
+    echo  Check the minimized window for errors.
     pause
     exit /b 1
 )
-timeout /t 1 /nobreak >nul
-curl -s http://127.0.0.1:8085 >nul 2>&1
-if errorlevel 1 goto wait_server
 echo  OK: Server is ready!
 
 :: ── Step 4: Open browser ────────────────────────────────────────────────────
 echo.
 echo [4/4] Opening browser...
-start microsoft-edge:http://127.0.0.1:8085 2>nul
-if errorlevel 1 (
-    start http://127.0.0.1:8085
-)
+start microsoft-edge:http://127.0.0.1:8085
+if errorlevel 1 start http://127.0.0.1:8085
 
 echo.
 echo  ================================================
 echo   Pure Intellect is running!
 echo   URL: http://127.0.0.1:8085
 echo.
-echo   To stop: close the minimized server window
-echo   Or press any key to stop server now
+echo   Press any key to STOP the server
 echo  ================================================
 echo.
 pause >nul
 
-:: Stop server when user presses any key
-echo  Stopping server...
-for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":8085 " ^| findstr "LISTENING"') do (
-    taskkill /F /PID %%a >nul 2>&1
-)
+:: Stop server
+call :kill_port
 echo  Server stopped. Goodbye!
 timeout /t 2 /nobreak >nul
+exit /b 0
+
+:: ============================================================================
+:: SUBROUTINES
+:: ============================================================================
+
+:kill_port
+    for /f "tokens=5" %%p in ('netstat -aon 2^>nul ^| findstr ":8085 " ^| findstr "LISTENING"') do (
+        taskkill /F /PID %%p >nul 2>&1
+    )
+    timeout /t 1 /nobreak >nul
+exit /b 0
+
+:check_ollama
+    curl -s --max-time 2 http://localhost:11434 >nul 2>&1
+    if errorlevel 1 (
+        echo  Starting Ollama...
+        start /b "" ollama serve
+        call :wait_ollama
+    ) else (
+        echo  OK: Ollama already running
+    )
+exit /b 0
+
+:wait_ollama
+    set OLL=0
+    :ollama_loop
+    set /a OLL+=1
+    if !OLL! GTR 15 (
+        echo  WARNING: Ollama may not be running
+        exit /b 0
+    )
+    timeout /t 1 /nobreak >nul
+    curl -s --max-time 1 http://localhost:11434 >nul 2>&1
+    if errorlevel 1 goto ollama_loop
+    echo  OK: Ollama started
+exit /b 0
+
+:wait_server
+    set SRV=0
+    :server_loop
+    set /a SRV+=1
+    if !SRV! GTR 30 exit /b 1
+    timeout /t 1 /nobreak >nul
+    curl -s --max-time 1 http://127.0.0.1:8085 >nul 2>&1
+    if errorlevel 1 goto server_loop
+exit /b 0
