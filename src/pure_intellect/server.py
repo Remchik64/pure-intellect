@@ -19,22 +19,14 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS — разрешаем localhost для локального использования
-_CORS_ORIGINS = [
-    "http://localhost:3005",
-    "http://localhost:5006",
-    "http://localhost:7860",
-    "http://127.0.0.1:3005",
-    "http://127.0.0.1:5006",
-    "http://127.0.0.1:7860",
-    "http://localhost",
-    "http://127.0.0.1",
-]
+# CORS — разрешаем все origins для локального использования и Docker
+# Pure Intellect работает локально — wildcard безопасен
+_CORS_ORIGINS = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False,  # False при origins=["*"]
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )

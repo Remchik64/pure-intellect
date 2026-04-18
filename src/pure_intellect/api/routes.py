@@ -1048,18 +1048,65 @@ async def openai_list_models():
 async def openai_chat_completions(req: OpenAIChatRequest):
     """OpenAI-совместимый endpoint для чата.
 
-    Принимает запросы в формате OpenAI API и возвращает ответы
-    с полной поддержкой иерархической памяти Pure Intellect.
+    Два режима работы:
+    1. model='pure-intellect' → полный pipeline с иерархической памятью
+    2. Любая другая модель (напр. 'qwen2.5:3b') → Ollama proxy без памяти
 
-    Настройка Agent Zero:
-      api_base: http://localhost:7860/v1
-      api_key: pure-intellect  (любой)
-      model: pure-intellect
+    Настройка Agent Zero (из Docker контейнера):
+      chat_model api_base:    http://host.docker.internal:7860/v1
+      chat_model model:       pure-intellect
+      utility_model api_base: http://host.docker.internal:7860/v1
+      utility_model model:    qwen2.5:3b  (прямой proxy к Ollama)
     """
     import time
     import uuid
 
     try:
+        # ── РЕЖИМ 1: Ollama proxy (utility_model, любая не-PI модель) ──────────
+        # Если запрашивают не pure-intellect модель — проксируем к Ollama напрямую
+        # Это позволяет Agent Zero utility_model работать без overhead памяти
+        pi_models = {"pure-intellect", "pure-intellect-code", "pure-intellect-fast"}
+        if req.model not in pi_models:
+            import httpx
+            ollama_payload = {
+                "model": req.model,
+                "messages": [m.dict() for m in req.messages],
+                "temperature": req.temperature,
+                "max_tokens": req.max_tokens,
+                "stream": False,
+            }
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                resp = await client.post(
+                    "http://localhost:11434/v1/chat/completions",
+                    json=ollama_payload,
+                )
+                if resp.status_code == 200:
+                    return resp.json()
+                # Fallback: попробуем через /api/chat Ollama
+                api_payload = {
+                    "model": req.model,
+                    "messages": [m.dict() for m in req.messages],
+                    "stream": False,
+                    "options": {"temperature": req.temperature, "num_predict": req.max_tokens},
+                }
+                resp2 = await client.post(
+                    "http://localhost:11434/api/chat",
+                    json=api_payload,
+                )
+                if resp2.status_code == 200:
+                    data = resp2.json()
+                    content = data.get("message", {}).get("content", "")
+                    return {
+                        "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+                        "object": "chat.completion",
+                        "created": int(time.time()),
+                        "model": req.model,
+                        "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
+                        "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                    }
+                raise HTTPException(status_code=resp2.status_code, detail=f"Ollama proxy failed: {resp2.text[:200]}")
+
+        # ── РЕЖИМ 2: Pure Intellect pipeline с памятью ────────────────────────
         pipe = get_pipeline()
         if pipe is None:
             raise HTTPException(status_code=503, detail="Pipeline not initialized")
@@ -1109,15 +1156,12 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "total_tokens": prompt_tokens + completion_tokens,
             },
             "system_fingerprint": "pure-intellect-v1",
-            # Дополнительная мета-информация Pure Intellect
             "pure_intellect": {
-                "turn": result.intent.turn if hasattr(result.intent, "turn") else 0,
                 "coherence_score": result.coherence_score,
+                "reset_occurred": result.reset_occurred,
                 "memory_facts": pipe.working_memory.size(),
-                "session_id": pipe._session_manager.active_session_id,
             },
         }
-
 
     except HTTPException:
         raise
