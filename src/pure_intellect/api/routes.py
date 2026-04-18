@@ -871,6 +871,32 @@ async def ollama_models_proxy():
         return {"models": [], "error": str(e)}
 
 
+@router.delete("/models/{model_name:path}")
+async def delete_model(model_name: str):
+    """Удалить модель из Ollama полностью (освобождает место на диске)."""
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.request(
+                method="DELETE",
+                url="http://localhost:11434/api/delete",
+                json={"name": model_name},
+            )
+            if resp.status_code == 200:
+                logger.info(f"[admin] Model deleted: {model_name}")
+                return {"status": "deleted", "model": model_name}
+            else:
+                raise HTTPException(
+                    status_code=resp.status_code,
+                    detail=f"Ollama error: {resp.text[:200]}"
+                )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete model failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/models/status")
 async def models_status():
     """Полный статус всех моделей: скачанные + активные в VRAM.

@@ -2326,6 +2326,7 @@ async function loadModels() {
         <div class="btn-group">
           <button class="btn" onclick="setModel('coordinator','${esc(name)}')">🎯 Координатор</button>
           <button class="btn" onclick="setModel('generator','${esc(name)}')">⚡ Генератор</button>
+          <button class="btn" style="background:rgba(255,80,80,.15);color:#ff5050;border-color:rgba(255,80,80,.3)" onclick="deleteModel('${esc(name)}')">🗑️ Удалить</button>
         </div>
       </td>
     </tr>`;
@@ -2358,6 +2359,18 @@ async function setModel(role, name) {
     showSection('settings');
   }
 }
+
+async function deleteModel(name) {
+  if (!confirm(`Удалить модель "${name}" с диска?\n\nЭто действие нельзя отменить!`)) return;
+  const r = await api(`/api/v1/models/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  if (r && r.status === 'deleted') {
+    toast(`🗑️ Модель "${name}" удалена`, 'success');
+    loadModels();
+  } else {
+    toast(`Ошибка удаления: ${r?.detail ?? 'неизвестная ошибка'}`, 'error');
+  }
+}
+
 
 
 // ================================================================
