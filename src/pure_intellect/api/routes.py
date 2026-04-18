@@ -1177,10 +1177,25 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    response_text = data["choices"][0]["message"]["content"]
+                    raw_text = data["choices"][0]["message"]["content"]
+                    # JSON wrapper: если модель вернула текст вместо Agent Zero JSON → оборачиваем
+                    import json as _json
+                    try:
+                        parsed = _json.loads(raw_text)
+                        if "tool_name" in parsed and "tool_args" in parsed:
+                            response_text = raw_text  # уже правильный JSON
+                        else:
+                            raise ValueError("not agent zero json")
+                    except Exception:
+                        # Оборачиваем текст в валидный Agent Zero JSON формат
+                        response_text = _json.dumps({
+                            "thoughts": ["Processing user request"],
+                            "headline": "Response",
+                            "tool_name": "response",
+                            "tool_args": {"text": raw_text}
+                        }, ensure_ascii=False)
                 else:
                     raise HTTPException(status_code=resp.status_code, detail=f"Ollama failed: {resp.text[:200]}")
-
             # Сохраняем факт в память PI (асинхронно, не блокируем ответ)
             try:
                 from pure_intellect.core.memory.fact import Fact, FactType
