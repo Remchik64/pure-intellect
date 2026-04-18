@@ -1140,28 +1140,45 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             and len(system_override) > 500  # Agent Zero system prompt ~6000 символов
         )
 
-        if is_agent_zero:
-            # Agent Zero режим: прямой вызов через dual_model с полными messages
-            # Добавляем PI memory facts как дополнение к system промпту
-            # Добавляем PI memory facts как дополнение к system промпту
-            import httpx
-
             # Инжектируем факты памяти PI в system message
             try:
                 all_facts = pipe.working_memory.get_facts()
+                memory_context = ""
                 if all_facts:
                     memory_summary = "\n".join(f"- {f.content}" for f in all_facts[:5])
-                    enhanced_system = system_override + f"\n\n[Memory context]:\n{memory_summary}"
-                else:
-                    enhanced_system = system_override
+                    memory_context = f"\n\n[Memory context]:\n{memory_summary}"
             except Exception:
-                enhanced_system = system_override
+                memory_context = ""
 
-            # Собираем messages с enhanced system
-            all_messages = [{"role": "system", "content": enhanced_system}]
-            for m in req.messages:
-                if m.role != "system":  # пропускаем оригинальный system (уже добавили)
-                    all_messages.append({"role": m.role, "content": m.content})
+            # Заменяем сложный system prompt Agent Zero на упрощённый
+            # qwen2.5:7b не справляется с 6000-символьным промптом → зависание
+            # Упрощённый промпт гарантирует правильный JSON формат
+            simplified_system = (
+                "You are a helpful AI assistant with memory capabilities."
+                " ALWAYS respond with this EXACT JSON format, no exceptions:\n"
+                '{"thoughts":["your reasoning"],"tool_name":"response","tool_args":{"text":"your answer here"}}\n'
+                "Never use plain text. Always use the JSON format above."
+                + memory_context
+            )
+
+            # Берём только последний user message — избегаем накопления fw_misformat
+            user_messages = [m for m in req.messages if m.role == "user"]
+            last_user = user_messages[-1].content if user_messages else ""
+
+            # Строим чистые messages: system + краткая история + последний вопрос
+            all_messages = [{"role": "system", "content": simplified_system}]
+            # Добавляем до 4 последних assistant/user сообщений для контекста (без fw_misformat)
+            history_messages = [
+                m for m in req.messages
+                if m.role != "system"
+                and not (m.role == "user" and ("JSON" in (m.content or "") and "tool_name" in (m.content or "")))
+                and not (m.role == "user" and "same message" in (m.content or "").lower())
+                and not (m.role == "user" and "fw." in (m.content or ""))
+            ]
+            # Берём последние 6 сообщений истории
+            for m in history_messages[-6:]:
+                all_messages.append({"role": m.role, "content": m.content})
+
 
             ollama_payload = {
                 "model": getattr(getattr(pipe, 'dual_model', None), 'generator_model', None) or "qwen2.5:7b",
