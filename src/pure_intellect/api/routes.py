@@ -1125,11 +1125,28 @@ async def openai_chat_completions(req: OpenAIChatRequest):
     try:
         # ── РЕЖИМ 1: Ollama proxy (utility_model, любая не-PI модель) ──────────
         # Если запрашивают не pure-intellect модель — проксируем к Ollama напрямую
-        # Это позволяет Agent Zero utility_model работать без overhead памяти
+        # Умная эскалация: если запрос большой (документ, tool result) → используем
+        # сильную модель вместо слабой утилитарной, иначе мелкие задачи идут на быструю
         pi_models = {"pure-intellect", "pure-intellect-code", "pure-intellect-fast"}
         if req.model not in pi_models:
+            # Подсчитываем суммарный объём сообщений для определения сложности задачи
+            total_chars = sum(len(m.content or "") for m in req.messages)
+            
+            # Эскалация: если запрос > 3000 символов (документ/длинный tool result)
+            # → переключаемся на мощную генераторную модель автоматически
+            actual_model = req.model
+            if total_chars > 3000:
+                try:
+                    pipe = get_pipeline()
+                    generator = getattr(getattr(pipe, 'dual_model', None), 'generator_model', None)
+                    if generator:
+                        actual_model = generator
+                        logger.info(f"Model escalation: {req.model} → {generator} ({total_chars} chars)")
+                except Exception:
+                    pass  # Fallback to requested model
+            
             ollama_payload = {
-                "model": req.model,
+                "model": actual_model,
                 "messages": [m.dict() for m in req.messages],
                 "temperature": req.temperature,
                 "max_tokens": req.max_tokens,
