@@ -34,6 +34,7 @@ class OrchestrationResult:
     coherence_score: float = 1.0
     coherence_signal: str = "coherent"
     reset_occurred: bool = False
+    reset_turn: int = 0
 
     def to_dict(self) -> dict:
         return {
