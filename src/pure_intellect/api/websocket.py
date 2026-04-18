@@ -195,12 +195,22 @@ class StreamingManager:
                 # Небольшая задержка для эффекта стриминга
                 await asyncio.sleep(0)
 
+            # Получаем turn из pipeline если возможно
+            turn_count = None
+            try:
+                pipeline_obj = get_pipeline()
+                if hasattr(pipeline_obj, 'session') and pipeline_obj.session:
+                    turn_count = getattr(pipeline_obj.session, 'turn_count', None)
+            except Exception:
+                pass
+
             await self.send_json(websocket, {
                 "type": "end",
                 "full_response": response_text,
                 "tokens": tokens_completion,
                 "model": model_used,
-                "coherence_score": getattr(result, "coherence_score", None),
+                "cci": getattr(result, "coherence_score", None),
+                "turn": turn_count,
             })
             logger.info(f"Stream complete via pipeline.run(): {tokens_completion} tokens")
 
@@ -241,6 +251,8 @@ class StreamingManager:
             "full_response": response_text,
             "tokens": tokens_completion,
             "model": model_used,
+            "cci": None,
+            "turn": None,
         })
         logger.info(f"Pipeline response complete: {tokens_completion} tokens")
 

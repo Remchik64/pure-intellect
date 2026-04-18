@@ -1849,6 +1849,8 @@ function handleWSMessage(msg) {
   } else if (msg.type === 'end') {
     finalizeStreamBubble();
     updateChatStats(msg);
+    // Обновляем статистику из API (turn, cci могут быть точнее)
+    loadChatStats();
   } else if (msg.type === 'response' || msg.type === 'message') {
     hideTyping();
     appendMessage('assistant', msg.content || msg.message || '');
