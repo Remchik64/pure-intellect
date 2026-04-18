@@ -170,16 +170,16 @@ fi
 
 # Open browser
 if command -v xdg-open &>/dev/null; then
-    (sleep 4 && xdg-open http://localhost:8085) &
+    (sleep 4 && xdg-open http://localhost:7860) &
 elif command -v open &>/dev/null; then
-    (sleep 4 && open http://localhost:8085) &
+    (sleep 4 && open http://localhost:7860) &
 fi
 
 # Start server
 if command -v pure-intellect &>/dev/null; then
-    pure-intellect serve --port 8085
+    pure-intellect serve --port 7860
 else
-    python3 -m pure_intellect serve --port 8085
+    python3 -m pure_intellect serve --port 7860
 fi
 LAUNCHER_EOF
 
@@ -212,7 +212,7 @@ echo -e ""
 echo -e "  ${BOLD}Start:${NC}  $LAUNCHER_DIR/start.sh"
 echo -e "         or:  pure-intellect serve"
 echo -e ""
-echo -e "  ${BOLD}Open:${NC}   http://localhost:8085"
+echo -e "  ${BOLD}Open:${NC}   http://localhost:7860"
 echo -e ""
 echo -e "  ${YELLOW}First run:${NC} go to 🤖 Models section"
 echo -e "            and download a model (e.g. qwen2.5:3b)"

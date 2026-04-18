@@ -115,7 +115,7 @@ if errorlevel 1 (
     echo  WARNING: Could not download start.bat, creating basic launcher...
     (
         echo @echo off
-        echo python -m pure_intellect serve --port 8085
+        echo python -m pure_intellect serve --port 7860
         echo pause
     ) > "%APPDIR%\start.bat"
 )
@@ -142,11 +142,11 @@ echo.
 set /p GO="Launch now? (Y/N): "
 if /i "!GO!"=="Y" (
     echo  Starting server...
-    start "Pure Intellect" /min python -m pure_intellect serve --port 8085
+    start "Pure Intellect" /min python -m pure_intellect serve --port 7860
     echo  Waiting for server to be ready...
     timeout /t 6 /nobreak >nul
     echo  Opening browser...
-    start microsoft-edge:http://127.0.0.1:8085
+    start microsoft-edge:http://127.0.0.1:7860
     echo.
     echo  Server is running! Check taskbar for minimized window.
     echo  Close this window when done.

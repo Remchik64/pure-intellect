@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     
     # Server
     host: str = Field(default="0.0.0.0", description="Хост сервера")
-    port: int = Field(default=8085, description="Порт сервера")
+    port: int = Field(default=7860, description="Порт сервера")
     debug: bool = Field(default=False, description="Режим отладки")
     
     # Logging

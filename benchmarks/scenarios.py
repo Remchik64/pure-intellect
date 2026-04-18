@@ -126,7 +126,7 @@ LONG_SESSION = Scenario(
             turn_id=15,
             query="Какие порты проброшены в Docker контейнере?",
             expected_keywords=["Docker", "порты"],
-            mock_response="Порты: 32752:80, 3005:3005, 5006:5006, 8085:8085. GPU доступен через --gpus all."
+            mock_response="Порты: 32752:80, 3005:3005, 5006:5006, 7860:7860. GPU доступен через --gpus all."
         ),
         Turn(
             turn_id=16,

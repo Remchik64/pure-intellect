@@ -9,10 +9,10 @@ echo   Pure Intellect - Starting
 echo  ================================================
 echo.
 
-:: ── Step 1: Kill old process on port 8085 ───────────────────────────────────
-echo [1/4] Freeing port 8085...
+:: ── Step 1: Kill old process on port 7860 ───────────────────────────────────
+echo [1/4] Freeing port 7860...
 call :kill_port
-echo  OK: Port 8085 is free
+echo  OK: Port 7860 is free
 
 :: ── Step 2: Check Ollama ────────────────────────────────────────────────────
 echo.
@@ -22,7 +22,7 @@ call :check_ollama
 :: ── Step 3: Start server and wait ──────────────────────────────────────────
 echo.
 echo [3/4] Starting Pure Intellect...
-start "Pure Intellect Server" /min cmd /c "python -m pure_intellect serve --port 8085 & pause"
+start "Pure Intellect Server" /min cmd /c "python -m pure_intellect serve --port 7860 & pause"
 call :wait_server
 if errorlevel 1 (
     echo.
@@ -36,13 +36,13 @@ echo  OK: Server is ready!
 :: ── Step 4: Open browser ────────────────────────────────────────────────────
 echo.
 echo [4/4] Opening browser...
-start microsoft-edge:http://127.0.0.1:8085
-if errorlevel 1 start http://127.0.0.1:8085
+start microsoft-edge:http://127.0.0.1:7860
+if errorlevel 1 start http://127.0.0.1:7860
 
 echo.
 echo  ================================================
 echo   Pure Intellect is running!
-echo   URL: http://127.0.0.1:8085
+echo   URL: http://127.0.0.1:7860
 echo.
 echo   Press any key to STOP the server
 echo  ================================================
@@ -60,7 +60,7 @@ exit /b 0
 :: ============================================================================
 
 :kill_port
-    for /f "tokens=5" %%p in ('netstat -aon 2^>nul ^| findstr ":8085 " ^| findstr "LISTENING"') do (
+    for /f "tokens=5" %%p in ('netstat -aon 2^>nul ^| findstr ":7860 " ^| findstr "LISTENING"') do (
         taskkill /F /PID %%p >nul 2>&1
     )
     timeout /t 1 /nobreak >nul
@@ -97,6 +97,6 @@ exit /b 0
     set /a SRV+=1
     if !SRV! GTR 30 exit /b 1
     timeout /t 1 /nobreak >nul
-    curl -s --max-time 1 http://127.0.0.1:8085 >nul 2>&1
+    curl -s --max-time 1 http://127.0.0.1:7860 >nul 2>&1
     if errorlevel 1 goto server_loop
 exit /b 0

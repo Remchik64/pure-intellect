@@ -1,7 +1,7 @@
 """Тесты для OpenAI-совместимого API endpoint.
 
 Позволяет использовать Pure Intellect как backend для:
-- Agent Zero (api_base: http://localhost:8085/v1)
+- Agent Zero (api_base: http://localhost:7860/v1)
 - Open WebUI
 - LM Studio (как клиент)
 - Любого OpenAI-совместимого клиента

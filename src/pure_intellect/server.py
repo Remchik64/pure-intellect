@@ -23,10 +23,10 @@ app = FastAPI(
 _CORS_ORIGINS = [
     "http://localhost:3005",
     "http://localhost:5006",
-    "http://localhost:8085",
+    "http://localhost:7860",
     "http://127.0.0.1:3005",
     "http://127.0.0.1:5006",
-    "http://127.0.0.1:8085",
+    "http://127.0.0.1:7860",
     "http://localhost",
     "http://127.0.0.1",
 ]

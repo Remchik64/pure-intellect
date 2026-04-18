@@ -1427,8 +1427,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
           <div class="conn-field">
             <label>api_base</label>
             <div class="conn-value">
-              <code id="az-api-base">http://localhost:8085/v1</code>
-              <button class="btn" onclick="copyText('http://localhost:8085/v1')">📋</button>
+              <code id="az-api-base">http://localhost:7860/v1</code>
+              <button class="btn" onclick="copyText('http://localhost:7860/v1')">📋</button>
             </div>
           </div>
           <div class="conn-field">
@@ -1446,7 +1446,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
             </div>
           </div>
           <div class="mt-12">
-            <button class="btn primary" onclick="copyJSON({api_base:'http://localhost:8085/v1',api_key:'pure-intellect',model:'pure-intellect'})">📋 Копировать JSON</button>
+            <button class="btn primary" onclick="copyJSON({api_base:'http://localhost:7860/v1',api_key:'pure-intellect',model:'pure-intellect'})">📋 Копировать JSON</button>
           </div>
         </div>
 
@@ -1456,8 +1456,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
           <div class="conn-field">
             <label>OpenAI Base URL</label>
             <div class="conn-value">
-              <code>http://localhost:8085/v1</code>
-              <button class="btn" onclick="copyText('http://localhost:8085/v1')">📋</button>
+              <code>http://localhost:7860/v1</code>
+              <button class="btn" onclick="copyText('http://localhost:7860/v1')">📋</button>
             </div>
           </div>
           <div class="conn-field">
@@ -1476,8 +1476,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
           <div class="conn-field">
             <label>Custom Server URL</label>
             <div class="conn-value">
-              <code>http://localhost:8085/v1</code>
-              <button class="btn" onclick="copyText('http://localhost:8085/v1')">📋</button>
+              <code>http://localhost:7860/v1</code>
+              <button class="btn" onclick="copyText('http://localhost:7860/v1')">📋</button>
             </div>
           </div>
           <div class="mt-12 text-dim text-sm">В LM Studio → Developer → Local Server включите режим и укажите Custom Endpoint.</div>
@@ -1571,7 +1571,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
 'use strict';
 
-const HOST = window.location.host || 'localhost:8085';
+const HOST = window.location.host || 'localhost:7860';
 const API = `http://${HOST}`;
 const WS_URL = `ws://${HOST}/ws`;
 

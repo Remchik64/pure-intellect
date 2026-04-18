@@ -1002,7 +1002,7 @@ async def delete_memory_fact(fact_id: str):
 
 # ── OpenAI-Compatible API (для Agent Zero, Open WebUI, LM Studio) ─────
 # Позволяет использовать Pure Intellect как OpenAI-совместимый сервер
-# Agent Zero config: api_base = http://localhost:8085/v1
+# Agent Zero config: api_base = http://localhost:7860/v1
 
 openai_router = APIRouter(prefix="/v1", tags=["openai-compatible"])
 
@@ -1052,7 +1052,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
     с полной поддержкой иерархической памяти Pure Intellect.
 
     Настройка Agent Zero:
-      api_base: http://localhost:8085/v1
+      api_base: http://localhost:7860/v1
       api_key: pure-intellect  (любой)
       model: pure-intellect
     """

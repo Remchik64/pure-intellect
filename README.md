@@ -53,7 +53,7 @@ Pure Intellect solves the fundamental problem of LLM context limitation — **co
 - Memory works transparently for any OpenAI-compatible client
 
 ### 🖥️ Admin Panel
-- Full web interface at `http://localhost:8085`
+- Full web interface at `http://localhost:7860`
 - **Dashboard** — real-time GPU, CCI, memory metrics
 - **Models** — hardware detection + model recommendations + download
 - **Memory** — view/search/delete facts and coordinates
@@ -118,12 +118,12 @@ pip install git+https://github.com/Remchik64/pure-intellect.git
 pure-intellect serve
 
 # 4. Open browser
-# http://localhost:8085
+# http://localhost:7860
 ```
 
 ### First Run
 
-After installation, open `http://localhost:8085` and:
+After installation, open `http://localhost:7860` and:
 1. Go to **🤖 Models** section
 2. Click **"Определить железо"** (Detect Hardware)
 3. See recommendations for your system
@@ -147,7 +147,7 @@ Configure Agent Zero:
     "provider": "openai",
     "name": "pure-intellect",
     "kwargs": {
-      "api_base": "http://localhost:8085/v1",
+      "api_base": "http://localhost:7860/v1",
       "api_key": "pure-intellect"
     }
   }
@@ -172,7 +172,7 @@ generator:
 **Pure Intellect as backend for LM Studio:**
 ```
 LM Studio → Remote Server
-URL: http://localhost:8085/v1
+URL: http://localhost:7860/v1
 ```
 
 ---
@@ -252,7 +252,7 @@ pure-intellect/
 # config.yaml
 server:
   host: 0.0.0.0
-  port: 8085
+  port: 7860
 
 coordinator:
   model: qwen2.5:3b    # Fast model for navigation
@@ -296,7 +296,7 @@ python -m pytest tests/ -q \
   --ignore=tests/test_system_full.py
 
 # Run server
-pure-intellect serve --port 8085
+pure-intellect serve --port 7860
 ```
 
 ---

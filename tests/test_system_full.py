@@ -10,7 +10,7 @@ import requests
 from datetime import datetime
 from typing import Optional
 
-BASE = "http://localhost:8085"
+BASE = "http://localhost:7860"
 API  = f"{BASE}/api/v1"
 
 # ── Цвета ──────────────────────────────────────────────────

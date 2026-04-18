@@ -108,7 +108,7 @@ def load(model_key, gpu_layers):
 
 @cli.command()
 @click.option("--host", "-h", default="0.0.0.0", help="Хост сервера")
-@click.option("--port", "-p", default=8085, type=int, help="Порт сервера")
+@click.option("--port", "-p", default=7860, type=int, help="Порт сервера")
 def serve(host, port):
     """Запустить сервер Оркестратора."""
     import uvicorn
