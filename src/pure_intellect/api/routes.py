@@ -1229,9 +1229,19 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 memory_context = ""
 
             # Передаём ОРИГИНАЛЬНЫЙ system prompt Agent Zero (содержит определения инструментов)
-            # Только добавляем контекст памяти PI в конец — не заменяем!
-            # Ранее заменяли на simplified_system → модель не знала о своих инструментах
-            full_system = system_override + memory_context
+            # + критичное напоминание о JSON формате в конце системного промпта
+            # Это сочетает: знание инструментов + надёжный JSON вывод
+            json_reminder = (
+                "\n\n[CRITICAL OUTPUT RULE]:\n"
+                "ALWAYS respond with valid JSON. NEVER plain text. Format:\n"
+                '{"thoughts":["..."],"tool_name":"TOOL","tool_args":{...}}\n'
+                "Available tool_name values: response, code_execution_tool, "
+                "browser_agent, call_subordinate, search_engine, document_query, "
+                "memory_load, memory_save, memory_delete, memory_forget, "
+                "input, wait, scheduler, behaviour_adjustment\n"
+                "Use \"response\" tool for final answers."
+            )
+            full_system = system_override + memory_context + json_reminder
 
             # Строим чистые messages: system + фильтрованная история
             all_messages = [{"role": "system", "content": full_system}]
@@ -1242,11 +1252,21 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 and not (m.role == "user" and "same message" in (m.content or "").lower())
                 and not (m.role == "user" and "fw." in (m.content or ""))
             ]
-            # Берём последние 10 сообщений истории для большего контекста
+            # Берём последние 10 сообщений истории
             for m in history_messages[-10:]:
                 all_messages.append({"role": m.role, "content": m.content})
 
-
+            # Инжектируем JSON-reminder как финальный user hint перед ответом модели
+            # Это in-context напоминание значительно эффективнее system prompt для малых моделей
+            if all_messages and all_messages[-1]["role"] == "user":
+                all_messages.insert(-1, {
+                    "role": "user",
+                    "content": "[Reminder: respond only in JSON format with tool_name and tool_args]"
+                })
+                all_messages.insert(-1, {
+                    "role": "assistant",
+                    "content": '{"thoughts":["I will respond in JSON format as required."],"tool_name":"response","tool_args":{"text":"ready"}}'
+                })
 
             ollama_payload = {
                 "model": getattr(getattr(pipe, 'dual_model', None), 'generator_model', None) or "qwen2.5:7b",
