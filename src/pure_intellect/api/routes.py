@@ -863,7 +863,6 @@ async def ollama_models_proxy():
     Решает CORS проблему браузера при обращении к localhost:11434.
     """
     try:
-        import httpx
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get("http://localhost:11434/api/tags")
             return resp.json()
@@ -876,7 +875,6 @@ async def ollama_models_proxy():
 async def delete_model(model_name: str):
     """Удалить модель из Ollama полностью (освобождает место на диске)."""
     try:
-        import httpx
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.request(
                 method="DELETE",
@@ -913,7 +911,6 @@ async def models_status():
     - 'offline' — не скачана, нужно скачать ❌
     """
     try:
-        import httpx
         async with httpx.AsyncClient(timeout=5.0) as client:
             # Все скачанные модели
             tags_resp = await client.get("http://localhost:11434/api/tags")
@@ -1104,7 +1101,6 @@ async def openai_chat_completions(req: OpenAIChatRequest):
         # Это позволяет Agent Zero utility_model работать без overhead памяти
         pi_models = {"pure-intellect", "pure-intellect-code", "pure-intellect-fast"}
         if req.model not in pi_models:
-            import httpx
             ollama_payload = {
                 "model": req.model,
                 "messages": [m.dict() for m in req.messages],
@@ -1363,7 +1359,6 @@ async def download_model(req: dict):
 
     async def _pull_with_progress():
         """Streaming pull через Ollama HTTP API с парсингом прогресса."""
-        import httpx
         _download_progress[model]["status"] = "downloading"
         last_speed_check = _time.time()
         last_completed = 0
@@ -1448,7 +1443,6 @@ async def check_model_downloaded(model_name: str):
 
     # Проверяем готовность через Ollama
     try:
-        import httpx
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get("http://localhost:11434/api/tags")
             data = resp.json()
