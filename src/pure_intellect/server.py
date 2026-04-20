@@ -127,8 +127,7 @@ async def _preload_models():
                         capture_output=True, text=True, timeout=5
                     )
                     if result.returncode == 0:
-                        free_mb = int(result.stdout.strip().split("
-")[0])
+                        free_mb = int(result.stdout.strip().split("\n")[0])
                         available_vram_bytes = free_mb * 1024 * 1024
                         logger.info(f"   Free VRAM: {free_mb / 1024:.1f} GB")
             except Exception as e:
