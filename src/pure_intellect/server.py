@@ -71,6 +71,37 @@ async def version_info():
     }
 
 
+
+async def _preload_models():
+    """Предзагрузка coordinator и generator в VRAM при старте сервера.
+    
+    Посылает минимальный запрос к каждой модели с keep_alive=-1
+    чтобы Ollama держал их постоянно в памяти (как LM Studio).
+    """
+    import httpx
+    from .engines.config_loader import load_config
+    await asyncio.sleep(3)  # дать серверу полностью подняться
+    try:
+        cfg = load_config()
+        coordinator = cfg.coordinator.model
+        generator = cfg.generator.model
+        logger.info(f"🔥 Preloading models: {coordinator} + {generator}")
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            for model in [coordinator, generator]:
+                try:
+                    resp = await client.post(
+                        "http://localhost:11434/api/generate",
+                        json={"model": model, "prompt": "", "keep_alive": -1},
+                    )
+                    if resp.status_code == 200:
+                        logger.info(f"   ✅ {model} loaded into VRAM")
+                    else:
+                        logger.warning(f"   ⚠️ {model} preload failed: {resp.status_code}")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ {model} preload error: {e}")
+    except Exception as e:
+        logger.warning(f"Model preload failed: {e}")
+
 @app.on_event("startup")
 async def startup():
     """Инициализация при запуске."""
@@ -80,6 +111,9 @@ async def startup():
     logger.info(f"   Storage: {settings.storage_dir}")
     logger.info(f"   Static dir: {_STATIC_DIR}")
     logger.info(f"   index.html: {'OK' if (_STATIC_DIR / 'index.html').exists() else 'MISSING!'}")
+    # Предзагрузка обеих моделей в VRAM при старте
+    import asyncio
+    asyncio.ensure_future(_preload_models())
 
 
 @app.on_event("shutdown")
