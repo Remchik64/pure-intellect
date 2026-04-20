@@ -41,8 +41,8 @@ GENERATOR_MODEL = _DEFAULT_GENERATOR
 
 # Настройки Ollama
 OLLAMA_BASE_URL = "http://localhost:11434"
-GENERATE_TIMEOUT = 120  # секунд для генератора
-COORDINATE_TIMEOUT = 30  # секунд для координатора
+GENERATE_TIMEOUT = 300  # секунд для генератора
+COORDINATE_TIMEOUT = 90  # секунд для координатора
 
 
 def _load_models_from_config() -> tuple[str, str]:

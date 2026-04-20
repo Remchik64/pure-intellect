@@ -109,7 +109,7 @@ def _get_ollama_embedding(text: str) -> list[float] | None:
         }).encode("utf-8")
         
         req = urllib.request.Request(
-            f"{OLLAMA_BASE_URL}/api/embed",
+            f"{OLLAMA_BASE_URL}/api/embeddings",
             data=payload,
             headers={"Content-Type": "application/json"},
             method="POST"
