@@ -1141,32 +1141,14 @@ async def openai_chat_completions(req: OpenAIChatRequest):
         # сильную модель вместо слабой утилитарной, иначе мелкие задачи идут на быструю
         pi_models = {"pure-intellect", "pure-intellect-code", "pure-intellect-fast"}
         if req.model not in pi_models:
-            # Подсчитываем суммарный объём сообщений для определения сложности задачи
-            total_chars = sum(len(m.content or "") for m in req.messages)
-            
-            # Эскалация: если запрос > 3000 символов (документ/длинный tool result)
-            # → переключаемся на мощную генераторную модель автоматически
-            actual_model = req.model
-            if total_chars > 3000:
-                try:
-                    pipe = get_pipeline()
-                    generator = getattr(getattr(pipe, 'dual_model', None), 'generator_model', None)
-                    if generator:
-                        actual_model = generator
-                        logger.info(f"Model escalation: {req.model} → {generator} ({total_chars} chars)")
-                except Exception:
-                    pass  # Fallback to requested model
-            
+            # Прямой proxy к Ollama — никакой эскалации
+            # utility_model Agent Zero получает ИМЕННО ту модель которую запросила
             ollama_payload = {
-                "model": actual_model,
+                "model": req.model,
                 "messages": [m.dict() for m in req.messages],
                 "temperature": req.temperature,
-                "max_tokens": req.max_tokens,
                 "stream": False,
-                "options": {
-                    "num_ctx": 32768,
-                    "num_gpu": -1,      # GPU+CPU hybrid: fit as many layers as possible in VRAM
-                },
+                "options": {"num_ctx": 32768, "num_gpu": -1},
             }
             async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
@@ -1175,34 +1157,8 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 )
                 if resp.status_code == 200:
                     return resp.json()
-                # Fallback: попробуем через /api/chat Ollama
-                api_payload = {
-                    "model": req.model,
-                    "messages": [m.dict() for m in req.messages],
-                    "stream": False,
-                    "options": {
-                        "temperature": req.temperature,
-                        "num_predict": req.max_tokens,
-                        "num_ctx": 32768,
-                        "num_gpu": -1,
-                    },
-                }
-                resp2 = await client.post(
-                    "http://localhost:11434/api/chat",
-                    json=api_payload,
-                )
-                if resp2.status_code == 200:
-                    data = resp2.json()
-                    content = data.get("message", {}).get("content", "")
-                    return {
-                        "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
-                        "object": "chat.completion",
-                        "created": int(time.time()),
-                        "model": req.model,
-                        "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
-                        "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-                    }
-                raise HTTPException(status_code=resp2.status_code, detail=f"Ollama proxy failed: {resp2.text[:200]}")
+                raise HTTPException(status_code=resp.status_code, detail=f"Ollama proxy failed: {resp.text[:200]}")
+
 
         # ── РЕЖИМ 2: Pure Intellect pipeline с памятью ────────────────────────
         pipe = get_pipeline()
@@ -1232,93 +1188,53 @@ async def openai_chat_completions(req: OpenAIChatRequest):
         )
 
         if is_agent_zero:
-            # Инжектируем факты памяти PI в system message
+            # ПРОЗРАЧНЫЙ ПРОКСИ для Agent Zero
+            # Единственное добавление — компактный контекст памяти PI к system prompt
+            # Agent Zero сам парсит JSON ответ и запускает инструменты (EXE)
             try:
                 all_facts = pipe.working_memory.get_facts()
-                memory_context = ""
                 if all_facts:
-                    memory_summary = "\n".join(f"- {f.content}" for f in all_facts[:5])
-                    memory_context = f"\n\n[Memory context]:\n{memory_summary}"
+                    mem = "\n".join(f"- {f.content}" for f in all_facts[:5])
+                    memory_context = f"\n\n[PI Memory]:\n{mem}"
+                else:
+                    memory_context = ""
             except Exception:
                 memory_context = ""
 
-            # Передаём ОРИГИНАЛЬНЫЙ system prompt Agent Zero (содержит определения инструментов)
-            # + критичное напоминание о JSON формате в конце системного промпта
-            # Это сочетает: знание инструментов + надёжный JSON вывод
-            json_reminder = (
-                "\n\n[CRITICAL OUTPUT RULE]:\n"
-                "ALWAYS respond with valid JSON. NEVER plain text. Format:\n"
-                '{"thoughts":["..."],"tool_name":"TOOL","tool_args":{...}}\n'
-                "Available tool_name values: response, code_execution_tool, "
-                "browser_agent, call_subordinate, search_engine, document_query, "
-                "memory_load, memory_save, memory_delete, memory_forget, "
-                "input, wait, scheduler, behaviour_adjustment\n"
-                "Use \"response\" tool for final answers."
-            )
-            full_system = system_override + memory_context + json_reminder
+            # Передаём ВСЕ messages как есть, только добавляем память к system
+            all_messages = []
+            for m in req.messages:
+                if m.role == "system" and memory_context:
+                    all_messages.append({"role": "system", "content": m.content + memory_context})
+                else:
+                    all_messages.append({"role": m.role, "content": m.content or ""})
 
-            # Строим чистые messages: system + фильтрованная история
-            all_messages = [{"role": "system", "content": full_system}]
-            # Фильтруем служебные сообщения об ошибках форматирования
-            history_messages = [
-                m for m in req.messages
-                if m.role != "system"
-                and not (m.role == "user" and "same message" in (m.content or "").lower())
-                and not (m.role == "user" and "fw." in (m.content or ""))
-            ]
-            # Берём последние 10 сообщений истории
-            for m in history_messages[-10:]:
-                all_messages.append({"role": m.role, "content": m.content})
-
-            # Инжектируем JSON-reminder как финальный user hint перед ответом модели
-            # Это in-context напоминание значительно эффективнее system prompt для малых моделей
-            if all_messages and all_messages[-1]["role"] == "user":
-                all_messages.insert(-1, {
-                    "role": "user",
-                    "content": "[Reminder: respond only in JSON format with tool_name and tool_args]"
-                })
-                all_messages.insert(-1, {
-                    "role": "assistant",
-                    "content": '{"thoughts":["I will respond in JSON format as required."],"tool_name":"response","tool_args":{"text":"ready"}}'
-                })
+            # Generator model из config
+            try:
+                from pure_intellect.engines.config_loader import load_config as _lc
+                gen_model = _lc().generator.model
+            except Exception:
+                gen_model = "mistral-small3.1:24b"
 
             ollama_payload = {
-                "model": (
-                    getattr(getattr(pipe, '_router', None), 'generator_model', None)
-                    or getattr(getattr(pipe, 'dual_model', None), 'generator_model', None)
-                    or (lambda: __import__('pure_intellect.engines.config_loader', fromlist=['load_config']).load_config().generator.model)()),
+                "model": gen_model,
                 "messages": all_messages,
                 "temperature": req.temperature,
                 "stream": False,
-                "options": {"num_ctx": 32768, "num_predict": req.max_tokens, "num_gpu": -1},
+                "options": {"num_ctx": 32768, "num_gpu": -1},
             }
             async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
                     "http://localhost:11434/v1/chat/completions",
                     json=ollama_payload,
                 )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    raw_text = data["choices"][0]["message"]["content"]
-                    # JSON wrapper: если модель вернула текст вместо Agent Zero JSON → оборачиваем
-                    import json as _json
-                    try:
-                        parsed = _json.loads(raw_text)
-                        if "tool_name" in parsed and "tool_args" in parsed:
-                            response_text = raw_text  # уже правильный JSON
-                        else:
-                            raise ValueError("not agent zero json")
-                    except Exception:
-                        # Оборачиваем текст в валидный Agent Zero JSON формат
-                        response_text = _json.dumps({
-                            "thoughts": ["Processing user request"],
-                            "headline": "Response",
-                            "tool_name": "response",
-                            "tool_args": {"text": raw_text}
-                        }, ensure_ascii=False)
-                else:
+                if resp.status_code != 200:
                     raise HTTPException(status_code=resp.status_code, detail=f"Ollama failed: {resp.text[:200]}")
-            # Сохраняем факт в память PI (асинхронно, не блокируем ответ)
+                data = resp.json()
+                # СЫРОЙ ответ — Agent Zero сам парсит JSON и вызывает EXE
+                response_text = data["choices"][0]["message"]["content"]
+
+            # Сохраняем факт в память PI
             try:
                 from pure_intellect.core.memory.fact import Fact, FactType
                 fact = Fact(content=f"AgentZero: {query[:100]}", fact_type=FactType.TRANSIENT)
