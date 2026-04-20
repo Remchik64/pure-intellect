@@ -1084,6 +1084,56 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 }
 
 .cci-bar:hover { opacity: 1; }
+
+/* Thinking bubble styles */
+.thinking-message {
+  background: transparent !important;
+  padding: 4px 0 !important;
+}
+.thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 14px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  font-size: 13px;
+  color: #a5b4fc;
+  user-select: none;
+  transition: background 0.2s;
+  max-width: 80%;
+}
+.thinking-header:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+.thinking-icon {
+  font-size: 16px;
+  animation: pulse-think 1.5s infinite;
+}
+.thinking-toggle {
+  margin-left: auto;
+  font-size: 10px;
+}
+.thinking-content {
+  margin-top: 6px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.2);
+  border-left: 3px solid rgba(99, 102, 241, 0.4);
+  border-radius: 0 8px 8px 0;
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: pre-wrap;
+  font-family: monospace;
+  max-height: 200px;
+  overflow-y: auto;
+  max-width: 80%;
+}
+@keyframes pulse-think {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
 </style>
 </head>
 <body>
@@ -1846,6 +1896,8 @@ function connectWS() {
 // Текущий streaming bubble (для накопления токенов)
 let _streamBubble = null;
 let _streamText = '';
+let _thinkingBubble = null;
+let _thinkingText = '';
 
 function startStreamBubble() {
   hideTyping();
@@ -1881,6 +1933,60 @@ function finalizeStreamBubble() {
   hideTyping();
 }
 
+
+function createThinkingBubble() {
+  const chatMessages = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'message assistant thinking-message';
+  div.innerHTML = `
+    <div class="thinking-header" onclick="toggleThinking(this)">
+      <span class="thinking-icon">&#x1F9E0;</span>
+      <span class="thinking-label">&#x1F501; &#x414;&#x443;&#x43C;&#x430;&#x44E;...</span>
+      <span class="thinking-toggle">&#x25BC;</span>
+    </div>
+    <div class="thinking-content"></div>
+  `;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return div.querySelector('.thinking-content');
+}
+
+function appendThinkingToken(token) {
+  if (!_thinkingBubble) return;
+  _thinkingText += token;
+  _thinkingBubble.textContent = _thinkingText;
+  const chatMessages = document.getElementById('chat-messages');
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function finalizeThinkingBubble() {
+  if (_thinkingBubble) {
+    const header = _thinkingBubble.parentElement.querySelector('.thinking-label');
+    if (header) header.innerHTML = '&#x1F4AD; &#x41C;&#x44B;&#x441;&#x43B;&#x438; <small style="opacity:0.6">(&#x43D;&#x430;&#x436;&#x43C;&#x438; &#x447;&#x442;&#x43E;&#x431;&#x44B; &#x440;&#x430;&#x437;&#x432;&#x435;&#x440;&#x43D;&#x443;&#x442;&#x44C;)</small>';
+    const toggle = _thinkingBubble.parentElement.querySelector('.thinking-toggle');
+    if (toggle) toggle.textContent = '▶';
+    _thinkingBubble.style.display = 'none';
+    _thinkingBubble = null;
+    _thinkingText = ''; 
+  }
+}
+
+function toggleThinking(header) {
+  const content = header.nextElementSibling;
+  const toggle = header.querySelector('.thinking-toggle');
+  const label = header.querySelector('.thinking-label');
+  if (!content) return;
+  if (content.style.display === 'none' || content.style.display === '') {
+    content.style.display = 'block';
+    if (toggle) toggle.textContent = '▼';
+    if (label) label.innerHTML = '&#x1F4AD; &#x41C;&#x44B;&#x441;&#x43B;&#x438; <small style="opacity:0.6">(&#x441;&#x432;&#x435;&#x440;&#x43D;&#x443;&#x442;&#x44C;)</small>';
+  } else {
+    content.style.display = 'none';
+    if (toggle) toggle.textContent = '▶';
+    if (label) label.innerHTML = '&#x1F4AD; &#x41C;&#x44B;&#x441;&#x43B;&#x438; <small style="opacity:0.6">(&#x440;&#x430;&#x437;&#x432;&#x435;&#x440;&#x43D;&#x443;&#x442;&#x44C;)</small>';
+  }
+}
+
 function handleWSMessage(msg) {
   if (msg.type === 'start') {
     showTyping();
@@ -1900,8 +2006,14 @@ function handleWSMessage(msg) {
     appendMessage('assistant', msg.content || msg.message || '');
   } else if (msg.type === 'status') {
     updateChatStats(msg);
+  } else if (msg.type === 'thinking_start') {
+    hideTyping();
+    _thinkingBubble = createThinkingBubble();
+    _thinkingText = '';
   } else if (msg.type === 'thinking') {
-    showTyping();
+    if (_thinkingBubble) appendThinkingToken(msg.content || '');
+  } else if (msg.type === 'thinking_end') {
+    if (_thinkingBubble) finalizeThinkingBubble();
   } else if (msg.type === 'error') {
     finalizeStreamBubble();
     hideTyping();

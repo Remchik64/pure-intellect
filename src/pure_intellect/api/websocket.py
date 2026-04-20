@@ -184,8 +184,42 @@ class StreamingManager:
             model_used = getattr(result, "model_used", ollama_model)
             tokens_completion = getattr(result, "tokens_completion", 0)
 
-            # Симулируем стриминг — разбиваем на слова
-            words = response_text.split(" ")
+            # Парсим "думающий" режим моделей (DeepSeek-R1, Qwen3, Gemma4)
+            think_open = "<think>"
+            think_close = "</think>"
+            think_open2 = "<thinking>"
+            think_close2 = "</thinking>"
+
+            thinking_text = ""
+            answer_text = response_text
+
+            for open_tag, close_tag in [(think_open, think_close), (think_open2, think_close2)]:
+                if open_tag in response_text and close_tag in response_text:
+                    start = response_text.find(open_tag) + len(open_tag)
+                    end = response_text.find(close_tag)
+                    thinking_text = response_text[start:end].strip()
+                    answer_text = response_text[response_text.find(close_tag) + len(close_tag):].strip()
+                    break
+
+            # Отправляем thinking если есть
+            if thinking_text:
+                await self.send_json(websocket, {
+                    "type": "thinking_start",
+                })
+                think_words = thinking_text.split(" ")
+                for i, word in enumerate(think_words):
+                    chunk = word if i == len(think_words) - 1 else word + " "
+                    await self.send_json(websocket, {
+                        "type": "thinking",
+                        "content": chunk,
+                    })
+                    await asyncio.sleep(0)
+                await self.send_json(websocket, {
+                    "type": "thinking_end",
+                })
+
+            # Симулируем стриминг ответа — разбиваем на слова
+            words = answer_text.split(" ")
             for i, word in enumerate(words):
                 chunk = word if i == len(words) - 1 else word + " "
                 await self.send_json(websocket, {
