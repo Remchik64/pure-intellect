@@ -1283,7 +1283,10 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 })
 
             ollama_payload = {
-                "model": getattr(getattr(pipe, 'dual_model', None), 'generator_model', None) or "qwen2.5:7b",
+                "model": (
+                    getattr(getattr(pipe, '_router', None), 'generator_model', None)
+                    or getattr(getattr(pipe, 'dual_model', None), 'generator_model', None)
+                    or (lambda: __import__('pure_intellect.engines.config_loader', fromlist=['load_config']).load_config().generator.model)()),
                 "messages": all_messages,
                 "temperature": req.temperature,
                 "stream": False,
