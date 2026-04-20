@@ -177,7 +177,8 @@ class DualModelRouter:
             "max_tokens": max_tokens,
             "stream": False,
             "options": {
-                "num_ctx": 8192,   # увеличиваем контекстное окно для Agent Zero
+                "num_ctx": 32768,
+                "num_gpu": -1,     # GPU+CPU hybrid: load max layers in VRAM, rest on CPU
             },
         }).encode("utf-8")
 

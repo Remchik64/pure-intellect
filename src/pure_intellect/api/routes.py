@@ -1152,7 +1152,8 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "max_tokens": req.max_tokens,
                 "stream": False,
                 "options": {
-                    "num_ctx": 32768,  # Large context for documents/tool results
+                    "num_ctx": 32768,
+                    "num_gpu": -1,      # GPU+CPU hybrid: fit as many layers as possible in VRAM
                 },
             }
             async with httpx.AsyncClient(timeout=300.0) as client:
@@ -1171,6 +1172,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                         "temperature": req.temperature,
                         "num_predict": req.max_tokens,
                         "num_ctx": 32768,
+                        "num_gpu": -1,
                     },
                 }
                 resp2 = await client.post(
@@ -1273,7 +1275,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "messages": all_messages,
                 "temperature": req.temperature,
                 "stream": False,
-                "options": {"num_ctx": 32768, "num_predict": req.max_tokens},
+                "options": {"num_ctx": 32768, "num_predict": req.max_tokens, "num_gpu": -1},
             }
             async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
