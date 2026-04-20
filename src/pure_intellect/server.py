@@ -73,10 +73,14 @@ async def version_info():
 
 
 async def _preload_models():
-    """Предзагрузка coordinator и generator в VRAM при старте сервера.
+    """Умная предзагрузка моделей в VRAM с проверкой доступной памяти.
     
-    Посылает минимальный запрос к каждой модели с keep_alive=-1
-    чтобы Ollama держал их постоянно в памяти (как LM Studio).
+    Логика:
+    1. Получаем размер каждой модели через /api/show
+    2. Получаем доступный VRAM через /api/ps
+    3. Если обе влезают -> загружаем обе с keep_alive=-1 (постоянно)
+    4. Если не влезают -> загружаем только generator с keep_alive=-1,
+       coordinator загружается по запросу (он маленький, быстро)
     """
     import httpx
     from .engines.config_loader import load_config
@@ -85,20 +89,97 @@ async def _preload_models():
         cfg = load_config()
         coordinator = cfg.coordinator.model
         generator = cfg.generator.model
-        logger.info(f"🔥 Preloading models: {coordinator} + {generator}")
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        logger.info(f"🧠 VRAM check before preload...")
+        
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # Шаг 1: получаем размеры моделей
+            sizes = {}
             for model in [coordinator, generator]:
                 try:
                     resp = await client.post(
-                        "http://localhost:11434/api/generate",
-                        json={"model": model, "prompt": "", "keep_alive": -1},
+                        "http://localhost:11434/api/show",
+                        json={"name": model}
                     )
                     if resp.status_code == 200:
-                        logger.info(f"   ✅ {model} loaded into VRAM")
+                        data = resp.json()
+                        # size в байтах
+                        size_bytes = data.get("size", 0)
+                        sizes[model] = size_bytes
+                        size_gb = size_bytes / (1024**3)
+                        logger.info(f"   {model}: {size_gb:.1f} GB")
                     else:
-                        logger.warning(f"   ⚠️ {model} preload failed: {resp.status_code}")
+                        logger.warning(f"   Cannot get size for {model}: {resp.status_code}")
+                        sizes[model] = 0
                 except Exception as e:
-                    logger.warning(f"   ⚠️ {model} preload error: {e}")
+                    logger.warning(f"   Size check failed for {model}: {e}")
+                    sizes[model] = 0
+
+            # Шаг 2: получаем доступный VRAM
+            available_vram_bytes = 0
+            try:
+                ps_resp = await client.get("http://localhost:11434/api/ps")
+                if ps_resp.status_code == 200:
+                    # Ollama не возвращает free VRAM напрямую
+                    # Используем nvidia-smi через subprocess
+                    import subprocess
+                    result = subprocess.run(
+                        ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    if result.returncode == 0:
+                        free_mb = int(result.stdout.strip().split("
+")[0])
+                        available_vram_bytes = free_mb * 1024 * 1024
+                        logger.info(f"   Free VRAM: {free_mb / 1024:.1f} GB")
+            except Exception as e:
+                logger.warning(f"   VRAM check failed: {e}")
+                # Assume 8GB available as safe default
+                available_vram_bytes = 8 * 1024**3
+
+            # Шаг 3: решаем стратегию загрузки
+            total_needed = sum(sizes.values())
+            # Добавляем 10% запас для KV cache и compute
+            total_needed_with_overhead = total_needed * 1.1
+            
+            coordinator_gb = sizes.get(coordinator, 0) / (1024**3)
+            generator_gb = sizes.get(generator, 0) / (1024**3)
+            total_gb = total_needed_with_overhead / (1024**3)
+            free_gb = available_vram_bytes / (1024**3)
+            
+            logger.info(f"   Need: {total_gb:.1f} GB | Free: {free_gb:.1f} GB")
+
+            if total_needed_with_overhead <= available_vram_bytes:
+                # Обе модели влезают -> загружаем обе постоянно
+                logger.info(f"🟢 Both models fit! Loading both with keep_alive=-1")
+                for model in [coordinator, generator]:
+                    try:
+                        resp = await client.post(
+                            "http://localhost:11434/api/generate",
+                            json={"model": model, "prompt": "", "keep_alive": -1},
+                        )
+                        if resp.status_code == 200:
+                            logger.info(f"   ✅ {model} loaded (permanent)")
+                        else:
+                            logger.warning(f"   ⚠️ {model}: {resp.status_code}")
+                    except Exception as e:
+                        logger.warning(f"   ⚠️ {model}: {e}")
+            else:
+                # Не влезают обе -> загружаем только generator постоянно
+                # Coordinator маленький (2-3B), загрузится быстро по запросу
+                logger.info(f"🟡 Not enough VRAM for both. Loading generator only.")
+                logger.info(f"   Coordinator ({coordinator_gb:.1f}GB) will load on-demand")
+                try:
+                    resp = await client.post(
+                        "http://localhost:11434/api/generate",
+                        json={"model": generator, "prompt": "", "keep_alive": -1},
+                    )
+                    if resp.status_code == 200:
+                        logger.info(f"   ✅ {generator} loaded (permanent)")
+                    else:
+                        logger.warning(f"   ⚠️ {generator}: {resp.status_code}")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ {generator}: {e}")
+
     except Exception as e:
         logger.warning(f"Model preload failed: {e}")
 
