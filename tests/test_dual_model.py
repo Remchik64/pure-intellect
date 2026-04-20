@@ -15,7 +15,9 @@ from src.pure_intellect.core.dual_model import (
 
 class TestDualModelRouterInit:
     def test_default_models(self):
-        router = DualModelRouter()
+        with patch('src.pure_intellect.core.dual_model._load_models_from_config',
+                   return_value=(COORDINATOR_MODEL, GENERATOR_MODEL)):
+            router = DualModelRouter()
         assert router.coordinator_model == COORDINATOR_MODEL
         assert router.generator_model == GENERATOR_MODEL
 
@@ -41,7 +43,9 @@ class TestDualModelRouterInit:
         assert router._generator_available is None
 
     def test_repr_pending(self):
-        router = DualModelRouter()
+        with patch('src.pure_intellect.core.dual_model._load_models_from_config',
+                   return_value=(COORDINATOR_MODEL, GENERATOR_MODEL)):
+            router = DualModelRouter()
         r = repr(router)
         assert COORDINATOR_MODEL in r
         assert GENERATOR_MODEL in r

@@ -457,6 +457,18 @@ async def cci_reset():
         logger.error(f"CCI reset failed: {e}")
 
 
+@router.get("/coordinates")
+async def get_coordinates():
+    """Информация о текущих координатах сессии (для UI)."""
+    try:
+        pipeline = get_pipeline()
+        return pipeline.coordinates_info()
+    except Exception as e:
+        logger.error(f"Coordinates info failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 @router.get("/session/info")
 async def session_info():
     """Информация о текущей сохранённой сессии."""

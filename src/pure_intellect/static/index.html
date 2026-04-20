@@ -998,17 +998,28 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 /* ===== Session list ===== */
 .session-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
   padding: 10px 14px;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 6px;
   margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
 }
-
-.session-id { font-family: monospace; font-size: 12px; color: var(--accent); }
+.session-item:hover { border-color: var(--accent); }
+.session-item.active-session { border-color: var(--accent); background: var(--surface3, var(--surface2)); }
+.session-item-row { display: flex; align-items: center; gap: 8px; }
+.session-name { font-weight: 600; font-size: 14px; flex: 1; }
+.session-id { font-family: monospace; font-size: 11px; color: var(--text-dim); }
 .session-turns { font-size: 12px; color: var(--text-dim); }
+.session-date { font-size: 11px; color: var(--text-dim); }
+.session-actions { display: flex; gap: 6px; }
+/* ===== Coordinates ===== */
+.coord-item { padding: 8px 12px; background: var(--surface2); border-left: 3px solid var(--accent); border-radius: 4px; margin-bottom: 8px; font-size: 12px; line-height: 1.5; }
+.coord-meta { display: flex; gap: 8px; margin-bottom: 4px; color: var(--text-dim); font-size: 11px; }
+.coord-meta-badge { background: var(--accent); color: #000; border-radius: 3px; padding: 1px 5px; font-size: 10px; }
 
 /* ===== Responsive Sidebar Toggle ===== */
 #sidebar-toggle {
@@ -1194,10 +1205,22 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <!-- Sessions -->
       <div class="card">
         <div class="card-title row between">
-          <span>📋 Active Sessions</span>
-          <button class="btn" onclick="loadSessions()">↻ Refresh</button>
+          <span>📋 Сессии</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn" onclick="createNewSession()">+ Новая</button>
+            <button class="btn" onclick="loadSessions()">↻</button>
+          </div>
         </div>
-        <div class="mt-12" id="d-sessions-list"><div class="empty-state"><div class="empty-icon">📋</div>Loading...</div></div>
+        <div class="mt-12" id="d-sessions-list"><div class="empty-state"><div class="empty-icon">📋</div>Загрузка...</div></div>
+      </div>
+
+      <!-- Coordinates -->
+      <div class="card">
+        <div class="card-title row between">
+          <span>🧭 Координаты контекста</span>
+          <button class="btn" onclick="loadCoordinates()">↻</button>
+        </div>
+        <div class="mt-8" id="d-coordinates"><div class="empty-state"><div class="empty-icon">🧭</div>Нет координат</div></div>
       </div>
     </div>
 
@@ -1982,6 +2005,7 @@ async function loadDashboard() {
 
   // Sessions list
   loadSessions();
+  loadCoordinates();
 
   document.getElementById('dash-updated').textContent = `— обновлено в ${fmtTime()}`;
 }
@@ -2036,20 +2060,107 @@ async function loadSessions() {
 
   const sessions = Array.isArray(data) ? data : (data.sessions ?? []);
   if (!sessions.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>Нет активных сессий</div>';
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>Нет сессий</div>';
     return;
   }
 
   el.innerHTML = sessions.map(s => {
     const id = s.session_id ?? s.id ?? '?';
-    const turns = s.turn_count ?? s.turns ?? 0;
+    const name = s.display_name ?? id;
+    const turns = s.turn ?? s.turn_count ?? s.turns ?? 0;
     const active = s.is_active ?? s.active ?? false;
-    return `<div class="session-item">
-      <span class="session-id">${esc(id)}</span>
-      <span class="session-turns">${turns} turns</span>
-      ${active ? '<span class="tag green">Active</span>' : ''}
+    const icon = s.icon ?? '💬';
+    const date = s.last_active ? new Date(s.last_active).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="session-item ${active ? 'active-session' : ''}" onclick="switchSession('${esc(id)}')">
+      <div class="session-item-row">
+        <span>${icon}</span>
+        <span class="session-name">${esc(name)}</span>
+        ${active ? '<span class="tag green" style="font-size:10px">Активна</span>' : ''}
+      </div>
+      <div class="session-item-row">
+        <span class="session-turns">${turns} turns</span>
+        <span class="session-date">${date}</span>
+        <span style="flex:1"></span>
+        <button class="btn" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();renameSession('${esc(id)}','${esc(name)}')">✏️</button>
+        ${!active ? `<button class="btn danger" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();deleteSessionById('${esc(id)}')">🗑</button>` : ''}
+      </div>
     </div>`;
   }).join('');
+}
+
+async function switchSession(sessionId) {
+  const r = await api(`/api/v1/sessions/${encodeURIComponent(sessionId)}/switch`, { method: 'POST' });
+  if (r) { loadSessions(); loadDashboard(); showToast('Сессия переключена: ' + sessionId); }
+}
+
+async function deleteSessionById(sessionId) {
+  if (!confirm(`Удалить сессию "${sessionId}"? Данные будут потеряны.`)) return;
+  const r = await api(`/api/v1/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+  if (r) { loadSessions(); showToast('Сессия удалена'); }
+}
+
+async function renameSession(sessionId, currentName) {
+  const newName = prompt('Новое имя сессии:', currentName);
+  if (!newName || newName === currentName) return;
+  const r = await api(`/api/v1/sessions/${encodeURIComponent(sessionId)}/rename`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ display_name: newName })
+  });
+  if (r) { loadSessions(); showToast('Переименовано: ' + newName); }
+}
+
+async function createNewSession() {
+  const name = prompt('Имя новой сессии (оставьте пустым для автогенерации):');
+  const body = { session_type: 'chat' };
+  if (name && name.trim()) body.display_name = name.trim();
+  const r = await api('/api/v1/sessions/new', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (r) { loadSessions(); loadDashboard(); showToast('Создана новая сессия'); }
+}
+
+async function loadCoordinates() {
+  const data = await api('/api/v1/coordinates');
+  const el = document.getElementById('d-coordinates');
+  if (!data) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div>Ошибка загрузки</div>'; return; }
+
+  const stats = data.stats ?? {};
+  const active = data.active_coordinates ?? [];
+  const meta = data.meta_coordinate;
+  const archived = stats.archived_batches ?? 0;
+
+  if (!active.length && !meta) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🧭</div>Координаты появятся после первого Soft Reset<br><small style="color:var(--text-dim)">Архивировано батчей: ${archived}</small></div>`;
+    return;
+  }
+
+  let html = `<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">Активных: ${active.length} | Архивных батчей: ${archived} | ~${data.prompt_tokens_estimate ?? 0} токенов</div>`;
+
+  if (meta) {
+    html += `<div class="coord-item">
+      <div class="coord-meta"><span class="coord-meta-badge">МЕТА</span><span>Turn ${meta.turn}</span><span>${meta.created_at ? new Date(meta.created_at).toLocaleDateString('ru-RU') : ''}</span></div>
+      <div>${esc(meta.content)}</div>
+    </div>`;
+  }
+
+  active.forEach((c, i) => {
+    html += `<div class="coord-item">
+      <div class="coord-meta"><span class="coord-meta-badge">#${i+1}</span><span>Turn ${c.turn}</span><span>${c.created_at ? new Date(c.created_at).toLocaleDateString('ru-RU') : ''}</span></div>
+      <div>${esc(c.content)}</div>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function showToast(msg) {
+  let t = document.getElementById('pi-toast');
+  if (!t) { t = document.createElement('div'); t.id = 'pi-toast'; t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--accent);color:#000;padding:10px 18px;border-radius:8px;font-size:14px;z-index:9999;transition:opacity 0.3s'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 2500);
 }
 
 function startDashboardRefresh() {

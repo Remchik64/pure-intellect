@@ -750,6 +750,36 @@ class OrchestratorPipeline:
 
     # ── F1: Multi-session API ────────────────────────────────
 
+    def coordinates_info(self) -> dict:
+        """Информация о текущих координатах (для UI)."""
+        stats = self._meta_coordinator.stats()
+        active = [
+            {
+                "content": r.content[:300] + "..." if len(r.content) > 300 else r.content,
+                "turn": r.turn,
+                "created_at": r.created_at,
+                "is_meta": False,
+            }
+            for r in self._meta_coordinator._active
+        ]
+        meta = None
+        if self._meta_coordinator._meta:
+            m = self._meta_coordinator._meta
+            meta = {
+                "content": m.content[:400] + "..." if len(m.content) > 400 else m.content,
+                "turn": m.turn,
+                "created_at": m.created_at,
+            }
+        prompt_ctx = self._meta_coordinator.get_context_for_prompt()
+        return {
+            "stats": stats,
+            "active_coordinates": active,
+            "meta_coordinate": meta,
+            "has_context": bool(prompt_ctx),
+            "prompt_tokens_estimate": len(prompt_ctx) // 4 if prompt_ctx else 0,
+        }
+
+
     def get_sessions(self) -> dict:
         """Список всех сессий."""
         return self._session_manager.stats()
