@@ -26,9 +26,13 @@ Thumbs.db
 
 # Project storage
 storage/chromadb/
+storage/sessions/
 storage/archive/*.json.gz
 storage/graph.json
 storage/metadata.db
+
+# Internal developer notes (not for public)
+AGENT_MEMO.md
 
 # Environment variables
 .env

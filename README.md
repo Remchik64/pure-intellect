@@ -49,8 +49,8 @@ Pure Intellect solves the fundamental problem of LLM context limitation — **co
 ### 🔌 OpenAI-Compatible API
 - `POST /v1/chat/completions` — standard OpenAI format
 - `GET /v1/models` — model list
-- **Agent Zero**, **Open WebUI**, **LM Studio** connect in 30 seconds
-- Memory works transparently for any OpenAI-compatible client
+- Any OpenAI-compatible client connects instantly
+- Memory works transparently for any client
 
 ### 🖥️ Admin Panel
 - Full web interface at `http://localhost:7860`
@@ -58,7 +58,7 @@ Pure Intellect solves the fundamental problem of LLM context limitation — **co
 - **Models** — hardware detection + model recommendations + download
 - **Memory** — view/search/delete facts and coordinates
 - **Projects** — code indexing, watcher control
-- **Connections** — copy configs for Agent Zero / Open WebUI
+- **Connections** — integration configs 🚧 *In Development*
 - **Settings** — CCI threshold, memory limits (live config)
 
 ### 🔍 Hardware Detection
@@ -77,25 +77,16 @@ Pure Intellect solves the fundamental problem of LLM context limitation — **co
 
 **Windows:**
 
-📥 [**Скачать install.bat**](https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat) — или через PowerShell:
+📥 [**Download install.bat**](https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat) — or via PowerShell:
 
 ```powershell
-# Открыть PowerShell и выполнить:
 Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat -OutFile install.bat
-# Затем Right-click → Запуск от имени администратора
-# или:
 .\install.bat
 ```
-
-> **Прямая ссылка на файл:**
-> `https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat`
-
 
 **Linux / macOS:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.sh | bash
-# or download and run:
-bash install.sh
 ```
 
 The installer will:
@@ -129,51 +120,6 @@ After installation, open `http://localhost:7860` and:
 3. See recommendations for your system
 4. Click **"Скачать"** (Download) to get recommended models
 5. Start chatting! 🎉
-
----
-
-## 🔌 Integration with Agent Zero
-
-Pure Intellect acts as a **memory middleware** between Agent Zero and Ollama:
-
-```
-Agent Zero → Pure Intellect (memory layer) → Ollama
-```
-
-Configure Agent Zero:
-```json
-{
-  "chat_model": {
-    "provider": "openai",
-    "name": "pure-intellect",
-    "kwargs": {
-      "api_base": "http://localhost:7860/v1",
-      "api_key": "pure-intellect"
-    }
-  }
-}
-```
-
-Agent Zero gets memory for free — no code changes needed!
-
----
-
-## 🔌 Integration with LM Studio
-
-**LM Studio as backend for Pure Intellect:**
-```yaml
-# config.yaml
-generator:
-  provider: lmstudio
-  base_url: http://localhost:1234
-  model: your-model-name
-```
-
-**Pure Intellect as backend for LM Studio:**
-```
-LM Studio → Remote Server
-URL: http://localhost:7860/v1
-```
 
 ---
 
@@ -215,7 +161,7 @@ URL: http://localhost:7860/v1
 │  └───────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────┘
          │
-    Ollama / LM Studio / Any OpenAI-compatible
+    Ollama (backend)
 ```
 
 ---
@@ -238,6 +184,8 @@ pure-intellect/
 │   ├── utils/        # Hardware detector, tokenizer
 │   └── static/       # Admin Panel (index.html)
 ├── tests/            # 465 tests
+├── benchmarks/       # Performance benchmarks
+├── docs/             # Documentation
 ├── install.bat       # Windows installer
 ├── install.sh        # Linux/macOS installer
 ├── config.yaml       # Configuration
@@ -274,6 +222,45 @@ cci:
   window_size: 5
   reset_threshold: 0.55
 ```
+
+---
+
+## 🔌 Integrations
+
+### ✅ Ollama (Working)
+
+Pure Intellect uses Ollama as the default backend. Install Ollama and pull models — the Admin Panel handles the rest.
+
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull recommended models
+ollama pull qwen2.5:3b
+ollama pull qwen2.5:7b
+```
+
+### 🚧 LM Studio *(In Development)*
+
+LM Studio integration as a backend provider is planned but not yet fully functional.
+
+```yaml
+# config.yaml — experimental, not guaranteed to work
+generator:
+  provider: lmstudio
+  base_url: http://localhost:1234
+  model: your-model-name
+```
+
+### 🚧 Open WebUI *(In Development)*
+
+Connecting Pure Intellect to Open WebUI as a backend is planned. Instructions will be added when stable.
+
+### 🚧 Agent Zero *(In Development)*
+
+Deep integration with Agent Zero (replacing its memory backend with Pure Intellect) is under active development in a separate repository.
+
+The integration goal: Agent Zero uses Pure Intellect as its memory layer — hierarchical memory, Anchor Facts, and Coordinate system — without modifying Agent Zero's core GEN/EXE cycle.
 
 ---
 
@@ -318,9 +305,12 @@ pure-intellect serve --port 7860
 - [x] Hardware Detection + Model Recommendations
 - [x] Install Scripts (Windows/Linux/macOS)
 - [ ] PyPI package (`pip install pure-intellect`)
+- [ ] LM Studio backend provider 🚧
+- [ ] Open WebUI integration 🚧
+- [ ] Agent Zero memory backend 🚧
 - [ ] HuggingFace Hub model provider
-- [ ] Electron desktop app
 - [ ] Docker image
+- [ ] Electron desktop app
 
 ---
 
@@ -353,16 +343,6 @@ With conditions:
 - 📋 Original author attribution required
 
 See [LICENSE](LICENSE) for full terms.
-
-```
-Copyright 2025 Remchik
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-```
 
 ---
 
