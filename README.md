@@ -6,6 +6,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
 [![Tests](https://img.shields.io/badge/Tests-465%20passed-brightgreen.svg)](tests/)
 [![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2Fpure--intellect-black.svg)](https://github.com/Remchik64/pure-intellect)
+[![Support on Boosty](https://img.shields.io/badge/Support%20on-Boosty-orange.svg)](https://boosty.to/rem64)
 
 ![Pure Intellect Admin Panel](docs/images/admin-panel.png)
 
@@ -361,7 +362,7 @@ See [LICENSE](LICENSE) for full terms.
 
 *Built with ❤️ by Ренат Яраев (Remchik64)*
 
-[GitHub](https://github.com/Remchik64/pure-intellect) · [Issues](https://github.com/Remchik64/pure-intellect/issues) · [License](LICENSE) · [VK](https://vk.com/remchik64)
+[GitHub](https://github.com/Remchik64/pure-intellect) · [Issues](https://github.com/Remchik64/pure-intellect/issues) · [License](LICENSE) · [VK](https://vk.com/remchik64) · [Boosty](https://boosty.to/rem64)
 
 📧 renataraev51@gmail.com · remch2013@yandex.ru
 
