@@ -169,7 +169,7 @@ storage/
 
 | Способ установки | Путь к storage |
 |-----------------|----------------|
-| Windows (installer, install.bat) | `%APPDATA%\PureIntellect\storage\` |
+| Windows (installer, install.bat) | `Desktop\storage\` и `Desktop\models\` (рядом с `start.bat`) |
 | Linux / macOS / dev install | `./storage/` от рабочей директории |
 
 ### Почему это важно

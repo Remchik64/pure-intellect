@@ -22,13 +22,32 @@
 
 ### Windows
 
+**Шаг 1 — Скачать оба файла на рабочий стол:**
+
 ```powershell
-# PowerShell:
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat -OutFile install.bat
-.\install.bat
+# PowerShell — скачать install.bat
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat -OutFile "$env:USERPROFILE\Desktop\install.bat"
+
+# Скачать start.bat
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/start.bat -OutFile "$env:USERPROFILE\Desktop\start.bat"
 ```
 
-Или скачайте `install.bat` и запустите от имени администратора.
+Или скачайте `install.bat` и `start.bat` вручную со страницы репозитория и положите оба на рабочий стол.
+
+**Шаг 2 — Запустить install.bat от имени администратора:**
+- Right-click → «Запуск от имени администратора»
+- Скрипт установит Python зависимости и Ollama
+
+**Шаг 3 — Запустить start.bat:**
+- Double-click по `start.bat`
+- Сервер запустится, браузер откроет `http://127.0.0.1:7860`
+- На рабочем столе автоматически появятся папки `storage/` и `models/`
+
+> 📁 **Папки на рабочем столе:**
+> - `storage/` — вся память сессий, история диалогов, координаты soft reset
+> - `models/` — место для локальных моделей
+>
+> Эти папки создаются рядом с `start.bat` при первом запуске. Они остаются на месте при перезапуске и обновлении — **ваша память никуда не пропадает**.
 
 ### Linux / macOS
 
@@ -40,8 +59,8 @@ curl -fsSL https://raw.githubusercontent.com/Remchik64/pure-intellect/main/insta
 1. Проверяет Python 3.11+
 2. Устанавливает Ollama (если нет)
 3. Устанавливает Pure Intellect через pip
-4. Создаёт ярлык/лаунчер
-5. Запускает сервер
+4. Запускает сервер
+
 
 ---
 
