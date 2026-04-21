@@ -74,7 +74,7 @@ Pure Intellect solves the fundamental problem of LLM context limitation — **co
 - **Coordinate Archive** — every soft reset snapshot is stored permanently in `coordinate_archive/`
 - **Model-independent** — switch models anytime, memory is never lost
 - **Multi-session** — each session has its own isolated storage folder
-- On Windows (installer): `%APPDATA%\PureIntellect\storage\sessions\<session_id>\`
+- On Windows (installer): `Desktop\storage\sessions\<session_id>\` (next to start.bat)
 - On Linux/macOS: `./storage/sessions/<session_id>/` from working directory
 
 
@@ -361,6 +361,8 @@ See [LICENSE](LICENSE) for full terms.
 
 *Built with ❤️ by Ренат Яраев (Remchik64)*
 
-[GitHub](https://github.com/Remchik64/pure-intellect) · [Issues](https://github.com/Remchik64/pure-intellect/issues) · [License](LICENSE)
+[GitHub](https://github.com/Remchik64/pure-intellect) · [Issues](https://github.com/Remchik64/pure-intellect/issues) · [License](LICENSE) · [VK](https://vk.com/remchik64)
+
+📧 renataraev51@gmail.com · remch2013@yandex.ru
 
 </div>
