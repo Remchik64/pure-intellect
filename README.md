@@ -69,6 +69,15 @@ Pure Intellect solves the fundamental problem of LLM context limitation — **co
   - VRAM 3-6GB → GPU LIMITED (3B models)
   - No GPU → CPU ONLY mode
 
+### 💾 Persistent Memory Storage
+- All memory is **saved to disk** — restart the server and it remembers everything
+- **Coordinate Archive** — every soft reset snapshot is stored permanently in `coordinate_archive/`
+- **Model-independent** — switch models anytime, memory is never lost
+- **Multi-session** — each session has its own isolated storage folder
+- On Windows (installer): `%APPDATA%\PureIntellect\storage\sessions\<session_id>\`
+- On Linux/macOS: `./storage/sessions/<session_id>/` from working directory
+
+
 ---
 
 ## 🚀 Quick Start
