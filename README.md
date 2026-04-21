@@ -327,7 +327,7 @@ Contributions are welcome! Please:
 
 ## 📜 License
 
-Copyright 2025 **Remchik**
+Copyright 2025 **Яраев Ренат Жавдетович**
 
 Licensed under the **Apache License, Version 2.0**.
 
@@ -350,7 +350,7 @@ See [LICENSE](LICENSE) for full terms.
 
 **Pure Intellect** — Local AI with unlimited memory
 
-*Built with ❤️ by Remchik*
+*Built with ❤️ by Ренат Яраев (Remchik64)*
 
 [GitHub](https://github.com/Remchik64/pure-intellect) · [Issues](https://github.com/Remchik64/pure-intellect/issues) · [License](LICENSE)
 
