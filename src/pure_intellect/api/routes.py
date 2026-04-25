@@ -1275,26 +1275,39 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             except Exception:
                 memory_context = ""
 
-            # Передаём ВСЕ messages как есть, только добавляем память к system
+            # JSON reminder для малых моделей которые забывают формат
+            _JSON_REMINDER = (
+                "\n\n[SYSTEM REMINDER: You MUST respond with valid JSON only. "
+                "Format: {\"thoughts\":[...],\"tool_name\":\"...\",\"tool_args\":{...}} "
+                "No plain text. No markdown. Only JSON object.]"
+            )
+
+            # Передаём ВСЕ messages как есть + память + JSON reminder к system
             all_messages = []
             for m in req.messages:
-                if m.role == "system" and memory_context:
-                    all_messages.append({"role": "system", "content": m.content + memory_context})
+                if m.role == "system":
+                    all_messages.append({"role": "system", "content": m.content + memory_context + _JSON_REMINDER})
                 else:
                     all_messages.append({"role": m.role, "content": m.content or ""})
 
-            # Generator model из config
-            try:
-                from pure_intellect.engines.config_loader import load_config as _lc
-                gen_model = _lc().generator.model
-            except Exception:
-                # Умный fallback: берём первую доступную модель из Ollama
+            # Generator model: приоритет az_plugin_config → config.yaml → первая из Ollama
+            az_cfg = _load_az_plugin_config()
+            gen_model = az_cfg.get("generator_model", "").strip() or None
+            if not gen_model:
+                try:
+                    from pure_intellect.engines.config_loader import load_config as _lc
+                    gen_model = _lc().generator.model
+                except Exception:
+                    gen_model = None
+            if not gen_model:
                 try:
                     _r = httpx.get("http://localhost:11434/api/tags", timeout=5)
                     _models = [m["name"] for m in _r.json().get("models", [])]
-                    gen_model = _models[0] if _models else "qwen2.5:7b"
+                    gen_model = _models[0] if _models else None
                 except Exception:
-                    gen_model = "qwen2.5:7b"
+                    gen_model = None
+            if not gen_model:
+                raise HTTPException(status_code=503, detail="No generator model available. Please configure generator_model in PI Admin Panel or install a model via Ollama.")
 
             ollama_payload = {
                 "model": gen_model,
@@ -1566,6 +1579,7 @@ _AZ_PLUGIN_CONFIG_FILE = os.path.join(
 _DEFAULT_AZ_PLUGIN_CONFIG = {
     "pi_server": "http://host.docker.internal:7860",
     "utility_model": "qwen2.5:3b",
+    "generator_model": "",
     "session_id": "agent_zero",
     "recall_threshold": 0.4,
     "recall_limit": 5,
@@ -1577,12 +1591,12 @@ _DEFAULT_AZ_PLUGIN_CONFIG = {
 class AZPluginConfigModel(BaseModel):
     pi_server: str = "http://host.docker.internal:7860"
     utility_model: str = "qwen2.5:3b"
+    generator_model: str = ""
     session_id: str = "agent_zero"
     recall_threshold: float = 0.4
     recall_limit: int = 5
     recall_enabled: bool = True
     memorize_enabled: bool = True
-
 
 def _load_az_plugin_config() -> dict:
     """Загрузить конфиг плагина AZ из файла."""
