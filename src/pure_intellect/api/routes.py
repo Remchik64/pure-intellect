@@ -52,6 +52,14 @@ logging.getLogger().addHandler(_mem_handler)
 
 
 
+import re as _re
+
+
+def _strip_thinking(text: str) -> str:
+    """Убрать  блоки qwen3/deepseek thinking mode из текста."""
+    return _re.sub(r'', '', text, flags=_re.DOTALL | _re.IGNORECASE).strip()
+
+
 def _extract_first_json(text: str) -> str:
     """Извлечь первый полный JSON объект из текста.
     
@@ -59,6 +67,8 @@ def _extract_first_json(text: str) -> str:
     два JSON объекта подряд или добавляют текст после JSON.
     Эта функция извлекает только первый валидный объект.
     """
+    # Убираем thinking блоки qwen3.5 / deepseek перед поиском JSON
+    text = _strip_thinking(text)
     start = text.find('{')
     if start == -1:
         return text
