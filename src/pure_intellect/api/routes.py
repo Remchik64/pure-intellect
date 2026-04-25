@@ -796,6 +796,7 @@ async def list_sessions():
 async def create_new_session(req: NewSessionRequest):
     """Создать новую сессию и переключиться на неё."""
     try:
+        pipeline = get_pipeline()
         result = pipeline.create_new_session(
             display_name=req.display_name,
             session_type=req.session_type,
@@ -803,7 +804,7 @@ async def create_new_session(req: NewSessionRequest):
         )
         return result
     except Exception as e:
-        logger.error(f"Create session failed: {e}")
+        logger.error(f"Create session failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -811,6 +812,7 @@ async def create_new_session(req: NewSessionRequest):
 async def switch_session(session_id: str):
     """Переключить активную сессию."""
     try:
+        pipeline = get_pipeline()
         result = pipeline.switch_session(session_id)
         if not result.get("success"):
             raise HTTPException(status_code=404, detail=result.get("error", "Session not found"))
@@ -818,7 +820,7 @@ async def switch_session(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Switch session failed: {e}")
+        logger.error(f"Switch session failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -826,10 +828,11 @@ async def switch_session(session_id: str):
 async def rename_session(session_id: str, req: RenameSessionRequest):
     """Переименовать сессию."""
     try:
+        pipeline = get_pipeline()
         result = pipeline.rename_session(session_id, req.display_name)
         return result
     except Exception as e:
-        logger.error(f"Rename session failed: {e}")
+        logger.error(f"Rename session failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -837,6 +840,7 @@ async def rename_session(session_id: str, req: RenameSessionRequest):
 async def delete_session(session_id: str):
     """Удалить сессию."""
     try:
+        pipeline = get_pipeline()
         result = pipeline.delete_session_by_id(session_id)
         if not result.get("success"):
             raise HTTPException(status_code=400, detail="Cannot delete this session")
@@ -844,7 +848,7 @@ async def delete_session(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Delete session failed: {e}")
+        logger.error(f"Delete session failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1383,9 +1387,9 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "messages": all_messages,
                 "temperature": req.temperature,
                 "stream": False,
-                "options": {"num_ctx": 32768, "num_gpu": -1},
+                "options": {"num_ctx": 8192, "num_gpu": -1, "keep_alive": -1},
             }
-            async with httpx.AsyncClient(timeout=300.0) as client:
+            async with httpx.AsyncClient(timeout=None) as client:
                 resp = await client.post(
                     "http://localhost:11434/v1/chat/completions",
                     json=ollama_payload,
