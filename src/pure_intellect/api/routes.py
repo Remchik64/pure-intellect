@@ -434,6 +434,77 @@ async def memory_clear():
     except Exception as e:
         logger.error(f"Memory clear failed: {e}")
 
+class FactSaveRequest(BaseModel):
+    text: str
+    importance: float = 0.7
+    is_anchor: bool = False
+    session_id: str = "default"
+    metadata: dict = {}
+
+
+@router.post("/memory/fact")
+async def save_memory_fact(request: FactSaveRequest):
+    """Сохранить факт в рабочую память PI (для Agent Zero memory bridge)."""
+    try:
+        pipeline = get_pipeline()
+        if request.is_anchor:
+            fact = pipeline.working_memory.add_anchor(
+                request.text, source="agent_zero"
+            )
+        else:
+            fact = pipeline.working_memory.add_text(
+                request.text, source="agent_zero",
+                importance=request.importance,
+                **request.metadata
+            )
+        return {"id": fact.fact_id, "status": "saved", "is_anchor": fact.is_anchor}
+    except Exception as e:
+        logger.error(f"Save memory fact failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/memory/search")
+async def search_memory_facts(
+    query: str,
+    limit: int = 10,
+    session_id: str = "default"
+):
+    """Поиск фактов в памяти PI (для Agent Zero memory bridge)."""
+    try:
+        pipeline = get_pipeline()
+        # Поиск в долгосрочном хранилище
+        storage_results = pipeline.memory_storage.retrieve(query, top_k=limit)
+        # Также берём из рабочей памяти (горячие факты)
+        wm_facts = pipeline.working_memory.get_facts()
+        # Объединяем - рабочая память приоритетнее
+        seen_ids = set()
+        results = []
+        for fact in wm_facts:
+            if fact.fact_id not in seen_ids and query.lower() in fact.content.lower():
+                results.append({
+                    "id": fact.fact_id,
+                    "text": fact.content,
+                    "score": fact.attention_weight,
+                    "is_anchor": fact.is_anchor,
+                    "metadata": {"source": "working_memory"}
+                })
+                seen_ids.add(fact.fact_id)
+        for fact in storage_results:
+            if fact.fact_id not in seen_ids:
+                results.append({
+                    "id": fact.fact_id,
+                    "text": fact.content,
+                    "score": fact.attention_weight,
+                    "is_anchor": fact.is_anchor,
+                    "metadata": {"source": "storage"}
+                })
+                seen_ids.add(fact.fact_id)
+        return {"results": results[:limit], "total": len(results)}
+    except Exception as e:
+        logger.error(f"Memory search failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @router.get("/cci/stats")
 async def cci_stats():
