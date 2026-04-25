@@ -60,18 +60,30 @@ def _strip_thinking(text: str) -> str:
     return _re.sub(r'', '', text, flags=_re.DOTALL | _re.IGNORECASE).strip()
 
 
+def _make_fallback_json(text: str) -> str:
+    """Обернуть текст в валидный JSON response если модель вернула не-JSON."""
+    import json as _json
+    # Экранируем текст для JSON
+    safe_text = _json.dumps(text)[1:-1]  # убираем внешние кавычки
+    return '{"thoughts":["Model returned non-JSON response, wrapping as text"],"tool_name":"response","tool_args":{"text":"' + safe_text + '"}}'
+
+
 def _extract_first_json(text: str) -> str:
     """Извлечь первый полный JSON объект из текста.
     
-    Некоторые модели (ministral-3:14b и др.) иногда генерируют
-    два JSON объекта подряд или добавляют текст после JSON.
-    Эта функция извлекает только первый валидный объект.
+    Некоторые модели (ministral-3:14b, qwen3.5 и др.) иногда генерируют
+     блоки, два JSON объекта подряд, markdown или добавляют
+    текст после JSON. Эта функция:
+    1. Убирает thinking блоки
+    2. Извлекает первый валидный JSON
+    3. Если JSON не найден — оборачивает текст в fallback response JSON
     """
     # Убираем thinking блоки qwen3.5 / deepseek перед поиском JSON
     text = _strip_thinking(text)
     start = text.find('{')
     if start == -1:
-        return text
+        # Нет JSON вообще — оборачиваем весь текст как response
+        return _make_fallback_json(text)
     depth = 0
     in_string = False
     escape = False
@@ -100,7 +112,8 @@ def _extract_first_json(text: str) -> str:
                 except Exception:
                     # Нашли баланс скобок но JSON невалиден — ищем дальше
                     pass
-    return text
+    # JSON не найден или невалиден — оборачиваем как response
+    return _make_fallback_json(text)
 
 
 def get_model_manager() -> ModelManager:
