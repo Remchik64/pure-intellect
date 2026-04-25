@@ -91,6 +91,25 @@ async def _load_az_plugin_utility_model() -> str:
                 pass
     return ""
 
+async def _load_az_plugin_embedding_model() -> str:
+    """Читает embedding_model из az_plugin_config.yaml."""
+    import yaml, pathlib
+    for candidate in [
+        pathlib.Path("az_plugin_config.yaml"),
+        pathlib.Path.home() / "AppData/Roaming/pure_intellect/az_plugin_config.yaml",
+        pathlib.Path.home() / ".pure_intellect/az_plugin_config.yaml",
+        pathlib.Path("/a0/usr/workdir/pure-intellect/az_plugin_config.yaml"),
+    ]:
+        if candidate.exists():
+            try:
+                with open(candidate) as f:
+                    cfg = yaml.safe_load(f) or {}
+                return cfg.get("embedding_model", "")
+            except Exception:
+                pass
+    return ""
+
+
 
 async def _preload_models():
     """Умная предзагрузка моделей в VRAM с проверкой доступной памяти.
@@ -110,6 +129,7 @@ async def _preload_models():
         coordinator = cfg.coordinator.model
         generator = cfg.generator.model
         utility = await _load_az_plugin_utility_model()
+        embedding = await _load_az_plugin_embedding_model()
 
         models_to_load = [coordinator, generator]
         if utility and utility not in models_to_load:
@@ -217,10 +237,24 @@ async def _preload_models():
                     )
                     if resp.status_code == 200:
                         logger.info(f"   ✅ {model} loaded (permanent)")
-                    else:
-                        logger.warning(f"   ⚠️ {model}: {resp.status_code}")
                 except Exception as e:
                     logger.warning(f"   ⚠️ {model}: {e}")
+
+            # Шаг 4: прогреваем embedding модель отдельно через /api/embed
+            if embedding:
+                try:
+                    embed_resp = await client.post(
+                        "http://localhost:11434/api/embed",
+                        json={"model": embedding, "input": "", "keep_alive": -1},
+                        timeout=60.0
+                    )
+                    if embed_resp.status_code == 200:
+                        logger.info(f"   ✅ {embedding} (embedding) loaded (permanent)")
+                    else:
+                        logger.warning(f"   ⚠️ {embedding} (embedding): {embed_resp.status_code}")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ {embedding} (embedding): {e}")
+
 
     except Exception as e:
         logger.warning(f"Model preload failed: {e}")

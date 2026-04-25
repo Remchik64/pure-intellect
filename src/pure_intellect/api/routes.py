@@ -1734,6 +1734,7 @@ _DEFAULT_AZ_PLUGIN_CONFIG = {
 class AZPluginConfigModel(BaseModel):
     pi_server: str = "http://host.docker.internal:7860"
     utility_model: str = "qwen2.5:3b"
+    embedding_model: str = "nomic-embed-text"
     generator_model: str = ""
     session_id: str = "agent_zero"
     recall_threshold: float = 0.4

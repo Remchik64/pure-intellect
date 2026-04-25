@@ -1,0 +1,9 @@
+pi_server: http://localhost:7860
+utility_model: qwen2.5:3b
+embedding_model: nomic-embed-text
+generator_model: qwen2.5:7b
+session_id: agent_zero
+recall_threshold: 0.4
+recall_limit: 5
+recall_enabled: true
+memorize_enabled: true
