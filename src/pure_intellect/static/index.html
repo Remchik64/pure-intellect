@@ -1421,6 +1421,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       </div>
 
       <!-- Active Models -->
+      <!-- Active Models -->
       <div class="card mb-16">
         <div class="card-title">Активные модели</div>
         <div class="grid-2 mt-12">
@@ -1445,6 +1446,28 @@ tr:hover td { background: rgba(255,255,255,0.02); }
               <div class="status-dot" id="m-gen-dot"></div>
               <span id="m-gen-status" class="text-dim text-sm">—</span>
             </div>
+          </div>
+        </div>
+        <!-- Utility Model Row -->
+        <div class="mt-12" style="border-top:1px solid var(--border);padding-top:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div class="model-card" style="flex:1;min-width:220px;">
+              <div class="model-icon" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;">🛠️</div>
+              <div class="model-info">
+                <div class="model-name" id="m-util-name">—</div>
+                <div class="model-role">Utility (Agent Zero)</div>
+              </div>
+              <div class="model-status">
+                <div class="status-dot" id="m-util-dot"></div>
+                <span id="m-util-status" class="text-dim text-sm">—</span>
+              </div>
+            </div>
+            <button class="btn primary" id="warm-util-btn" onclick="warmUtilityModel()" style="white-space:nowrap;">
+              🔥 Загрузить в GPU
+            </button>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
+            Utility model используется Agent Zero напрямую (суммаризация, компактизация чата). Кнопка загружает её в VRAM с keep_alive=-1.
           </div>
         </div>
         <div class="mt-12" style="font-size:12px;color:var(--text-dim);padding:8px 0 2px;border-top:1px solid var(--border);margin-top:12px;">
@@ -2590,19 +2613,35 @@ async function loadModels() {
   // 1. Получаем полный статус моделей (скачанные + VRAM + назначенные)
   const statusData = await api('/api/v1/models/status');
   if (statusData && !statusData.error) {
-    // Обновляем карточки "Активные модели" (prefix='m')
     updateDualModelUI(statusData, 'm');
-
-    // Сохраняем список активных в VRAM для таблицы
     window._modelsActiveInVram = new Set(statusData.active_in_vram ?? []);
     window._modelsDownloaded   = new Set(statusData.downloaded ?? []);
     window._modelsCoordinator  = statusData.coordinator?.model ?? '';
     window._modelsGenerator    = statusData.generator?.model ?? '';
   } else {
-    // Fallback: старый endpoint
     const dualData = await api('/api/v1/dual-model/stats');
     if (dualData) updateDualModelUI(dualData, 'm');
   }
+
+  // Utility model из AZ plugin config
+  try {
+    const azCfg = await api('/api/v1/az-plugin/config');
+    const utilModel = azCfg?.utility_model ?? '';
+    window._modelsUtility = utilModel;
+    const utilName = document.getElementById('m-util-name');
+    const utilDot  = document.getElementById('m-util-dot');
+    const utilStat = document.getElementById('m-util-status');
+    if (utilName) utilName.textContent = utilModel || '—';
+    if (utilModel) {
+      const active = window._modelsActiveInVram ?? new Set();
+      const inVram = active.has(utilModel);
+      if (utilDot) { utilDot.className = 'status-dot ' + (inVram ? 'active' : ''); }
+      if (utilStat) { utilStat.textContent = inVram ? '🔥 В памяти' : '✅ Готова'; utilStat.style.color = inVram ? '#ff8c00' : 'var(--accent)'; }
+    } else {
+      if (utilDot) utilDot.className = 'status-dot';
+      if (utilStat) { utilStat.textContent = 'Не задана'; utilStat.style.color = 'var(--text-dim)'; }
+    }
+  } catch(e) { /* ignore */ }
 
   // 2. Список скачанных моделей Ollama (через наш прокси)
   const ollamaData = await api('/api/v1/ollama/models');
@@ -2631,15 +2670,17 @@ async function loadModels() {
 
   function roleTag(name) {
     const tags = [];
+    const util = window._modelsUtility ?? '';
     if (name === coord) tags.push('<span style="font-size:10px;background:rgba(88,166,255,.2);color:var(--accent);padding:1px 6px;border-radius:4px;">🎯 Координатор</span>');
     if (name === gen)   tags.push('<span style="font-size:10px;background:rgba(188,140,255,.2);color:#bc8cff;padding:1px 6px;border-radius:4px;">⚡ Генератор</span>');
+    if (name === util)  tags.push('<span style="font-size:10px;background:rgba(124,58,237,.2);color:#a78bfa;padding:1px 6px;border-radius:4px;">🛠️ Утилита</span>');
     return tags.join(' ');
   }
-
   tbody.innerHTML = models.map(m => {
     const name     = m.name ?? m.model ?? '—';
     const size     = fmtSize(m.size);
     const modified = fmtDate(m.modified_at ?? m.modified);
+    const util     = window._modelsUtility ?? '';
     return `<tr class="ollama-model-row">
       <td><strong>${esc(name)}</strong><br><small>${roleTag(name)}</small></td>
       <td class="text-dim">${size}</td>
@@ -2649,11 +2690,49 @@ async function loadModels() {
         <div class="btn-group">
           <button class="btn" onclick="setModel('coordinator','${esc(name)}')">🎯 Координатор</button>
           <button class="btn" onclick="setModel('generator','${esc(name)}')">⚡ Генератор</button>
+          <button class="btn" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="setUtilityModel('${esc(name)}')">🛠️ Утилита</button>
           <button class="btn" style="background:rgba(255,80,80,.15);color:#ff5050;border-color:rgba(255,80,80,.3)" onclick="deleteModel('${esc(name)}')">🗑️ Удалить</button>
         </div>
       </td>
     </tr>`;
   }).join('');
+}
+
+async function setUtilityModel(name) {
+  // Сохраняем utility_model в AZ plugin config
+  const current = await api('/api/v1/az-plugin/config');
+  if (!current) { toast('Ошибка получения конфига', 'error'); return; }
+  current.utility_model = name;
+  const r = await api('/api/v1/az-plugin/config', {
+    method: 'POST',
+    body: JSON.stringify(current)
+  });
+  if (r && !r.error) {
+    toast(`🛠️ Utility model → ${name}`, 'success');
+    loadModels();
+  } else {
+    toast('Ошибка сохранения utility model', 'error');
+  }
+}
+
+async function warmUtilityModel() {
+  const util = window._modelsUtility;
+  if (!util) { toast('Utility model не задана. Выберите модель из таблицы → 🛠️ Утилита', 'warning'); return; }
+  const btn = document.getElementById('warm-util-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Загружаем...'; }
+  try {
+    const r = await api('/api/v1/models/warm', {
+      method: 'POST',
+      body: JSON.stringify({ model: util, role: 'utility' })
+    });
+    if (r && r.status === 'loaded') {
+      toast(`🔥 ${util} (${r.size_gb} GB) загружена в GPU`, 'success');
+      loadModels();
+    } else {
+      toast(`Ошибка: ${r?.detail ?? 'неизвестная ошибка'}`, 'error');
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔥 Загрузить в GPU'; }
 }
 
 // Запускаем/останавливаем polling статусов при переключении секций

@@ -1161,6 +1161,53 @@ async def switch_model(req: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/models/warm")
+async def warm_model(req: dict):
+    """Прогреть модель в VRAM с keep_alive=-1.
+
+    Body: {"model": "qwen2.5:3b", "role": "utility"}  # role опционально
+    Используется Admin Panel для принудительной загрузки utility model в GPU.
+    """
+    import httpx
+    model = req.get("model", "").strip()
+    if not model:
+        raise HTTPException(status_code=400, detail="model is required")
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            # Проверяем что модель существует
+            show = await client.post(
+                "http://localhost:11434/api/show",
+                json={"name": model}
+            )
+            if show.status_code != 200:
+                raise HTTPException(status_code=404, detail=f"Model '{model}' not found in Ollama")
+
+            size_gb = show.json().get("size", 0) / (1024**3)
+
+            # Загружаем в VRAM с keep_alive=-1
+            resp = await client.post(
+                "http://localhost:11434/api/generate",
+                json={"model": model, "prompt": "", "keep_alive": -1},
+                timeout=120.0
+            )
+            if resp.status_code == 200:
+                logger.info(f"[warm] ✅ {model} ({size_gb:.1f} GB) loaded to GPU (permanent)")
+                return {
+                    "status": "loaded",
+                    "model": model,
+                    "size_gb": round(size_gb, 2),
+                    "keep_alive": -1,
+                    "message": f"Model '{model}' loaded to GPU permanently"
+                }
+            else:
+                raise HTTPException(status_code=502, detail=f"Ollama returned {resp.status_code}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[warm] Failed to warm {model}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.delete("/memory/fact/{fact_id}")
 async def delete_memory_fact(fact_id: str):
     """Удалить конкретный факт из памяти по ID."""
