@@ -1,98 +1,51 @@
-# ╔══════════════════════════════════════════════════════╗
-# ║        Pure Intellect — Model Configuration          ║
-# ║  Настройка моделей, провайдеров и аппаратных ресурсов ║
-# ╚══════════════════════════════════════════════════════╝
-
-# ── Провайдеры моделей ──────────────────────────────────
-# provider: ollama | llamacpp | auto
-#   ollama   → Ollama (рекомендуется, поддерживает GPU авто)
-#   llamacpp → llama-cpp-python (прямой, CPU+GPU hybrid)
-#   auto     → система выбирает лучший доступный
-
 models:
-
-  # Координатор: лёгкая задача — создание координат, тегирование
-  # Можно использовать 3B для скорости или 7B для качества
   coordinator:
     provider: ollama
-    model: qwen3.5:2b        # Новое поколение — быстрее и эффективнее
-    gpu_layers: auto         # auto | -1 (всё GPU) | 0 (только CPU) | N (N слоёв)
-    temperature: 0.2         # Низкая для точной структуры
+    model: qwen2.5:1.5b
+    gpu_layers: auto
+    temperature: 0.2
     max_tokens: 400
     timeout: 60
 
-  # Генератор: основная задача — ответы пользователю
-  # Используй самую мощную доступную модель
   generator:
     provider: ollama
-    model: llama3.1:8b        # Заменено с qwen2.5:7b для лучшей поддержки Agent Zero JSON
-    gpu_layers: auto         # auto определит сколько влезет в VRAM
+    model: qwen2.5:7b
+    gpu_layers: auto
     temperature: 0.7
     max_tokens: 2048
     timeout: 120
-    fallback_model: qwen2.5:3b  # Если основная недоступна
+    fallback_model: qwen2.5:3b
 
-  # Embeddings: семантический поиск в памяти
   embedder:
-    provider: sentence_transformers  # sentence_transformers | ollama
-    model: all-MiniLM-L6-v2          # Быстрая локальная модель (384 dim)
-    device: auto                      # auto | cuda | cpu
-    # Альтернатива: Ollama embeddings
-    # provider: ollama
-    # model: nomic-embed-text
+    provider: sentence_transformers
+    model: all-MiniLM-L6-v2
+    device: auto
 
-# ── Аппаратные ресурсы ──────────────────────────────────
 hardware:
-  # CPU+GPU Hybrid (как LM Studio)
-  # Если VRAM недостаточно — часть слоёв переносится на CPU
-  auto_gpu_layers: true    # Автоматически определить оптимальное число слоёв
-  vram_reserve_mb: 512     # Резерв VRAM для системы (MB)
-  cpu_threads: 0           # 0 = авто (все доступные ядра)
-
-  # Стратегии при нехватке VRAM:
-  # 'offload'  → часть слоёв на CPU (медленнее но работает)
-  # 'downgrade' → использовать меньшую модель
-  # 'fail'     → вернуть ошибку
+  auto_gpu_layers: true
+  vram_reserve_mb: 512
+  cpu_threads: 0
   vram_overflow_strategy: offload
 
-# ── Параметры памяти ────────────────────────────────────
 memory:
-  # Rolling window — сколько messages хранить в активном контексте
-  context_window_messages: 12   # Уменьши для слабого железа (например 8)
-
-  # Soft reset — обрезать историю до N последних messages
+  context_window_messages: 12
   keep_after_reset: 6
-
-  # Мета-координата: объединять каждые N координат в одну
-  # Предотвращает бесконтрольный рост anchor facts (R1 roadmap)
-  meta_coordinate_every: 4   # 4 координаты → 1 мета (~600 токенов стабильно)
-
-  # RAM management: максимум горячих фактов в WorkingMemory
-  # Факты ниже порога внимания → cold storage на диск (R2 roadmap)
-  max_hot_facts: 50          # максимум фактов в RAM
-  hot_evict_threshold: 0.2   # факты с вниманием < 0.2 → выгружать
-
-
-  # ── Адаптивный Soft Reset (F3) ────────────────────────────────────
-  # Сбрасывает контекст умно: по CCI а не только по счётчику turns
+  meta_coordinate_every: 4
+  max_hot_facts: 50
+  hot_evict_threshold: 0.2
   adaptive_reset:
     enabled: true
-    cci_threshold: 0.55        # CCI ниже порога → reset нужен
-    min_turns_between_resets: 4  # Не сбрасывать слишком часто
-    max_turns_without_reset: 16  # Жёсткий лимит (даже при хорошем CCI)
-  # Long-term storage
+    cci_threshold: 0.55
+    min_turns_between_resets: 4
+    max_turns_without_reset: 16
   max_storage_facts: 1000
 
-# ── Сервер ──────────────────────────────────────────────
 server:
   host: 0.0.0.0
   port: 7860
-  workers: 1               # Для локального использования
+  workers: 1
   log_level: INFO
 
-# ── Ollama ──────────────────────────────────────────────
 ollama:
   base_url: http://localhost:11434
   timeout: 120
-  # Автоматически использовать GPU если доступен
-  # Управляется через параметр num_gpu в API
