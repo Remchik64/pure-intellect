@@ -453,10 +453,12 @@ async def save_memory_fact(request: FactSaveRequest):
                 request.text, source="agent_zero"
             )
         else:
+            # Фильтруем 'source' из metadata чтобы избежать дублирования
+            clean_metadata = {k: v for k, v in request.metadata.items() if k != 'source'}
             fact = pipeline.working_memory.add_text(
                 request.text, source="agent_zero",
                 importance=request.importance,
-                **request.metadata
+                **clean_metadata
             )
         return {"id": fact.fact_id, "status": "saved", "is_anchor": fact.is_anchor}
     except Exception as e:
@@ -1286,7 +1288,13 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 from pure_intellect.engines.config_loader import load_config as _lc
                 gen_model = _lc().generator.model
             except Exception:
-                gen_model = "mistral-small3.1:24b"
+                # Умный fallback: берём первую доступную модель из Ollama
+                try:
+                    _r = httpx.get("http://localhost:11434/api/tags", timeout=5)
+                    _models = [m["name"] for m in _r.json().get("models", [])]
+                    gen_model = _models[0] if _models else "qwen2.5:7b"
+                except Exception:
+                    gen_model = "qwen2.5:7b"
 
             ollama_payload = {
                 "model": gen_model,
