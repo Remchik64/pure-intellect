@@ -1,11 +1,14 @@
 """API endpoints."""
 
 import os
+import collections
+import datetime
+import threading
 import httpx
 import logging
 from typing import Optional, List
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from ..api.schemas import ChatRequest, ChatResponse, HealthResponse, ModelListResponse, OrchestrateRequest
@@ -14,14 +17,38 @@ from ..engine import ModelManager, MODEL_REGISTRY
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
 # Singleton pipeline — сохраняет память между запросами
 _pipeline = None
-import threading
 _pipeline_lock = threading.Lock()
 
 # ── Download progress tracking ────────────────────────────────────────────────
 # model_name → {"status": str, "percent": int, "speed": str, "error": str|None}
 _download_progress: dict[str, dict] = {}
+
+# ── In-memory log buffer ──────────────────────────────────────────────────────
+_LOG_BUFFER: collections.deque = collections.deque(maxlen=2000)
+_LOG_LOCK = threading.Lock()
+
+class _PIMemoryHandler(logging.Handler):
+    """Перехватывает все logging записи в _LOG_BUFFER."""
+    def emit(self, record: logging.LogRecord):
+        try:
+            ts = datetime.datetime.fromtimestamp(record.created).strftime("%H:%M:%S.%f")[:-3]
+            line = f"[{ts}] {record.levelname:<8} {record.name}: {record.getMessage()}"
+            if record.exc_info:
+                import traceback as _tb
+                line += "\n" + "".join(_tb.format_exception(*record.exc_info))
+            with _LOG_LOCK:
+                _LOG_BUFFER.append({"ts": ts, "level": record.levelname, "name": record.name, "line": line})
+        except Exception:
+            pass
+
+# Прикрепляем к root logger чтобы перехватывать ВСЕ логи
+_mem_handler = _PIMemoryHandler()
+_mem_handler.setLevel(logging.DEBUG)
+logging.getLogger().addHandler(_mem_handler)
+
 
 
 def get_model_manager() -> ModelManager:
@@ -1644,3 +1671,47 @@ async def save_az_plugin_config(config: AZPluginConfigModel):
     except Exception as e:
         logger.error(f"AZ plugin config save error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ── Logs endpoint ─────────────────────────────────────────────────────────────
+
+@router.get("/logs")
+async def get_logs(
+    limit: int = Query(default=500, ge=1, le=2000),
+    level: str = Query(default="ALL"),
+    offset: int = Query(default=0, ge=0),
+):
+    """Получить последние N строк логов из memory buffer.
+    
+    Args:
+        limit: максимальное кол-во строк (1-2000)
+        level: фильтр уровня ALL / DEBUG / INFO / WARNING / ERROR / CRITICAL
+        offset: пропустить первые N строк (для пагинации)
+    """
+    with _LOG_LOCK:
+        all_lines = list(_LOG_BUFFER)
+    
+    # Фильтрация по уровню
+    level_upper = level.upper()
+    level_order = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3, "CRITICAL": 4}
+    if level_upper != "ALL" and level_upper in level_order:
+        min_level = level_order[level_upper]
+        all_lines = [e for e in all_lines if level_order.get(e.get("level", "DEBUG"), 0) >= min_level]
+    
+    total = len(all_lines)
+    # Берём последние limit строк
+    lines = all_lines[max(0, total - limit - offset): total - offset if offset else None]
+    
+    return {
+        "total": total,
+        "count": len(lines),
+        "level_filter": level_upper,
+        "lines": lines,
+    }
+
+
+@router.delete("/logs")
+async def clear_logs():
+    """Очистить буфер логов."""
+    with _LOG_LOCK:
+        _LOG_BUFFER.clear()
+    return {"status": "cleared"}

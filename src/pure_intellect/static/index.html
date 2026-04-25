@@ -1133,6 +1133,34 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 @keyframes pulse-think {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+
+/* ===== LOGS TERMINAL ===== */
+#section-logs { display: none; }
+#section-logs.active { display: block; }
+.log-toolbar {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.log-toolbar select, .log-toolbar input[type=number] {
+  background: #1a1a2e; color: #00ff00; border: 1px solid #00aa00;
+  padding: 5px 10px; border-radius: 4px; font-family: monospace;
+}
+.log-terminal {
+  background: #000; color: #00ff00; font-family: 'Courier New', Courier, monospace;
+  font-size: 12px; line-height: 1.5; padding: 16px;
+  border-radius: 8px; border: 1px solid #00aa00;
+  height: 600px; overflow-y: auto; white-space: pre-wrap;
+  word-break: break-all;
+}
+.log-line-DEBUG { color: #888; }
+.log-line-INFO { color: #00ff00; }
+.log-line-WARNING { color: #ffaa00; }
+.log-line-ERROR { color: #ff4444; }
+.log-line-CRITICAL { color: #ff0000; font-weight: bold; }
+.log-status {
+  margin-top: 8px; font-size: 12px; color: #888;
+  display: flex; justify-content: space-between;
+}
 }
 </style>
 </head>
@@ -1177,6 +1205,10 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     </div>
     <div class="nav-item" data-section="settings" onclick="showSection('settings')">
       <span class="nav-icon">⚙️</span><span>Settings</span>
+    </div>
+    <div class="nav-item" data-section="logs" onclick="showSection('logs')">
+      <span class="nav-icon">📋</span><span>Logs</span>
+    </div>
     </div>
   </nav>
 
@@ -1690,6 +1722,35 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       </div>
     </div>
 
+    <!-- ======== LOGS ======== -->
+    <div id="section-logs" class="section">
+      <div class="section-title">📋 Logs <small id="log-counter">Строк: 0 / Буфер: 0</small></div>
+
+      <div class="log-toolbar">
+        <select id="log-level-filter" onchange="loadLogs()">
+          <option value="ALL">Все уровни</option>
+          <option value="DEBUG">DEBUG</option>
+          <option value="INFO">INFO</option>
+          <option value="WARNING">WARNING</option>
+          <option value="ERROR">ERROR</option>
+          <option value="CRITICAL">CRITICAL</option>
+        </select>
+        <input type="number" id="log-limit" value="500" min="50" max="2000" title="Макс. строк" style="width:80px" onchange="loadLogs()">
+        <button class="btn" onclick="loadLogs()">🔄 Обновить</button>
+        <button class="btn" id="log-autoscroll-btn" onclick="toggleLogsAutoScroll()">⬇️ Авто-скролл: ВКЛ</button>
+        <button class="btn" onclick="copyLogs()">📋 Копировать</button>
+        <button class="btn" style="background:#c0392b" onclick="clearServerLogs()">🗑️ Очистить</button>
+      </div>
+
+      <div class="log-terminal" id="log-terminal"></div>
+
+      <div class="log-status">
+        <span>🟢 Авто-обновление каждые 2 сек</span>
+        <span id="log-update-time"></span>
+      </div>
+    </div>
+
+
   </div><!-- /content -->
 </div><!-- /main -->
 </div><!-- /app -->
@@ -1722,6 +1783,7 @@ let currentSection = 'dashboard';
 // ================================================================
 
 function showSection(name) {
+  if (typeof stopLogsAutoRefresh === 'function') stopLogsAutoRefresh();
   document.querySelectorAll('.section').forEach(s => {
     s.style.display = 'none';
     s.classList.remove('active');
@@ -1762,6 +1824,7 @@ function showSection(name) {
     case 'projects': loadProjects(); break;
     case 'connections': loadConnections(); break;
     case 'settings': loadSettings(); break;
+    case 'logs': startLogsAutoRefresh(); break;
   }
 }
 
@@ -3071,7 +3134,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Keyboard shortcut: Alt+1..7 → sections
 document.addEventListener('keydown', e => {
   if (e.altKey) {
-    const sections = ['dashboard','chat','memory','models','projects','connections','settings'];
+    const sections = ['dashboard','chat','memory','models','projects','connections','settings','logs'];
     const idx = parseInt(e.key) - 1;
     if (idx >= 0 && idx < sections.length) showSection(sections[idx]);
   }
@@ -3146,6 +3209,76 @@ async function saveAZPluginConfig() {
     if (status) status.textContent = '❌ Ошибка: ' + e.message;
   }
 }
+
+// ── LOGS ──────────────────────────────────────────────────────────────────────
+let _logsAutoRefresh = null;
+let _logsAutoScroll = true;
+let _logsLastCount = 0;
+
+async function loadLogs() {
+  const level = document.getElementById('log-level-filter')?.value || 'ALL';
+  const limit = parseInt(document.getElementById('log-limit')?.value || '500');
+  try {
+    const r = await fetch(`/api/v1/logs?level=${level}&limit=${limit}`);
+    const data = await r.json();
+    const terminal = document.getElementById('log-terminal');
+    const counter = document.getElementById('log-counter');
+    if (!terminal) return;
+    const newCount = data.total;
+    if (newCount !== _logsLastCount) {
+      const lines = data.lines || [];
+      terminal.innerHTML = lines.map(e => {
+        const cls = 'log-line-' + (e.level || 'INFO');
+        const escaped = e.line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return `<span class="${cls}">${escaped}</span>`;
+      }).join('\n');
+      if (_logsAutoScroll) terminal.scrollTop = terminal.scrollHeight;
+      _logsLastCount = newCount;
+    }
+    if (counter) counter.textContent = `Строк: ${data.count} / Буфер: ${data.total}`;
+  } catch(e) {
+    console.error('Logs fetch error:', e);
+  }
+}
+
+function startLogsAutoRefresh() {
+  stopLogsAutoRefresh();
+  loadLogs();
+  _logsAutoRefresh = setInterval(loadLogs, 2000);
+}
+
+function stopLogsAutoRefresh() {
+  if (_logsAutoRefresh) { clearInterval(_logsAutoRefresh); _logsAutoRefresh = null; }
+}
+
+function copyLogs() {
+  const terminal = document.getElementById('log-terminal');
+  if (!terminal) return;
+  navigator.clipboard.writeText(terminal.innerText).then(() => {
+    showToast('📋 Логи скопированы в буфер обмена', 'success');
+  }).catch(() => {
+    showToast('❌ Ошибка копирования', 'error');
+  });
+}
+
+async function clearServerLogs() {
+  try {
+    await fetch('/api/v1/logs', {method: 'DELETE'});
+    _logsLastCount = 0;
+    document.getElementById('log-terminal').innerHTML = '';
+    document.getElementById('log-counter').textContent = 'Строк: 0 / Буфер: 0';
+    showToast('🗑️ Логи очищены', 'info');
+  } catch(e) {
+    showToast('❌ Ошибка очистки: ' + e.message, 'error');
+  }
+}
+
+function toggleLogsAutoScroll() {
+  _logsAutoScroll = !_logsAutoScroll;
+  const btn = document.getElementById('log-autoscroll-btn');
+  if (btn) btn.textContent = _logsAutoScroll ? '⬇️ Авто-скролл: ВКЛ' : '⬇️ Авто-скролл: ВЫКЛ';
+}
+
 
 </script>
 </body>
