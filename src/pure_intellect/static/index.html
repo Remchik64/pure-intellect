@@ -1545,6 +1545,44 @@ tr:hover td { background: rgba(255,255,255,0.02); }
           </div>
         </div>
 
+        <!-- Agent Zero Plugin Settings -->
+        <div class="conn-card" style="border: 1px solid rgba(88,166,255,0.3);">
+          <h3>🔌 Agent Zero Plugin Settings</h3>
+          <div class="text-dim text-sm mb-8">Настройки для плагина <code>_pure_intellect</code></div>
+
+          <div class="conn-field">
+            <label>PI Server URL (для Docker)</label>
+            <input type="text" class="input" id="az-pi-server"
+              value="http://host.docker.internal:7860"
+              style="font-family:monospace;font-size:12px;" />
+          </div>
+
+          <div class="conn-field">
+            <label>Utility Model для Agent Zero</label>
+            <select class="input" id="az-utility-model" style="cursor:pointer;">
+              <option value="qwen2.5:3b">qwen2.5:3b (рекомендуется)</option>
+            </select>
+          </div>
+
+          <div class="conn-field">
+            <label>Session ID</label>
+            <input type="text" class="input" id="az-session-id" value="agent_zero" />
+          </div>
+
+          <div class="conn-field">
+            <label>Recall порог сходства</label>
+            <input type="number" class="input" id="az-recall-threshold"
+              value="0.4" min="0.1" max="1.0" step="0.05" style="width:100px;" />
+          </div>
+
+          <div class="mt-12" style="display:flex;gap:8px;">
+            <button class="btn primary" onclick="saveAZPluginConfig()">💾 Сохранить</button>
+            <button class="btn" onclick="loadAZPluginConfig()">↻ Обновить</button>
+          </div>
+          <div id="az-plugin-status" class="mt-8 text-sm text-dim"></div>
+        </div>
+
+
         <!-- Open WebUI -->
         <div class="conn-card">
           <h3>🌐 Open WebUI</h3>
@@ -2921,6 +2959,7 @@ async function searchCode() {
 async function loadConnections() {
   checkEndpoints();
   loadOpenAIModels();
+  loadAZPluginConfig();
 }
 
 async function checkEndpoints() {
@@ -3037,6 +3076,77 @@ document.addEventListener('keydown', e => {
     if (idx >= 0 && idx < sections.length) showSection(sections[idx]);
   }
 });
+
+// ── Agent Zero Plugin Config ──────────────────────────────
+async function loadAZPluginConfig() {
+  try {
+    const r = await fetch('/api/v1/az-plugin/config');
+    const data = await r.json();
+
+    // Заполняем поля
+    const piServer = document.getElementById('az-pi-server');
+    const sessionId = document.getElementById('az-session-id');
+    const threshold = document.getElementById('az-recall-threshold');
+    const modelSelect = document.getElementById('az-utility-model');
+
+    if (piServer) piServer.value = data.pi_server || 'http://host.docker.internal:7860';
+    if (sessionId) sessionId.value = data.session_id || 'agent_zero';
+    if (threshold) threshold.value = data.recall_threshold || 0.4;
+
+    // Заполняем dropdown моделями из Ollama
+    if (modelSelect && data.available_models && data.available_models.length > 0) {
+      modelSelect.innerHTML = '';
+      data.available_models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        if (m === data.utility_model) opt.selected = true;
+        modelSelect.appendChild(opt);
+      });
+    } else if (modelSelect && data.utility_model) {
+      modelSelect.innerHTML = `<option value="${data.utility_model}" selected>${data.utility_model}</option>`;
+    }
+
+    const status = document.getElementById('az-plugin-status');
+    if (status) status.textContent = '✅ Конфиг загружен';
+  } catch(e) {
+    const status = document.getElementById('az-plugin-status');
+    if (status) status.textContent = '❌ Ошибка загрузки: ' + e.message;
+  }
+}
+
+async function saveAZPluginConfig() {
+  const status = document.getElementById('az-plugin-status');
+  try {
+    const config = {
+      pi_server: document.getElementById('az-pi-server')?.value || 'http://host.docker.internal:7860',
+      utility_model: document.getElementById('az-utility-model')?.value || 'qwen2.5:3b',
+      session_id: document.getElementById('az-session-id')?.value || 'agent_zero',
+      recall_threshold: parseFloat(document.getElementById('az-recall-threshold')?.value || 0.4),
+      recall_limit: 5,
+      recall_enabled: true,
+      memorize_enabled: true
+    };
+
+    if (status) status.textContent = '⏳ Сохранение...';
+
+    const r = await fetch('/api/v1/az-plugin/config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(config)
+    });
+    const data = await r.json();
+
+    if (r.ok) {
+      if (status) status.textContent = `✅ Сохранено! Utility: ${config.utility_model}, PI: ${config.pi_server}`;
+    } else {
+      if (status) status.textContent = '❌ Ошибка: ' + (data.detail || JSON.stringify(data));
+    }
+  } catch(e) {
+    if (status) status.textContent = '❌ Ошибка: ' + e.message;
+  }
+}
+
 </script>
 </body>
 </html>

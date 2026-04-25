@@ -1,5 +1,6 @@
 """API endpoints."""
 
+import os
 import httpx
 import logging
 from typing import Optional, List
@@ -1545,3 +1546,79 @@ async def check_model_downloaded(model_name: str):
         "error": None,
         "available_models": available,
     }
+
+
+# ── Agent Zero Plugin Config ────────────────────────────────────────────────
+
+_AZ_PLUGIN_CONFIG_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+    "az_plugin_config.yaml"
+)
+
+_DEFAULT_AZ_PLUGIN_CONFIG = {
+    "pi_server": "http://host.docker.internal:7860",
+    "utility_model": "qwen2.5:3b",
+    "session_id": "agent_zero",
+    "recall_threshold": 0.4,
+    "recall_limit": 5,
+    "recall_enabled": True,
+    "memorize_enabled": True,
+}
+
+
+class AZPluginConfigModel(BaseModel):
+    pi_server: str = "http://host.docker.internal:7860"
+    utility_model: str = "qwen2.5:3b"
+    session_id: str = "agent_zero"
+    recall_threshold: float = 0.4
+    recall_limit: int = 5
+    recall_enabled: bool = True
+    memorize_enabled: bool = True
+
+
+def _load_az_plugin_config() -> dict:
+    """Загрузить конфиг плагина AZ из файла."""
+    try:
+        if os.path.exists(_AZ_PLUGIN_CONFIG_FILE):
+            import yaml as _yaml
+            with open(_AZ_PLUGIN_CONFIG_FILE, "r", encoding="utf-8") as f:
+                data = _yaml.safe_load(f) or {}
+            return {**_DEFAULT_AZ_PLUGIN_CONFIG, **data}
+    except Exception as e:
+        logger.warning(f"AZ plugin config load error: {e}")
+    return dict(_DEFAULT_AZ_PLUGIN_CONFIG)
+
+
+def _save_az_plugin_config(config: dict) -> None:
+    """Сохранить конфиг плагина AZ в файл."""
+    import yaml as _yaml
+    with open(_AZ_PLUGIN_CONFIG_FILE, "w", encoding="utf-8") as f:
+        _yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
+
+
+@router.get("/az-plugin/config")
+async def get_az_plugin_config():
+    """Получить текущий конфиг плагина Agent Zero."""
+    config = _load_az_plugin_config()
+    # Дополнительно возвращаем список доступных Ollama моделей для dropdown
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get("http://localhost:11434/api/tags")
+            data = resp.json()
+            available_models = [m["name"] for m in data.get("models", [])]
+    except Exception:
+        available_models = []
+    return {**config, "available_models": available_models}
+
+
+@router.post("/az-plugin/config")
+async def save_az_plugin_config(config: AZPluginConfigModel):
+    """Сохранить конфиг плагина Agent Zero."""
+    try:
+        config_dict = config.model_dump()
+        _save_az_plugin_config(config_dict)
+        logger.info(f"AZ plugin config saved: {config_dict}")
+        return {"status": "saved", "config": config_dict}
+    except Exception as e:
+        logger.error(f"AZ plugin config save error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

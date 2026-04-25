@@ -1,5 +1,6 @@
 """FastAPI сервер для Чистый Интеллект."""
 
+import asyncio
 import logging
 import time
 import importlib.metadata
@@ -192,7 +193,6 @@ async def startup():
     logger.info(f"   Static dir: {_STATIC_DIR}")
     logger.info(f"   index.html: {'OK' if (_STATIC_DIR / 'index.html').exists() else 'MISSING!'}")
     # Предзагрузка обеих моделей в VRAM при старте
-    import asyncio
     asyncio.ensure_future(_preload_models())
 
 
