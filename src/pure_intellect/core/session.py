@@ -188,7 +188,10 @@ class SessionPersistence:
         if not self._history_path.exists():
             return []
         try:
-            data = json.loads(self._history_path.read_text())
+            content = self._history_path.read_text().strip()
+            if not content:
+                return []
+            data = json.loads(content)
             return data.get("messages", [])
         except Exception as e:
             logger.error(f"chat_history load failed: {e}")

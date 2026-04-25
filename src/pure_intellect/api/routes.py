@@ -51,6 +51,48 @@ logging.getLogger().addHandler(_mem_handler)
 
 
 
+
+def _extract_first_json(text: str) -> str:
+    """Извлечь первый полный JSON объект из текста.
+    
+    Некоторые модели (ministral-3:14b и др.) иногда генерируют
+    два JSON объекта подряд или добавляют текст после JSON.
+    Эта функция извлекает только первый валидный объект.
+    """
+    start = text.find('{')
+    if start == -1:
+        return text
+    depth = 0
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text[start:], start=start):
+        if escape:
+            escape = False
+            continue
+        if ch == '\\' and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                candidate = text[start:i+1]
+                try:
+                    import json as _json
+                    _json.loads(candidate)
+                    return candidate
+                except Exception:
+                    # Нашли баланс скобок но JSON невалиден — ищем дальше
+                    pass
+    return text
+
+
 def get_model_manager() -> ModelManager:
     """Получить thread-safe singleton ModelManager."""
     return ModelManager.get_instance(cache_dir="./models")
@@ -1352,7 +1394,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                     raise HTTPException(status_code=resp.status_code, detail=f"Ollama failed: {resp.text[:200]}")
                 data = resp.json()
                 # СЫРОЙ ответ — Agent Zero сам парсит JSON и вызывает EXE
-                response_text = data["choices"][0]["message"]["content"]
+                response_text = _extract_first_json(data["choices"][0]["message"]["content"])
 
             # Сохраняем факт в память PI
             try:
@@ -1413,7 +1455,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"OpenAI endpoint failed: {e}")
+        logger.error(f"OpenAI endpoint failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
