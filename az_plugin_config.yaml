@@ -1,7 +1,12 @@
 pi_server: http://localhost:7860
-utility_model: qwen2.5:3b
+# Generator: большая модель для генерации ответов AZ
+generator_model: qwen3.5:9b
+# Coordinator: маленькая модель PI для создания координат (внутренний компонент PI)
+coordinator_model: qwen3.5:2b
+# Utility: модель для утилитарных задач AZ (суммаризация, классификация)
+utility_model: qwen3.5:4b
+# Embedding: модель для векторизации
 embedding_model: nomic-embed-text
-generator_model: qwen2.5:7b
 session_id: agent_zero
 recall_threshold: 0.4
 recall_limit: 5

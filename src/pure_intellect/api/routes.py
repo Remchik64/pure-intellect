@@ -1166,8 +1166,8 @@ async def models_status():
                 coordinator = pipeline._router.coordinator_model
                 generator = pipeline._router.generator_model
             except Exception:
-                coordinator = "qwen2.5:3b"
-                generator = "qwen2.5:7b"
+                coordinator = "qwen3.5:2b"
+                generator = "qwen3.5:9b"
 
             def get_status(model_name: str) -> str:
                 if model_name in active:
@@ -1833,8 +1833,9 @@ _AZ_PLUGIN_CONFIG_FILE = os.path.join(
 
 _DEFAULT_AZ_PLUGIN_CONFIG = {
     "pi_server": "http://host.docker.internal:7860",
-    "utility_model": "qwen2.5:3b",
-    "generator_model": "",
+    "utility_model": "qwen3.5:4b",
+    "generator_model": "qwen3.5:9b",
+    "coordinator_model": "qwen3.5:2b",
     "session_id": "agent_zero",
     "recall_threshold": 0.4,
     "recall_limit": 5,
@@ -1845,9 +1846,10 @@ _DEFAULT_AZ_PLUGIN_CONFIG = {
 
 class AZPluginConfigModel(BaseModel):
     pi_server: str = "http://host.docker.internal:7860"
-    utility_model: str = "qwen2.5:3b"
+    utility_model: str = "qwen3.5:4b"
     embedding_model: str = "nomic-embed-text"
-    generator_model: str = ""
+    generator_model: str = "qwen3.5:9b"
+    coordinator_model: str = "qwen3.5:2b"
     session_id: str = "agent_zero"
     recall_threshold: float = 0.4
     recall_limit: int = 5
