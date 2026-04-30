@@ -1,7 +1,12 @@
+# Pure Intellect — конфигурация по умолчанию
+# ВНИМАНИЕ: Для изменения моделей используй Admin Panel → AZ Plugin Config
+# Значения ниже — только defaults при первом запуске
+# Они НЕ влияют на работу если az_plugin_config.yaml уже настроен
+
 models:
   coordinator:
     provider: ollama
-    model: qwen2.5:1.5b
+    model: qwen3.5:2b
     gpu_layers: auto
     temperature: 0.2
     max_tokens: 400
@@ -9,16 +14,17 @@ models:
 
   generator:
     provider: ollama
-    model: qwen2.5:7b
+    model: qwen3.5:9b
     gpu_layers: auto
     temperature: 0.7
     max_tokens: 2048
     timeout: 120
-    fallback_model: qwen2.5:3b
 
   embedder:
-    provider: sentence_transformers
-    model: all-MiniLM-L6-v2
+    # Используй Ollama (nomic-embed-text должна быть скачана через 'ollama pull nomic-embed-text')
+    # Альтернатива: sentence_transformers (требует pip install sentence-transformers)
+    provider: ollama
+    model: nomic-embed-text
     device: auto
 
 hardware:

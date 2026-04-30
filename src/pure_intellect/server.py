@@ -122,12 +122,35 @@ async def _preload_models():
     5. Если одна -> только generator
     """
     import httpx
-    from .engines.config_loader import load_config
+    import yaml as _yaml
     await asyncio.sleep(3)  # дать серверу полностью подняться
     try:
-        cfg = load_config()
-        coordinator = cfg.coordinator.model
-        generator = cfg.generator.model
+        # Приоритет: az_plugin_config.yaml (Admin Panel) > config.yaml (defaults)
+        # Это позволяет пользователю менять модели через Admin Panel без правки кода
+        import pathlib as _pathlib
+        _az_candidates = [
+            _pathlib.Path("az_plugin_config.yaml"),
+            _pathlib.Path.home() / "AppData/Roaming/pure_intellect/az_plugin_config.yaml",
+            _pathlib.Path.home() / ".pure_intellect/az_plugin_config.yaml",
+            _pathlib.Path(__file__).parent.parent.parent.parent / "az_plugin_config.yaml",
+        ]
+        _az_cfg = {}
+        for _c in _az_candidates:
+            if _c.exists():
+                try:
+                    with open(_c) as _f:
+                        _az_cfg = _yaml.safe_load(_f) or {}
+                    logger.info(f"   Config loaded from: {_c}")
+                    break
+                except Exception:
+                    pass
+
+        # Читаем модели из az_plugin_config, fallback на config.yaml
+        from .engines.config_loader import load_config
+        _cfg_defaults = load_config()
+        coordinator = _az_cfg.get("coordinator_model") or _cfg_defaults.coordinator.model
+        generator = _az_cfg.get("generator_model") or _cfg_defaults.generator.model
+        logger.info(f"   Coordinator: {coordinator} | Generator: {generator}")
         utility = await _load_az_plugin_utility_model()
         embedding = await _load_az_plugin_embedding_model()
 
