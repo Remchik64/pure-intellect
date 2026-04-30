@@ -1476,7 +1476,13 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             _JSON_REMINDER = (
                 "\n\n[SYSTEM REMINDER: You MUST respond with valid JSON only. "
                 "Format: {\"thoughts\":[...],\"tool_name\":\"...\",\"tool_args\":{...}} "
-                "No plain text. No markdown. Only JSON object.]"
+                "No plain text. No markdown. Only JSON object. "
+                "IMPORTANT: Use these tools DIRECTLY without searching for skills: "
+                "terminal/code → tool_name=code_execution_tool tool_args={runtime:terminal,code:...} | "
+                "files → tool_name=text_editor:read/write/patch | "
+                "web → tool_name=search_engine | "
+                "answer → tool_name=response | "
+                "Do NOT use skills_tool for basic operations!]"
             )
 
             # Передаём ВСЕ messages как есть + память + JSON reminder к system
