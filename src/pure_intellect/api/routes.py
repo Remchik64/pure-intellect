@@ -119,6 +119,59 @@ def _extract_first_json(text: str) -> str:
 def get_model_manager() -> ModelManager:
     """Получить thread-safe singleton ModelManager."""
     return ModelManager.get_instance(cache_dir="./models")
+# ── PI Memory Notifications & Coordinator Swap ───────────────────────────────
+
+def _inject_pi_notifications(response_text: str, notifications: list) -> str:
+    """Вставить PI уведомления в thoughts поле JSON ответа агента."""
+    if not notifications:
+        return response_text
+    try:
+        import json as _j
+        data = _j.loads(response_text)
+        existing = data.get("thoughts", [])
+        if not isinstance(existing, list):
+            existing = [str(existing)]
+        data["thoughts"] = notifications + existing
+        return _j.dumps(data, ensure_ascii=False)
+    except Exception:
+        return response_text
+
+
+async def _create_az_coordinate(coordinator_model: str, messages: list) -> str:
+    """Вызвать coordinator для создания координаты (snapshot) разговора."""
+    recent = messages[-20:] if len(messages) > 20 else messages
+    conversation = "\n".join(
+        f"{m.get('role','?')}: {str(m.get('content',''))[:300]}"
+        for m in recent if m.get('content')
+    )
+    prompt = (
+        "Создай краткую координату (snapshot) разговора. "
+        "Максимум 5 предложений. Только факты: тема, участники, ключевые решения, статус.\n\n"
+        f"Разговор:\n{conversation}\n\nКоордината:"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": coordinator_model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"num_ctx": 4096, "num_gpu": -1, "keep_alive": -1},
+                },
+            )
+            if resp.status_code == 200:
+                coordinate = resp.json().get("response", "").strip()
+                return _strip_thinking(coordinate)
+    except Exception as e:
+        logger.warning(f"[PI Coordinate] Failed: {e}")
+    return ""
+
+
+# Порог сообщений для создания координаты в AZ режиме (~4-5 turns AZ)
+_AZ_COORDINATE_MSG_THRESHOLD = 16
+
+
 
 
 def get_pipeline():
@@ -1449,6 +1502,9 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                     _models = [m["name"] for m in _r.json().get("models", [])]
                     # Предпочитаем большие модели для генерации (9b > 7b > 4b > 3b > 2b)
                     _preferred = [m for m in _models if any(s in m for s in ["9b","14b","7b","8b"])]
+                    # Предпочитаем большие модели для генерации
+                    _big_tags = ["32b","30b","27b","24b","14b","9b","8b","7b"]
+                    _preferred = [m for m in _models if any(s in m for s in _big_tags)]
                     gen_model = _preferred[0] if _preferred else (_models[0] if _models else None)
                 except Exception:
                     gen_model = None
@@ -1479,6 +1535,54 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 response_text = _extract_first_json(raw_content)
 
             # Сохраняем факт в память PI
+            # ── Coordinate Creation (ModelSwap) ──────────────────────────────
+            # Если контекст вырос — создаём координату через coordinator
+            _pi_notifications = []
+            if len(req.messages) >= _AZ_COORDINATE_MSG_THRESHOLD:
+                try:
+                    from pure_intellect.utils.swap_manager import get_swap_manager
+                    az_cfg2 = _load_az_plugin_config()
+                    coord_model = az_cfg2.get("coordinator_model", "").strip()
+                    if not coord_model:
+                        try:
+                            from pure_intellect.engines.config_loader import load_config as _lc2
+                            coord_model = _lc2().coordinator.model
+                        except Exception:
+                            coord_model = ""
+                    embed_model = az_cfg2.get("embedding_model", "nomic-embed-text")
+                    if coord_model:
+                        _pi_notifications.append(
+                            "🧠 [Pure Intellect] Контекст заполняется — создаю координату памяти..."
+                        )
+                        swap = get_swap_manager()
+                        await swap.acquire_coordinator(coord_model, embed_model)
+                        msg_dicts = [{"role": m.role, "content": m.content or ""} for m in req.messages]
+                        coordinate = await _create_az_coordinate(coord_model, msg_dicts)
+                        await swap.release_coordinator(coord_model, embed_model)
+                        if coordinate:
+                            try:
+                                from pure_intellect.core.memory.fact import Fact, FactType
+                                anchor = Fact(
+                                    content=f"[COORDINATE] {coordinate}",
+                                    fact_type=FactType.PERMANENT,
+                                    is_anchor=True,
+                                )
+                                pipe.working_memory.add(anchor)
+                                logger.info(f"[PI Coordinate] Saved: {coordinate[:80]}")
+                                _pi_notifications.append(
+                                    f"📍 Координата: {coordinate[:120]}"
+                                )
+                                _pi_notifications.append(
+                                    "✅ [Pure Intellect] Память обновлена — продолжайте работу!"
+                                )
+                            except Exception as _fe:
+                                logger.warning(f"[PI Coordinate] Fact save failed: {_fe}")
+                except Exception as _ce:
+                    logger.warning(f"[PI Coordinate] Failed: {_ce}")
+            # Инжектируем уведомления в thoughts ответа
+            if _pi_notifications:
+                response_text = _inject_pi_notifications(response_text, _pi_notifications)
+
             try:
                 from pure_intellect.core.memory.fact import Fact, FactType
                 fact = Fact(content=f"AgentZero: {query[:100]}", fact_type=FactType.TRANSIENT)
