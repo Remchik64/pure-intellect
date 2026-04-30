@@ -1097,6 +1097,7 @@ async def models_status():
         async with httpx.AsyncClient(timeout=5.0) as client:
             # Все скачанные модели
             tags_resp = await client.get("http://localhost:11434/api/tags")
+            tags_resp.raise_for_status()
             downloaded = [m["name"] for m in tags_resp.json().get("models", [])]
 
             # Активные в VRAM прямо сейчас
@@ -1365,7 +1366,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "messages": [m.dict() for m in req.messages],
                 "temperature": req.temperature,
                 "stream": False,
-                "options": {"num_ctx": 32768, "num_gpu": -1},
+                "options": {"num_ctx": 8192, "num_gpu": -1},
             }
             async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
@@ -1446,7 +1447,9 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 try:
                     _r = httpx.get("http://localhost:11434/api/tags", timeout=5)
                     _models = [m["name"] for m in _r.json().get("models", [])]
-                    gen_model = _models[0] if _models else None
+                    # Предпочитаем большие модели для генерации (9b > 7b > 4b > 3b > 2b)
+                    _preferred = [m for m in _models if any(s in m for s in ["9b","14b","7b","8b"])]
+                    gen_model = _preferred[0] if _preferred else (_models[0] if _models else None)
                 except Exception:
                     gen_model = None
             if not gen_model:
@@ -1468,7 +1471,12 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                     raise HTTPException(status_code=resp.status_code, detail=f"Ollama failed: {resp.text[:200]}")
                 data = resp.json()
                 # СЫРОЙ ответ — Agent Zero сам парсит JSON и вызывает EXE
-                response_text = _extract_first_json(data["choices"][0]["message"]["content"])
+                try:
+                    raw_content = data["choices"][0]["message"]["content"]
+                except (KeyError, IndexError, TypeError) as _ke:
+                    logger.error(f"Ollama response malformed: {_ke} | data={str(data)[:300]}")
+                    raise HTTPException(status_code=502, detail=f"Ollama returned unexpected format: {str(data)[:200]}")
+                response_text = _extract_first_json(raw_content)
 
             # Сохраняем факт в память PI
             try:
