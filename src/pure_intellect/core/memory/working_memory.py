@@ -252,6 +252,9 @@ class WorkingMemory:
         path = Path(path)
         if not path.exists():
             return False
+        if path.stat().st_size == 0:
+            logger.warning(f"WorkingMemory file empty, starting fresh: {path}")
+            return False
         try:
             data = json.loads(path.read_text())
             self.current_turn = data.get("current_turn", 0)
