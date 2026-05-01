@@ -157,7 +157,8 @@ async def _create_az_coordinate(coordinator_model: str, messages: list) -> str:
                     "model": coordinator_model,
                     "prompt": prompt,
                     "stream": False,
-                    "options": {"num_ctx": 4096, "num_gpu": -1, "keep_alive": -1},
+                    "keep_alive": -1,
+                    "options": {"num_ctx": 4096, "num_gpu": -1},
                 },
             )
             if resp.status_code == 200:
