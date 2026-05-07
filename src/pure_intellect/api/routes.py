@@ -561,6 +561,27 @@ async def orchestrate(request: OrchestrateRequest):
 
 
 @router.get("/memory/stats")
+@router.get("/memory/facts")
+async def memory_facts():
+    try:
+        pipeline = get_pipeline()
+        wm_facts = [f.__dict__ for f in pipeline.working_memory._facts]
+        storage_facts = [f.__dict__ for f in pipeline.memory_storage._facts]
+        return {"facts": wm_facts + storage_facts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/coordinates/{turn}")
+async def delete_coordinate_by_turn(turn: int):
+    try:
+        pipeline = get_pipeline()
+        mc = pipeline._meta_coordinator
+        mc._active = [c for c in mc._active if c.turn != turn]
+        pipeline.session_save()  # save state
+        return {"status": "deleted", "turn": turn}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def memory_stats():
     """Статистика самообновляемой памяти."""
     try:

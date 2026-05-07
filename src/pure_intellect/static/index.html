@@ -1197,17 +1197,17 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span class="nav-icon">🤖</span><span>Models</span>
     </div>
     <div class="nav-item" data-section="projects" onclick="showSection('projects')">
-      <span class="nav-icon">📁</span><span>Projects</span>
+      <span class="nav-icon">📁</span><span>Projects 🚧</span>
     </div>
     <div class="nav-divider"></div>
     <div class="nav-item" data-section="connections" onclick="showSection('connections')">
-      <span class="nav-icon">🔌</span><span>Connect</span>
+      <span class="nav-icon">🔌</span><span>Connect 🚧</span>
     </div>
     <div class="nav-item" data-section="settings" onclick="showSection('settings')">
-      <span class="nav-icon">⚙️</span><span>Settings</span>
+      <span class="nav-icon">⚙️</span><span>Settings 🚧</span>
     </div>
     <div class="nav-item" data-section="logs" onclick="showSection('logs')">
-      <span class="nav-icon">📋</span><span>Logs</span>
+      <span class="nav-icon">📋</span><span>Logs 🚧</span>
     </div>
   </nav>
 
@@ -2357,6 +2357,13 @@ async function createNewSession() {
   if (r) { loadSessions(); loadDashboard(); showToast('Создана новая сессия'); }
 }
 
+
+async function deleteCoordinate(turn) {
+  if (!confirm('Точно удалить эту координату? Она будет потеряна навсегда.')) return;
+  const r = await fetch(`/api/v1/coordinates/${turn}`, { method: 'DELETE' });
+  if (r.ok) loadCoordinates();
+}
+
 async function loadCoordinates() {
   const data = await api('/api/v1/coordinates');
   const el = document.getElementById('d-coordinates');
@@ -2384,7 +2391,7 @@ async function loadCoordinates() {
   active.forEach((c, i) => {
     html += `<div class="coord-item">
       <div class="coord-meta"><span class="coord-meta-badge">#${i+1}</span><span>Turn ${c.turn}</span><span>${c.created_at ? new Date(c.created_at).toLocaleDateString('ru-RU') : ''}</span></div>
-      <div>${esc(c.content)}</div>
+      <div>${esc(c.content)}</div><button class='btn danger' style='margin-top:8px;font-size:10px;padding:4px 8px;' onclick='deleteCoordinate(${c.turn})'>🗑 Удалить</button>
     </div>`;
   });
 
@@ -2526,12 +2533,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // ================================================================
 
 async function loadMemory() {
-  const data = await api('/api/v1/memory/stats');
+  const stats = await api('/api/v1/memory/stats');
+  const factsData = await fetch('/api/v1/memory/facts').then(r => r.json()).catch(e => null);
   allFacts = { coords: [], anchors: [], hot: [] };
 
-  if (data) {
-    // Normalize facts from API
-    const facts = data.facts ?? data.working_memory?.facts ?? [];
+  if (factsData && factsData.facts) {
+    const facts = factsData.facts;
     facts.forEach(f => {
       const src = f.source ?? '';
       const isAnchor = f.is_anchor ?? false;
