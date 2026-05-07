@@ -157,6 +157,11 @@ class WorkingMemory:
                 continue
             
             # Решаем: оставить или убрать
+            # Минимальный буфер горячей памяти: копим до 30 фактов
+            if len(self._facts) < 30:
+                kept.append(fact)
+                continue
+                
             if fact.is_hot(HOT_THRESHOLD):
                 kept.append(fact)
             elif fact.is_cold(COLD_THRESHOLD):

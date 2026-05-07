@@ -632,6 +632,7 @@ class OrchestratorPipeline:
     def _build_system_prompt(self, intent: IntentResult, cards: list, graph: list) -> str:
         """Построить system prompt из контекста."""
         parts = ["Ты — Чистый Интеллект, локальный AI-оркестратор для разработки."]
+        parts.append("Отвечай по существу и без воды. Давай подробные объяснения только если об этом прямо попросили.")
         
         # Intent
         if intent and hasattr(intent, 'intent') and intent.intent:

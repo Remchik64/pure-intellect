@@ -203,6 +203,12 @@ class CCITracker:
         # BM25 может быть > 1, делаем soft cap
         final_score = min(1.0, final_score)
         
+        # DAMPENING: Если прошлая тема была связной, даем шанс новой теме без падения CCI
+        if final_score < self.threshold and self._history:
+            prev_score = self._history[-1].coherence_score
+            if prev_score >= self.threshold:
+                final_score = self.threshold + 0.01
+        
         is_coherent = final_score >= self.threshold
         top_turns = [turn for _, turn in scored_turns[:3] if _ > 0]
         
