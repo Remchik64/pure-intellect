@@ -20,6 +20,15 @@ models:
     max_tokens: 2048
     timeout: 120
 
+
+  utility:
+    provider: ollama
+    model: qwen2.5:7b
+    gpu_layers: auto
+    temperature: 0.3
+    max_tokens: 4096
+    timeout: 180
+
   embedder:
     # Используй Ollama (nomic-embed-text должна быть скачана через 'ollama pull nomic-embed-text')
     # Альтернатива: sentence_transformers (требует pip install sentence-transformers)

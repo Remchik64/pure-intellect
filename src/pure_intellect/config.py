@@ -26,6 +26,10 @@ class Settings(BaseSettings):
         default="qwen2.5:7b",
         description="Модель для ответов пользователю"
     )
+    utility_model: str = Field(
+        default="qwen2.5:7b",
+        description="Модель для фоновых утилитарных задач и инструментов"
+    )
     model_cache_dir: str = Field(
         default="./models",
         description="Директория для кэша моделей"

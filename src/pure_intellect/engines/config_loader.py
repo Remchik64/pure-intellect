@@ -98,6 +98,13 @@ class AppConfig:
         model="all-MiniLM-L6-v2",
         device="auto",
     ))
+    utility: ModelConfig = field(default_factory=lambda: ModelConfig(
+        provider="ollama",
+        model="qwen2.5:7b",
+        temperature=0.3,
+        max_tokens=4096,
+        timeout=180,
+    ))
     hardware: HardwareConfig = field(default_factory=HardwareConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)
 
