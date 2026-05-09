@@ -400,6 +400,40 @@ class OrchestratorPipeline:
         # ── Шаг 4: Собрать контекст (Assembler) ──
         logger.info("  [4/5] Context assembly...")
 
+        # ── Шаг 3.5: Utility Worker (Нативные инструменты) ──
+        utility_context = ""
+        if intent.intent.value in ("web_search", "read_document"):
+            logger.info("  [3.5/5] Utility Worker (Map-Reduce)...")
+            try:
+                from pure_intellect.engines.config_loader import get_config
+                from pure_intellect.core.utility_worker import UtilityWorker
+                import asyncio
+                import threading
+
+                worker = UtilityWorker(config=get_config())
+
+                def run_async(coro):
+                    try:
+                        asyncio.get_running_loop()
+                        res = [None]
+                        err = [None]
+                        def th():
+                            try: res[0] = asyncio.run(coro)
+                            except Exception as e: err[0] = e
+                        t = threading.Thread(target=th)
+                        t.start()
+                        t.join()
+                        if err[0]: raise err[0]
+                        return res[0]
+                    except RuntimeError:
+                        return asyncio.run(coro)
+
+                utility_context = run_async(worker.run_map_reduce(intent))
+                if utility_context:
+                    logger.info(f"        Utility data extracted: {len(utility_context)} chars")
+            except Exception as e:
+                logger.error(f"        Utility Worker failed: {e}")
+
         # ── C3: Code-Aware Memory — получаем контекст кода ──
         code_context = ""
         if self._code_module is not None and self._code_module.is_indexed:
