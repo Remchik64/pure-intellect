@@ -24,6 +24,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    "duckduckgo-search",
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
     "uvicorn[standard]>=0.32.0; sys_platform != 'win32'",
