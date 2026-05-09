@@ -20,6 +20,8 @@ class IntentType(str, Enum):
     REFACTOR = "refactor"            # Рефакторинг
     ARCHITECTURE = "architecture"     # Архитектурные вопросы
     SEARCH = "search"                # Поиск по проекту
+    WEB_SEARCH = "web_search"        # Поиск в интернете
+    READ_DOCUMENT = "read_document"  # Чтение огромного файла/статьи
 
 
 @dataclass
@@ -65,9 +67,14 @@ class IntentDetector:
             r"структур", r"модуль", r"компоновка", r"схема",
         ],
         IntentType.SEARCH: [
-
             r"найди", r"поиск", r"где находится", r"search",
             r"locate", r"find", r"какой файл",
+        ],
+        IntentType.WEB_SEARCH: [
+            r"в интернете", r"погугли", r"сеть", r"duckduckgo", r"новости", r"погода"
+        ],
+        IntentType.READ_DOCUMENT: [
+            r"прочитай файл", r"документ", r"pdf", r"статью", r"ссылку", r"выжимку"
         ],
     }
     
@@ -83,6 +90,8 @@ class IntentDetector:
 - refactor: улучшить/переписать код
 - architecture: вопрос о структуре/дизайне
 - search: найти что-то в проекте
+- web_search: поиск актуальной информации в интернете
+- read_document: анализ внешнего объемного файла или URL
 
 Запрос: {query}
 
