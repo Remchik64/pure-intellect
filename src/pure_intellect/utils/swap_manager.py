@@ -121,6 +121,45 @@ class ModelSwapManager:
         self._busy = False
         logger.info("[SwapManager] ✅ VRAM восстановлен — embedding обратно в памяти")
 
+    async def acquire_utility(
+        self,
+        utility_model: str,
+        generator_model: str,
+        coordinator_model: str = "",
+        embedding_model: str = "",
+    ) -> bool:
+        """Освободить VRAM и загрузить utility эксклюзивно.
+
+        Выгружает генератора, координатора и эмбеддер в RAM (keep_alive=0),
+        чтобы освободить все 12 ГБ VRAM для обработки огромных текстов.
+        """
+        logger.info(f"[SwapManager] 🔁 acquire utility: {utility_model}")
+        self._busy = True
+        if generator_model:
+            await self._ollama_unload(generator_model, is_embed=False)
+        if coordinator_model:
+            await self._ollama_unload(coordinator_model, is_embed=False)
+        if embedding_model:
+            await self._ollama_unload(embedding_model, is_embed=True)
+        ok = await self._ollama_load(utility_model, is_embed=False)
+        return ok
+
+    async def release_utility(
+        self,
+        utility_model: str,
+        generator_model: str,
+        embedding_model: str = "",
+    ) -> None:
+        """Выгрузить utility, вернуть generator в VRAM."""
+        logger.info(f"[SwapManager] 🔁 release utility: {utility_model}")
+        await self._ollama_unload(utility_model, is_embed=False)
+        if generator_model:
+            await self._ollama_load(generator_model, is_embed=False)
+        if embedding_model:
+            await self._ollama_load(embedding_model, is_embed=True)
+        self._busy = False
+        logger.info("[SwapManager] ✅ VRAM восстановлен — generator и embedding обратно в памяти")
+
     @property
     def is_busy(self) -> bool:
         """True если выполняется swap операция."""
