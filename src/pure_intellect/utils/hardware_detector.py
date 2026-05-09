@@ -51,6 +51,7 @@ class HardwareInfo:
 class ModelRecommendation:
     coordinator: str = "qwen2.5:3b"
     generator: str = "qwen2.5:3b"
+    utility: str = "qwen2.5:3b"
     mode: str = "CPU ONLY"
     speed_estimate: str = "~2 tok/sec"
     status: str = "⚠️"
@@ -238,6 +239,7 @@ class HardwareDetector:
             if vram_gb >= 16:
                 rec.coordinator = "qwen2.5:3b"
                 rec.generator = "qwen2.5:7b"
+                rec.utility = "qwen2.5:7b"
                 rec.mode = "Apple Silicon FULL"
                 rec.speed_estimate = "~20 tok/sec"
                 rec.status = "✅"
@@ -246,6 +248,7 @@ class HardwareDetector:
             else:
                 rec.coordinator = "qwen2.5:3b"
                 rec.generator = "qwen2.5:3b"
+                rec.utility = "qwen2.5:3b"
                 rec.mode = "Apple Silicon"
                 rec.speed_estimate = "~12 tok/sec"
                 rec.status = "✅"
@@ -257,16 +260,18 @@ class HardwareDetector:
         if vram_gb >= 10:
             rec.coordinator = "qwen2.5:3b"
             rec.generator = "qwen2.5:7b"
+            rec.utility = "qwen2.5:7b"
             rec.mode = "GPU FULL"
             rec.speed_estimate = "~15 tok/sec"
             rec.status = "✅"
             rec.status_label = "Отлично"
             rec.num_gpu = 999
-            rec.notes = "Обе модели полностью в VRAM"
+            rec.notes = "Все три модели (Триада) комфортно чувствуют себя в VRAM/RAM"
 
         elif vram_gb >= 6:
             rec.coordinator = "qwen2.5:3b"
             rec.generator = "qwen2.5:7b"
+            rec.utility = "qwen2.5:3b"
             rec.mode = "GPU SPLIT"
             rec.speed_estimate = "~8 tok/sec"
             rec.status = "✅"
@@ -278,6 +283,7 @@ class HardwareDetector:
         elif vram_gb >= 3:
             rec.coordinator = "qwen2.5:3b"
             rec.generator = "qwen2.5:3b"
+            rec.utility = "qwen2.5:1.5b"
             rec.mode = "GPU LIMITED"
             rec.speed_estimate = "~6 tok/sec"
             rec.status = "✅"
@@ -289,6 +295,7 @@ class HardwareDetector:
         elif vram_gb > 0:
             rec.coordinator = "phi3:mini"
             rec.generator = "phi3:mini"
+            rec.utility = "phi3:mini"
             rec.mode = "GPU MINIMAL"
             rec.speed_estimate = "~4 tok/sec"
             rec.status = "⚠️"
