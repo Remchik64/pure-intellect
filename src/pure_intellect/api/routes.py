@@ -1441,7 +1441,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "messages": [m.dict() for m in req.messages],
                 "temperature": req.temperature,
                 "stream": False,
-                "options": {"num_ctx": 8192, "num_gpu": -1},
+                "options": {"num_ctx": 4096, "num_gpu": -1},
             }
             async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
@@ -1544,7 +1544,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "messages": all_messages,
                 "temperature": req.temperature,
                 "stream": False,
-                "options": {"num_ctx": 8192, "num_gpu": -1, "keep_alive": -1},
+                "options": {"num_ctx": 4096, "num_gpu": -1, "keep_alive": -1},
             }
             async with httpx.AsyncClient(timeout=None) as client:
                 resp = await client.post(
