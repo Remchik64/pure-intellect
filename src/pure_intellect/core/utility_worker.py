@@ -27,7 +27,7 @@ class UtilityWorker:
 
             text_content = ""
             for res in results:
-                text_content += f"Заголовок: {res.get('title', '')}
+            text_content += f"Заголовок: {res.get('title', '')}\nСсылка: {res.get('href', '')}\nОписание: {res.get('body', '')}\n\n"
 Ссылка: {res.get('href', '')}
 Описание: {res.get('body', '')}
 
