@@ -61,6 +61,7 @@ class StreamingManager:
         temperature = data.get("temperature", 0.7)
         max_tokens = data.get("max_tokens", 2048)
         system = data.get("system", None)
+        force_web_search = data.get("force_web_search", False)
 
         # Определяем query из messages или отдельных полей
         query = data.get("query", "") or data.get("message", "") or data.get("content", "")
@@ -132,6 +133,7 @@ class StreamingManager:
                     system=system,
                     temperature=temperature,
                     max_tokens=max_tokens,
+                    force_web_search=force_web_search,
                 )
             else:
                 # Fallback: полный запрос через pipeline.run() в отдельном потоке
@@ -143,6 +145,7 @@ class StreamingManager:
                     system=system,
                     temperature=temperature,
                     max_tokens=max_tokens,
+                    force_web_search=force_web_search,
                 )
 
         except Exception as e:
@@ -162,6 +165,7 @@ class StreamingManager:
         system: Optional[str],
         temperature: float,
         max_tokens: int,
+        force_web_search: bool = False,
     ):
         """Стриминг токенов напрямую через Ollama API.
 
@@ -178,6 +182,7 @@ class StreamingManager:
                 system,      # system override
                 temperature,
                 max_tokens,
+                force_web_search=force_web_search,
             )
             # Ответ уже готов — отправляем как стриминг по словам
             response_text = result.response
@@ -268,6 +273,7 @@ class StreamingManager:
         system: Optional[str],
         temperature: float,
         max_tokens: int,
+        force_web_search: bool = False,
     ):
         """Fallback: полный запрос через pipeline.run() без стриминга."""
         result = await asyncio.to_thread(

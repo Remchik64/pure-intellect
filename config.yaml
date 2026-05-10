@@ -23,7 +23,7 @@ models:
 
   utility:
     provider: ollama
-    model: qwen2.5:7b
+    model: qwen3.5:9b
     gpu_layers: auto
     temperature: 0.3
     max_tokens: 4096

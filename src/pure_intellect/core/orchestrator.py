@@ -327,6 +327,7 @@ class OrchestratorPipeline:
         temperature: float = 0.7,
         max_tokens: int = 2048,
         use_llm_intent: bool = False,
+        force_web_search: bool = False,
     ) -> OrchestrationResult:
         """Выполнить полный пайплайн Оркестратора."""
         
@@ -366,6 +367,9 @@ class OrchestratorPipeline:
         # ── Шаг 1: Определить Intent ──
         logger.info("  [1/5] Intent detection...")
         intent = self.intent_detector.detect(query, use_llm=use_llm_intent)
+        if force_web_search:
+            from pure_intellect.core.intent import IntentType
+            intent.intent = IntentType.WEB_SEARCH
         logger.info(f"        Intent: {intent.intent.value} (confidence: {intent.confidence:.2f})")
         
         # ── Шаг 2: Извлечь контекст через RAG ──
@@ -599,11 +603,15 @@ class OrchestratorPipeline:
         system: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
+        force_web_search: bool = False,
     ) -> Generator[str, None, None]:
         """Стриминг-версия пайплайна."""
         
         # Шаги 1-4 (как в run)
         intent = self.intent_detector.detect(query, use_llm=True)
+        if force_web_search:
+            from pure_intellect.core.intent import IntentType
+            intent.intent = IntentType.WEB_SEARCH
         
         context_cards = []
         try:

@@ -1324,7 +1324,12 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         </div>
       </div>
       <div id="chat-input-area">
-        <textarea id="chat-input" class="input" placeholder="Введите сообщение... (Enter — отправить, Shift+Enter — новая строка)" rows="1"></textarea>
+        
+      <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="force-web-search" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent);">
+        <label for="force-web-search" style="cursor: pointer; font-size: 13px; color: var(--accent); font-weight: bold;">🌐 Web Search (1-shot)</label>
+      </div>
+      <textarea id="chat-input" class="input" placeholder="Введите сообщение... (Enter — отправить, Shift+Enter — новая строка)" rows="1"></textarea>
         <button class="btn primary" id="send-btn" onclick="sendMessage()">▶ Send</button>
       </div>
     </div>
@@ -2468,7 +2473,10 @@ function sendMessage() {
   input.style.height = 'auto';
   showTyping();
   try {
-    ws.send(JSON.stringify({ type: 'chat', message: text, content: text }));
+    const sf = document.getElementById('force-web-search');
+    const forceWebSearch = sf ? sf.checked : false;
+    if (sf) sf.checked = false; // Auto-disable
+    ws.send(JSON.stringify({ type: 'chat', message: text, content: text, force_web_search: forceWebSearch }));
   } catch (e) {
     hideTyping();
     toast('Ошибка отправки: ' + e.message, 'error');
