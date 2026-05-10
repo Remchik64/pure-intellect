@@ -1,95 +1,45 @@
-# 🧠 Pure Intellect
+# Pure Intellect
 
-> **Local AI with unlimited hierarchical memory — 85% fewer tokens, 100% privacy**
+> **Autonomous Local AI Orchestrator - Infinite Context, Triad Architecture, VRAM Juggler, and 100% Privacy**
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/Tests-465%20passed-brightgreen.svg)](tests/)
 [![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2Fpure--intellect-black.svg)](https://github.com/Remchik64/pure-intellect)
-[![Support on Boosty](https://img.shields.io/badge/Support%20on-Boosty-orange.svg)](https://boosty.to/rem64)
-[![Support via YooMoney](https://img.shields.io/badge/Support-ЮMoney-blueviolet.svg)](https://yoomoney.ru/to/4100118846255337)
 
-![Pure Intellect Admin Panel](docs/images/admin-panel.png)
+Pure Intellect is a self-sufficient local AI server that natively resolves the two biggest problems in local LLM deployment: **KV-Cache context degradation** and **VRAM limitations**. 
 
-Pure Intellect solves the fundamental problem of LLM context limitation — **context degradation in long conversations**. Instead of losing information when context fills up, the system creates a "coordinate" (compressed memory snapshot) and performs a **soft reset**, maintaining full conversational continuity.
+By utilizing a unique **Triad Architecture**, it divides workloads among three distinct open-source models, parking them in system RAM and dynamically swapping them into the GPU exclusively when needed.
 
 ---
 
-## ✨ Key Features
+## Core Innovations
 
-### 🧠 Hierarchical Memory System
-- **Working Memory (HOT)** — active facts with attention scoring
-- **Memory Storage (WARM)** — semi-active facts, semantic search via SentenceTransformers
-- **Archive (COLD)** — compressed historical data
-- **Anchor Facts** — critical information that never decays
-- **Smart Eviction** — auto-evict low-importance facts when RAM pressure > 80%
+### Triad Architecture (3 Models, 1 GPU)
+Pure Intellect does not rely on a monolithic LLM. It splits intelligence into three roles:
+- **The Coordinator**: A blazing-fast gatekeeper. It evaluates Context Coherence (CCI), detects user intents (`web_search`, `read_document`), and generates highly compressed memory coordinates.
+- **The Utility Worker**: The heavy lifter. Triggered implicitly or explicitly, it handles massive data processing, organic web scraping, and document reading via **Map-Reduce**.
+- **The Generator**: The conversationalist. It synthesizes the final, polished response using extracted facts and historical coordinates.
 
-### 🎯 Soft Reset with Coordinates
-- Context fills up → 3B model creates a **coordinate** (compressed snapshot)
-- Context resets to zero, coordinate injected as first message
-- **100% recall** across resets — tested and proven
-- **Adaptive reset** — triggers by CCI score, not just turn count
+### VRAM Swap Manager (The Juggler)
+Run 3 large models on consumer hardware (e.g., 12GB VRAM / 32GB RAM). When heavy data operations are triggered, the Swap Manager evicts resting models from VRAM into RAM, grants the Utility model exclusive hardware access, computes the heavy lifting, and instantly restores the Generator.
 
-### 📊 Context Coherence Index (CCI)
-- Real-time tracking of conversational coherence (0.0 → 1.0)
-- CCI < 0.55 + turns ≥ 4 → automatic soft reset
-- Hard limit: turns ≥ 16 → forced reset regardless of CCI
-- Restores context automatically when coherence drops
+### Native Web Search & Map-Reduce
+- **DuckDuckGo Integrated**: Live, real-time web scraping without requiring any external API keys.
+- **Map-Reduce Summarizer**: Evades KV-cache overflow by splitting gigabytes of HTML/PDF text into strict 3000-token chunks, iteratively summarizing them.
+- **1-Shot Web Search UI**: Built-in chat toggle allows users to force a web search, ensuring absolute control over latency and intent routing.
 
-### 🤖 Dual Model Architecture
-- **Coordinator (3B)** — fast navigation, intent detection, coordinate creation
-- **Generator (7B)** — high-quality response generation
-- **CPU+GPU Split** — partial offload for systems with limited VRAM
-- **Dynamic model switching** — change models without server restart
-
-### 💻 Code Module
-- Index Python projects into ChromaDB for semantic search
-- **RAG** — automatically inject relevant code context into prompts
-- **Watcher** — auto-reindex files on change (debounced, hash-checked)
-- **Code-Aware Memory** — code facts automatically stored in working memory
-
-### 🔌 OpenAI-Compatible API
-- `POST /v1/chat/completions` — standard OpenAI format
-- `GET /v1/models` — model list
-- Any OpenAI-compatible client connects instantly
-- Memory works transparently for any client
-
-### 🖥️ Admin Panel
-- Full web interface at `http://localhost:7860`
-- **Dashboard** — real-time GPU, CCI, memory metrics
-- **Models** — hardware detection + model recommendations + download
-- **Memory** — view/search/delete facts and coordinates
-- **Projects** — code indexing, watcher control
-- **Connections** — integration configs 🚧 *In Development*
-- **Settings** — CCI threshold, memory limits (live config)
-
-### 🔍 Hardware Detection
-- Auto-detects GPU (NVIDIA/AMD/Apple Silicon)
-- Recommends optimal models based on VRAM:
-  - VRAM ≥ 10GB → GPU FULL (qwen2.5:7b)
-  - VRAM 6-10GB → GPU SPLIT (partial CPU offload)
-  - VRAM 3-6GB → GPU LIMITED (3B models)
-  - No GPU → CPU ONLY mode
-
-### 💾 Persistent Memory Storage
-- All memory is **saved to disk** — restart the server and it remembers everything
-- **Coordinate Archive** — every soft reset snapshot is stored permanently in `coordinate_archive/`
-- **Model-independent** — switch models anytime, memory is never lost
-- **Multi-session** — each session has its own isolated storage folder
-- On Windows (installer): `Desktop\storage\sessions\<session_id>\` (next to start.bat)
-- On Linux/macOS: `./storage/sessions/<session_id>/` from working directory
-
+### Hierarchical Memory & Soft Reset
+- **Context Coherence Index (CCI)**: Tracks topic drift. If coherence drops < 0.55 or turn limits are hit, the system triggers a **Soft Reset**.
+- **Coordinates**: Prior context is collapsed into a dense, 200-token snapshot. The heavy context window is completely flushed, and the Coordinate is injected as the new system prompt, ensuring **100% recall over infinite conversations** without Out-of-Memory crashes.
+- **Storage Layers**: HOT (Working Memory) -> WARM (ChromaDB) -> COLD (Persistent Disk).
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Installer Script (Recommended)
 
 **Windows:**
-
-📥 [**Download install.bat**](https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat) — or via PowerShell:
-
 ```powershell
 Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat -OutFile install.bat
 .\install.bat
@@ -100,271 +50,67 @@ Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellec
 curl -fsSL https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.sh | bash
 ```
 
-The installer will:
-1. ✅ Check Python 3.11+
-2. ✅ Install Ollama automatically
-3. ✅ Install Pure Intellect via pip
-4. ✅ Create desktop shortcut / launcher
-5. ✅ Launch the server
-
 ### Option 2: Manual Installation
 
 ```bash
-# 1. Install Ollama
+# 1. Install Ollama locally
 curl -fsSL https://ollama.com/install.sh | sh
 
-# 2. Install Pure Intellect
+# 2. Install Pure Intellect Orchestrator
 pip install git+https://github.com/Remchik64/pure-intellect.git
 
-# 3. Start server
-pure-intellect serve
-
-# 4. Open browser
-# http://localhost:7860
+# 3. Start the server (binds to port 3005)
+pure-intellect serve --port 3005
 ```
 
 ### First Run
-
-After installation, open `http://localhost:7860` and:
-1. Go to **🤖 Models** section
-2. Click **"Определить железо"** (Detect Hardware)
-3. See recommendations for your system
-4. Click **"Скачать"** (Download) to get recommended models
-5. Start chatting! 🎉
+1. Open `http://localhost:3005` in your browser.
+2. Navigate to **Models** and click **Detect Hardware** to automatically configure the Triad limits based on your system's VRAM.
+3. Download the assigned models via the UI.
+4. You are ready. Chat normally, or use the **Web Search (1-shot)** toggle to pull live internet data.
 
 ---
 
-## 📊 Performance
+## Performance Comparison
 
-| Metric | Without Memory | With Pure Intellect |
-|--------|---------------|--------------------|
-| Context tokens per turn | ~8000 | ~1200 |
-| Token reduction | baseline | **85% fewer** |
-| Recall after reset | 0% | **100%** |
-| Supported conversation length | ~50 turns | **Unlimited** |
-| Embedding speed | N/A | **5ms/fact (CUDA)** |
+| Metric | Baseline Local LLM | Pure Intellect |
+|--------|-------------------|--------------------|
+| Context footprint | Exponential (~8000+ tokens) | **Flat (~1200 tokens)** |
+| Out-Of-Memory (OOM) | Frequent on large docs | **Eliminated (Map-Reduce)** |
+| Recall after context sweep | 0% (Forgets earlier chat) | **100% (Coordinates)** |
+| Supported conversation length | Limited by VRAM | **Technically Infinite** |
 
 ---
 
-## 🏗️ Architecture
+## System Flow
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   Pure Intellect                     │
-│                                                     │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
-│  │  Intent  │  │   CCI    │  │  Memory System   │  │
-│  │ Detector │  │ Tracker  │  │  HOT/WARM/COLD   │  │
-│  └────┬─────┘  └────┬─────┘  └────────┬─────────┘  │
-│       │              │                  │            │
-│  ┌────▼──────────────▼──────────────────▼─────────┐ │
-│  │              OrchestratorPipeline               │ │
-│  │  Soft Reset │ Coordinate │ Adaptive CCI Reset   │ │
-│  └────┬───────────────────────────────────────────┘ │
-│       │                                             │
-│  ┌────▼──────────────────────────────────────────┐ │
-│  │           Dual Model Router                   │ │
-│  │  Coordinator (3B) │ Generator (7B)            │ │
-│  └────┬──────────────────────────────────────────┘ │
-│       │                                             │
-│  ┌────▼──────────────────────────────────────────┐ │
-│  │  Code Module │ Watcher │ Semantic Search        │ │
-│  └───────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────┘
-         │
-    Ollama (backend)
+```text
+                            Pure Intellect
+
+    [Coordinator]        [CCI Tracker]       [Storage (Chroma)]
+      (Intent)            (Coherence)              (RAG)
+         |                     |                     |
+         |                     |                     |
+         v                     v                     v
+ -----------------------------------------------------------
+|                   Orchestrator Pipeline                   |
+|                (Context Assembly & Reset)                 |
+ -----------------------------------------------------------
+                               |
+                               v
+ -----------------------------------------------------------
+|                  SWAP MANAGER (VRAM)                      |
+|                                                           |
+| [UtilityWorker]  <---- VRAM Swap ----> [Generator]        |
+| (Web/Map-Reduce)                       (Response)         |
+ -----------------------------------------------------------
+                               |
+                        Ollama (Backend)
 ```
 
 ---
 
-## 📁 Project Structure
-
-```
-pure-intellect/
-├── src/pure_intellect/
-│   ├── api/          # FastAPI routes, WebSocket
-│   ├── core/
-│   │   ├── memory/   # Fact, WorkingMemory, Storage, Scorer, Optimizer
-│   │   ├── orchestrator.py  # Main pipeline
-│   │   ├── code_module.py   # Code indexing + RAG
-│   │   ├── code_memory.py   # Code-aware facts
-│   │   ├── session_manager.py
-│   │   ├── dual_model.py    # 3B/7B router
-│   │   └── watcher.py       # File change monitoring
-│   ├── engines/      # Ollama provider, config loader
-│   ├── utils/        # Hardware detector, tokenizer
-│   └── static/       # Admin Panel (index.html)
-├── tests/            # 465 tests
-├── benchmarks/       # Performance benchmarks
-├── docs/             # Documentation
-├── install.bat       # Windows installer
-├── install.sh        # Linux/macOS installer
-├── config.yaml       # Configuration
-└── pyproject.toml
-```
-
----
-
-## ⚙️ Configuration
-
-```yaml
-# config.yaml
-server:
-  host: 0.0.0.0
-  port: 7860
-
-coordinator:
-  model: qwen2.5:3b    # Fast model for navigation
-
-generator:
-  model: qwen2.5:7b    # Smart model for responses
-  num_gpu: -1          # -1 = auto, 0 = CPU, N = N layers on GPU
-
-memory:
-  hot_facts_max: 50
-  soft_reset_turns: 8
-  adaptive_reset:
-    enabled: true
-    cci_threshold: 0.55
-    min_turns: 4
-    hard_limit_turns: 16
-
-cci:
-  window_size: 5
-  reset_threshold: 0.55
-```
-
----
-
-## 🔌 Integrations
-
-### ✅ Ollama (Working)
-
-Pure Intellect uses Ollama as the default backend. Install Ollama and pull models — the Admin Panel handles the rest.
-
-```bash
-# Install Ollama
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull recommended models
-ollama pull qwen2.5:3b
-ollama pull qwen2.5:7b
-```
-
-### 🚧 LM Studio *(In Development)*
-
-LM Studio integration as a backend provider is planned but not yet fully functional.
-
-```yaml
-# config.yaml — experimental, not guaranteed to work
-generator:
-  provider: lmstudio
-  base_url: http://localhost:1234
-  model: your-model-name
-```
-
-### 🚧 Open WebUI *(In Development)*
-
-Connecting Pure Intellect to Open WebUI as a backend is planned. Instructions will be added when stable.
-
-### 🚧 Agent Zero *(In Development)*
-
-Deep integration with Agent Zero (replacing its memory backend with Pure Intellect) is under active development in a separate repository.
-
-The integration goal: Agent Zero uses Pure Intellect as its memory layer — hierarchical memory, Anchor Facts, and Coordinate system — without modifying Agent Zero's core GEN/EXE cycle.
-
----
-
-## 🧪 Development
-
-```bash
-# Clone
-git clone https://github.com/Remchik64/pure-intellect
-cd pure-intellect
-
-# Setup
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-.\venv\Scripts\activate   # Windows
-pip install -e .
-
-# Run tests (unit only, fast)
-python -m pytest tests/ -q \
-  --ignore=tests/test_live_memory.py \
-  --ignore=tests/test_system_full.py
-
-# Run server
-pure-intellect serve --port 7860
-```
-
----
-
-## 📈 Roadmap
-
-- [x] Hierarchical memory (HOT/WARM/COLD)
-- [x] Soft Reset with coordinates
-- [x] Context Coherence Index (CCI)
-- [x] Dual Model Router (3B coordinator + 7B generator)
-- [x] Semantic search with SentenceTransformers (CUDA)
-- [x] LLM-based importance tagging
-- [x] Code Module (indexing + RAG)
-- [x] File Watcher (auto-reindex)
-- [x] Code-Aware Memory
-- [x] OpenAI-compatible API
-- [x] Multi-session support
-- [x] Admin Panel
-- [x] Hardware Detection + Model Recommendations
-- [x] Install Scripts (Windows/Linux/macOS)
-- [ ] PyPI package (`pip install pure-intellect`)
-- [ ] LM Studio backend provider 🚧
-- [ ] Open WebUI integration 🚧
-- [ ] Agent Zero memory backend 🚧
-- [ ] HuggingFace Hub model provider
-- [ ] Docker image
-- [ ] Electron desktop app
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all 465 tests pass
-5. Submit a Pull Request
-
----
-
-## 📜 License
-
-Copyright 2025 **Яраев Ренат Жавдетович**
-
-Licensed under the **Apache License, Version 2.0**.
-
-This license allows you to:
-- ✅ Use commercially
-- ✅ Modify and distribute
-- ✅ Patent use
-- ✅ Private use
-
-With conditions:
-- 📋 License and copyright notice must be included
-- 📋 State changes made to the code
-- 📋 Original author attribution required
-
-See [LICENSE](LICENSE) for full terms.
-
----
-
-<div align="center">
-
-**Pure Intellect** — Local AI with unlimited memory
-
-*Built with ❤️ by Ренат Яраев (Remchik64)*
-
-[GitHub](https://github.com/Remchik64/pure-intellect) · [Issues](https://github.com/Remchik64/pure-intellect/issues) · [License](LICENSE) · [VK](https://vk.com/remchik64) · [Boosty](https://boosty.to/rem64) · [ЮMoney](https://yoomoney.ru/to/4100118846255337)
-
-📧 renataraev51@gmail.com · remch2013@yandex.ru
-
-</div>
+## Persistent Data & Offline Capable
+Except for Organic Web Search commands, Pure Intellect requires no internet access.
+Memory vectors, historical coordinates, application metrics, and sessions are safely checkpointed via ChromaDB to `./storage/sessions/default/`.
+Everything maintains persistent continuity across server reboots natively.
