@@ -87,6 +87,29 @@ class ModelSwapManager:
 
     # ── Публичный интерфейс ───────────────────────────────────────────────────
 
+
+    async def _wait_for_unload(self, model: str, timeout: float = 30.0) -> bool:
+        """Poll /api/ps until model is gone from VRAM or timeout."""
+        import httpx, asyncio
+        deadline = asyncio.get_event_loop().time() + timeout
+        while asyncio.get_event_loop().time() < deadline:
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    resp = await client.get(f"{_OLLAMA_BASE}/api/ps")
+                    if resp.status_code == 200:
+                        loaded = [m.get("name", "") for m in resp.json().get("models", [])]
+                        # Check if model is still loaded (compare base name)
+                        base = model.split(":")[0]
+                        still_loaded = any(base in m for m in loaded)
+                        if not still_loaded:
+                            logger.info(f"[SwapManager] ✅ {model} подтверждено выгружена из VRAM")
+                            return True
+            except Exception:
+                pass
+            await asyncio.sleep(0.5)
+        logger.warning(f"[SwapManager] ⚠️ Timeout ожидания выгрузки {model}")
+        return False
+
     async def acquire_coordinator(
         self,
         coordinator_model: str,
@@ -137,10 +160,16 @@ class ModelSwapManager:
         self._busy = True
         if generator_model:
             await self._ollama_unload(generator_model, is_embed=False)
+            await self._wait_for_unload(generator_model)
         if coordinator_model:
             await self._ollama_unload(coordinator_model, is_embed=False)
+            await self._wait_for_unload(coordinator_model)
         if embedding_model:
             await self._ollama_unload(embedding_model, is_embed=True)
+            await self._wait_for_unload(embedding_model)
+        # Extra safety: small delay for Windows VRAM release
+        import asyncio as _asyncio
+        await _asyncio.sleep(1.0)
         ok = await self._ollama_load(utility_model, is_embed=False)
         return ok
 
