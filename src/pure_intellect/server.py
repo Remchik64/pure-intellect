@@ -233,23 +233,29 @@ async def _preload_models():
             utility_size = sizes.get(utility, 0) if utility else 0
             overhead = 1.25  # 25% overhead для kv cache и compute graph
 
-            all_three = (coordinator_size + generator_size + utility_size) * overhead
-            both_main = (coordinator_size + generator_size) * overhead
-
-            free_gb = available_vram_bytes / (1024**3)
-            logger.info(f"   Need (all 3): {all_three/(1024**3):.1f} GB | Need (2): {both_main/(1024**3):.1f} GB | Free: {free_gb:.1f} GB")
-
-            if utility and all_three <= available_vram_bytes:
-                logger.info(f"🟢 All 3 models fit! Loading coordinator + generator + utility")
-                load_list = [coordinator, generator, utility]
-            elif both_main <= available_vram_bytes:
-                logger.info(f"🟡 Loading coordinator + generator (utility will load on-demand)")
-                if utility:
-                    logger.info(f"   Utility ({utility}) will load on GPU when space frees up")
-                load_list = [coordinator, generator]
-            else:
-                logger.info(f"🟠 Low VRAM: loading generator only")
+            # SAFETY: если размер модели не удалось получить (0 = неизвестен)
+            # не рискуем VRAM — загружаем только генератор, координатор по требованию
+            if coordinator_size == 0 or generator_size == 0:
+                logger.warning("   ⚠️ Model sizes unknown — safe mode: generator only (coordinator on-demand)")
                 load_list = [generator]
+            else:
+                all_three = (coordinator_size + generator_size + utility_size) * overhead
+                both_main = (coordinator_size + generator_size) * overhead
+
+                free_gb = available_vram_bytes / (1024**3)
+                logger.info(f"   Need (all 3): {all_three/(1024**3):.1f} GB | Need (2): {both_main/(1024**3):.1f} GB | Free: {free_gb:.1f} GB")
+
+                if utility and utility_size > 0 and all_three <= available_vram_bytes:
+                    logger.info("🟢 All 3 models fit! Loading coordinator + generator + utility")
+                    load_list = [coordinator, generator, utility]
+                elif both_main <= available_vram_bytes:
+                    logger.info("🟡 Loading coordinator + generator (utility will load on-demand)")
+                    if utility:
+                        logger.info(f"   Utility ({utility}) will load on GPU when space frees up")
+                    load_list = [coordinator, generator]
+                else:
+                    logger.info("🟠 Low VRAM: loading generator only")
+                    load_list = [generator]
 
             for model in load_list:
                 try:
