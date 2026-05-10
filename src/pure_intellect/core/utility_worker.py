@@ -4,7 +4,7 @@ import logging
 import httpx
 from pure_intellect.utils.swap_manager import get_swap_manager
 from pure_intellect.core.intent import IntentType, IntentResult
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 def _get_available_utility_model(preferred: str, fallback: str) -> str:
     """Query Ollama to verify model exists. Fall back to generator model if not."""
