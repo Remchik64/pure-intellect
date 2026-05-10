@@ -15,7 +15,6 @@ class UtilityWorker:
         self.ollama_base = "http://localhost:11434"
 
     def _chunk_text(self, text: str, chunk_size: int = 12000) -> list[str]:
-        """Нарезает текст на куски примерно по 3000 токенов (12000 символов)."""
         return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
 
     def perform_web_search(self, query: str) -> str:
@@ -27,11 +26,10 @@ class UtilityWorker:
 
             text_content = ""
             for res in results:
-            text_content += f"Заголовок: {res.get('title', '')}\nСсылка: {res.get('href', '')}\nОписание: {res.get('body', '')}\n\n"
-Ссылка: {res.get('href', '')}
-Описание: {res.get('body', '')}
-
-"
+                title = res.get("title", "")
+                href = res.get("href", "")
+                body = res.get("body", "")
+                text_content += f"Заголовок: {title}\nСсылка: {href}\nОписание: {body}\n\n"
             return text_content
         except Exception as e:
             logger.error(f"[UtilityWorker] Ошибка поиска DDG: {e}")
@@ -64,13 +62,14 @@ class UtilityWorker:
             logger.error(f"[UtilityWorker] Ошибка генерации: {resp.status_code}")
             return "Ошибка генерации Утилитарной модели."
 
-    async def run_map_reduce(self, intent_result: IntentResult) -> str:
-        """Метод постепенной выжимки (Rolling Summary)."""
+    async def run_map_reduce(self, intent_result: IntentResult, query: str = "") -> str:
         raw_text = ""
-        if intent_result.intent == IntentType.WEB_SEARCH:
-            query = " ".join(intent_result.keywords) if intent_result.keywords else "новости"
-            raw_text = self.perform_web_search(query)
-        elif intent_result.intent == IntentType.READ_DOCUMENT:
+        intent_val = getattr(intent_result.intent, 'value', str(intent_result.intent))
+
+        if intent_val == "web_search":
+            search_query = query if query else (" ".join(intent_result.keywords) if intent_result.keywords else "новости")
+            raw_text = self.perform_web_search(search_query)
+        elif intent_val == "read_document":
             path = intent_result.entities[0] if intent_result.entities else ""
             raw_text = self.read_local_file(path)
         else:
@@ -85,30 +84,19 @@ class UtilityWorker:
 
         logger.info(f"[UtilityWorker] Текст разбит на {len(chunks)} кусков. Начинаем Map-Reduce.")
 
-        # 1. Захватываем контроль над VRAM (Убиваем Генератора)
         await self.swap_manager.acquire_utility(utility_model_name, generator_model)
 
         try:
-            # 2. Итеративная адаптация (Rolling Memory)
             summary = ""
             for i, chunk in enumerate(chunks):
                 logger.info(f"[UtilityWorker] Экстракция Части {i+1}/{len(chunks)}")
                 if i == 0:
-                    prompt = f"Сделай подробную выжимку следующего текста. Сохрани все факты:
-
-{chunk}"
+                    prompt = f"Сделай подробную выжимку следующего текста. Сохрани все факты:\n\n{chunk}"
                 else:
-                    prompt = f"Вот текущая выжимка:
-{summary}
-
-А вот продолжение нового текста:
-{chunk}
-
-Обнови выжимку, аккуратно включив новые важные детали и факты."
+                    prompt = f"Вот текущая выжимка:\n{summary}\n\nА вот продолжение нового текста:\n{chunk}\n\nОбнови выжимку, аккуратно включив новые важные детали и факты."
 
                 summary = await self._ask_utility_model(prompt)
 
             return summary
         finally:
-            # 3. Возвращаем Генератора в VRAM
             await self.swap_manager.release_utility(utility_model_name, generator_model)

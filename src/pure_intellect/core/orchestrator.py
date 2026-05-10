@@ -428,7 +428,7 @@ class OrchestratorPipeline:
                     except RuntimeError:
                         return asyncio.run(coro)
 
-                utility_context = run_async(worker.run_map_reduce(intent))
+                utility_context = run_async(worker.run_map_reduce(intent, query))
                 if utility_context:
                     logger.info(f"        Utility data extracted: {len(utility_context)} chars")
             except Exception as e:
