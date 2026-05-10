@@ -603,7 +603,7 @@ class OrchestratorPipeline:
         """Стриминг-версия пайплайна."""
         
         # Шаги 1-4 (как в run)
-        intent = self.intent_detector.detect(query, use_llm=False)
+        intent = self.intent_detector.detect(query, use_llm=True)
         
         context_cards = []
         try:
