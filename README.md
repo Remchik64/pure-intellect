@@ -1,44 +1,44 @@
-# Pure Intellect
+# 🧠 Pure Intellect (Чистый Интеллект)
 
-> **Autonomous Local AI Orchestrator - Infinite Context, Triad Architecture, VRAM Juggler, and 100% Privacy**
+> **Autonomous Local AI Orchestrator — Infinite Context, Triad Architecture, VRAM Juggler, and 100% Privacy**
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
 [![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2Fpure--intellect-black.svg)](https://github.com/Remchik64/pure-intellect)
 
-Pure Intellect is a self-sufficient local AI server that natively resolves the two biggest problems in local LLM deployment: **KV-Cache context degradation** and **VRAM limitations**. 
-
-By utilizing a unique **Triad Architecture**, it divides workloads among three distinct open-source models, parking them in system RAM and dynamically swapping them into the GPU exclusively when needed.
+Pure Intellect is a self-sufficient local AI orchestration server. It solves VRAM limitations and KV-Cache degradation by utilizing a unique **Triad Architecture** and **Smart VRAM Juggler (Swap Manager)**. Instead of context collapsing under heavy files or web searches, PI dynamically manages memory, routes intents, and performs "Map-Reduce" chunk reading, bringing enterprise-grade LLM capabilities to consumer hardware.
 
 ---
 
-## Core Innovations
+## ✨ Key Capabilities
 
-### Triad Architecture (3 Models, 1 GPU)
-Pure Intellect does not rely on a monolithic LLM. It splits intelligence into three roles:
-- **The Coordinator**: A blazing-fast gatekeeper. It evaluates Context Coherence (CCI), detects user intents (`web_search`, `read_document`), and generates highly compressed memory coordinates.
-- **The Utility Worker**: The heavy lifter. Triggered implicitly or explicitly, it handles massive data processing, organic web scraping, and document reading via **Map-Reduce**.
-- **The Generator**: The conversationalist. It synthesizes the final, polished response using extracted facts and historical coordinates.
+### 🏛️ Triad Architecture (3 Models, 1 GPU)
+Pure Intellect splits cognitive tasks across a specialized triad:
+- **Coordinator (3B)** — The gatekeeper. Lightning-fast intent classification (`web_search`, `read_document`, RAG) and Soft Reset coordinate generation.
+- **Utility Worker (7B/9B)** — The heavy lifter. Performs background web scraping, reading huge documents, and generating Map-Reduce rolling summaries.
+- **Generator (7B/9B)** — The thinker. Synthesizes final, polished responses using the deeply compressed context.
 
-### VRAM Swap Manager (The Juggler)
-Run 3 large models on consumer hardware (e.g., 12GB VRAM / 32GB RAM). When heavy data operations are triggered, the Swap Manager evicts resting models from VRAM into RAM, grants the Utility model exclusive hardware access, computes the heavy lifting, and instantly restores the Generator.
+### 🤹 Swap Manager (VRAM Juggler)
+Run 3 massive models on just 12GB VRAM + 32GB RAM dynamically.
+- Automatically displaces resting models from VRAM to system RAM (`keep_alive: 0`).
+- Grants exclusive GPU access to the Utility model for heavy tasks (web scraping, big docs).
+- Restores the Generator instantly when generation is required.
 
-### Native Web Search & Map-Reduce
-- **DuckDuckGo Integrated**: Live, real-time web scraping without requiring any external API keys.
-- **Map-Reduce Summarizer**: Evades KV-cache overflow by splitting gigabytes of HTML/PDF text into strict 3000-token chunks, iteratively summarizing them.
-- **1-Shot Web Search UI**: Built-in chat toggle allows users to force a web search, ensuring absolute control over latency and intent routing.
+### 🌐 Native Web Search & Map-Reduce
+- **DuckDuckGo Integration**: Live web searches without external API keys.
+- **Map-Reduce Summarizer**: Chunks gigabytes of retrieved sites or PDFs into 3000-token blocks, iteratively summarizing them without ever overflowing VRAM.
+- **1-Shot Web Search UI**: Built-in chat toggle to explicitly bypass LLM intent routing and force the Utility Worker to fetch real-time internet data.
 
-### Hierarchical Memory & Soft Reset
-- **Context Coherence Index (CCI)**: Tracks topic drift. If coherence drops < 0.55 or turn limits are hit, the system triggers a **Soft Reset**.
-- **Coordinates**: Prior context is collapsed into a dense, 200-token snapshot. The heavy context window is completely flushed, and the Coordinate is injected as the new system prompt, ensuring **100% recall over infinite conversations** without Out-of-Memory crashes.
-- **Storage Layers**: HOT (Working Memory) -> WARM (ChromaDB) -> COLD (Persistent Disk).
+### 🧠 Hierarchical Memory & CCI Reset
+- **Context Coherence Index (CCI)**: Tracks topic drift. If coherence drops < 0.55, it triggers a background optimization process.
+- **Soft Reset System**: Instead of crashing from token overload, the Coordinator collapses the history into a dense "Coordinate" snapshot, flushes the heavy KV cache, and seamlessly injects the Coordinate into the new prompt. 100% conversational recall.
+- **HOT / WARM / COLD Storage**: Memory moves from active working context to ChromaDB semantic storage and compressed archives dynamically.
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-### Option 1: Installer Script (Recommended)
-
+### Auto-Install (Recommended)
 **Windows:**
 ```powershell
 Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat -OutFile install.bat
@@ -50,67 +50,45 @@ Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellec
 curl -fsSL https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.sh | bash
 ```
 
-### Option 2: Manual Installation
-
+### Manual Installation
 ```bash
-# 1. Install Ollama locally
 curl -fsSL https://ollama.com/install.sh | sh
-
-# 2. Install Pure Intellect Orchestrator
 pip install git+https://github.com/Remchik64/pure-intellect.git
-
-# 3. Start the server (binds to port 3005)
 pure-intellect serve --port 3005
 ```
 
-### First Run
-1. Open `http://localhost:3005` in your browser.
-2. Navigate to **Models** and click **Detect Hardware** to automatically configure the Triad limits based on your system's VRAM.
+### Web UI
+Open `http://localhost:3005` in your browser.
+1. Navigate to **🤖 Models**.
+2. Click **Detect Hardware** to automatically balance the Triad based on your VRAM limits.
 3. Download the assigned models via the UI.
-4. You are ready. Chat normally, or use the **Web Search (1-shot)** toggle to pull live internet data.
+4. Start chatting! Use the **🌐 Web Search (1-shot)** toggle to pull live internet data.
 
 ---
 
-## Performance Comparison
-
-| Metric | Baseline Local LLM | Pure Intellect |
-|--------|-------------------|--------------------|
-| Context footprint | Exponential (~8000+ tokens) | **Flat (~1200 tokens)** |
-| Out-Of-Memory (OOM) | Frequent on large docs | **Eliminated (Map-Reduce)** |
-| Recall after context sweep | 0% (Forgets earlier chat) | **100% (Coordinates)** |
-| Supported conversation length | Limited by VRAM | **Technically Infinite** |
-
----
-
-## System Flow
+## 🏗️ System Architecture
 
 ```text
-                            Pure Intellect
-
-    [Coordinator]        [CCI Tracker]       [Storage (Chroma)]
-      (Intent)            (Coherence)              (RAG)
-         |                     |                     |
-         |                     |                     |
-         v                     v                     v
- -----------------------------------------------------------
-|                   Orchestrator Pipeline                   |
-|                (Context Assembly & Reset)                 |
- -----------------------------------------------------------
-                               |
-                               v
- -----------------------------------------------------------
-|                  SWAP MANAGER (VRAM)                      |
-|                                                           |
-| [UtilityWorker]  <---- VRAM Swap ----> [Generator]        |
-| (Web/Map-Reduce)                       (Response)         |
- -----------------------------------------------------------
-                               |
-                        Ollama (Backend)
+┌─────────────────────────────────────────────────────────────┐
+│                       Pure Intellect                        │
+│   ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐   │
+│   │ Coordinator  │  │ CCI Tracker │  │   Memory System  │   │
+│   │  (Intent)    │  │ (Coherence) │  │  HOT/WARM/COLD   │   │
+│   └──────┬───────┘  └──────┬──────┘  └────────┬─────────┘   │
+│          │                 │                  │             │
+│   ┌──────▼─────────────────▼──────────────────▼─────────┐   │
+│   │                Orchestrator Pipeline                │   │
+│   │             (Context Assembly & Reset)              │   │
+│   └──────────────────────┬──────────────────────────────┘   │
+│   ┌──────────────────────▼──────────────────────────────┐   │
+│   │                 SWAP MANAGER (VRAM)                 │   │
+│   │  [Utility Worker] ◄── VRAM Swap ──► [Generator]     │   │
+│   │  (Web/Map-Reduce)                     (Response)    │   │
+│   └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                               │
+                       Ollama (Backend)
 ```
 
----
-
-## Persistent Data & Offline Capable
-Except for Organic Web Search commands, Pure Intellect requires no internet access.
-Memory vectors, historical coordinates, application metrics, and sessions are safely checkpointed via ChromaDB to `./storage/sessions/default/`.
-Everything maintains persistent continuity across server reboots natively.
+## 💾 Persistent Storage & Privacy
+Pure Intellect is a **100% private, local-first** application. Except for Organic Web Search commands via DuckDuckGo, it requires no internet access. Memories, system stats, Coordinates, and config profiles are stored systematically in `./storage/sessions/default/` and persist flawlessly across reboots.
