@@ -121,6 +121,8 @@ class IntentDetector:
                     score += 1
                     matched_keywords.append(pattern)
             if score > 0:
+                if intent_type.value in ('web_search', 'read_document'):
+                    score += 3
                 scores[intent_type] = (score, matched_keywords)
         
         if not scores:
