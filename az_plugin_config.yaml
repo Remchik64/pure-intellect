@@ -1,10 +1,5 @@
 pi_server: http://localhost:7860
-generator_model: qwen3.5:9b
+
 coordinator_model: qwen2.5:3b
-utility_model: qwen2.5:3b
-embedding_model: nomic-embed-text
-session_id: agent_zero
-recall_threshold: 0.4
-recall_limit: 5
-recall_enabled: true
-memorize_enabled: true
+generator_model: qwen2.5:7b
+utility_model: qwen2.5:7b
