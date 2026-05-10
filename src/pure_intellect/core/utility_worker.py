@@ -6,6 +6,24 @@ from pure_intellect.utils.swap_manager import get_swap_manager
 from pure_intellect.core.intent import IntentType, IntentResult
 from duckduckgo_search import DDGS
 
+def _get_available_utility_model(preferred: str, fallback: str) -> str:
+    """Query Ollama to verify model exists. Fall back to generator model if not."""
+    try:
+        import urllib.request, json as _json
+        resp = urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2)
+        models = [m["name"] for m in _json.loads(resp.read()).get("models", [])]
+        if preferred in models:
+            return preferred
+        # Try prefix match (e.g. 'qwen2.5:7b' matches 'qwen2.5:7b-instruct')
+        for m in models:
+            if m.startswith(preferred.split(":")[0]):
+                return m
+        return fallback
+    except Exception:
+        return fallback
+
+
+
 logger = logging.getLogger(__name__)
 
 class UtilityWorker:
@@ -45,7 +63,7 @@ class UtilityWorker:
             return f"Не удалось прочитать файл {path}: {e}"
 
     async def _ask_utility_model(self, prompt: str) -> str:
-        utility_model_name = getattr(self.config, 'utility_model', "qwen2.5:7b")
+        utility_model_name = _get_available_utility_model(getattr(self.config, 'utility_model', "qwen2.5:7b"), getattr(self.config, 'chat_model', "qwen3.5:9b"))
         logger.info(f"[UtilityWorker] Запрос к {utility_model_name} (num_ctx=4096)")
         async with httpx.AsyncClient(timeout=180.0) as client:
             resp = await client.post(
@@ -79,7 +97,7 @@ class UtilityWorker:
             return raw_text
 
         chunks = self._chunk_text(raw_text, 12000)
-        utility_model_name = getattr(self.config, 'utility_model', "qwen2.5:7b")
+        utility_model_name = _get_available_utility_model(getattr(self.config, 'utility_model', "qwen2.5:7b"), getattr(self.config, 'chat_model', "qwen3.5:9b"))
         generator_model = getattr(self.config, 'chat_model', "qwen2.5:7b")
 
         logger.info(f"[UtilityWorker] Текст разбит на {len(chunks)} кусков. Начинаем Map-Reduce.")

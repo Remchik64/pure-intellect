@@ -99,7 +99,8 @@ class SessionPersistence:
             if extra_meta:
                 meta.update(extra_meta)
             self._meta_path.write_text(
-                json.dumps(meta, ensure_ascii=False, indent=2)
+                json.dumps(meta, ensure_ascii=False, indent=2),
+                encoding="utf-8"
             )
             
             logger.info(
@@ -180,7 +181,8 @@ class SessionPersistence:
             "messages": chat_history,
         }
         self._history_path.write_text(
-            json.dumps(data, ensure_ascii=False, indent=2)
+            json.dumps(data, ensure_ascii=False, indent=2),
+            encoding="utf-8"
         )
     
     def _load_chat_history(self) -> list[dict]:
