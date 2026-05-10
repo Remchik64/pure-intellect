@@ -1,4 +1,4 @@
-# 🧠 Pure Intellect (Чистый Интеллект)
+# 🧠 Contextor
 
 > **Autonomous Local AI Orchestrator — Infinite Context, Triad Architecture, VRAM Juggler, and 100% Privacy**
 
