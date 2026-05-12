@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, MagicMock
 
-from pure_intellect.utils.hardware_detector import (
+from contextor.utils.hardware_detector import (
     HardwareDetector,
     HardwareInfo,
     GPUInfo,

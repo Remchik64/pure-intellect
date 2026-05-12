@@ -1,18 +1,18 @@
 @echo off
 setlocal enabledelayedexpansion
-title Pure Intellect Installer
+title Contextor Installer
 color 0A
 
 echo.
 echo  ================================================
-echo   Pure Intellect -- Installation v0.1
+echo   Contextor -- Installation v0.1
 echo   Local AI with unlimited memory
 echo  ================================================
 echo.
 
 :: ── GitHub Token Input ───────────────────────────────────────────────────────
 echo  This installer needs your GitHub Personal Access Token
-echo  to download Pure Intellect from the private repository.
+echo  to download Contextor from the private repository.
 echo.
 echo  How to get a token:
 echo  1. Go to: https://github.com/settings/tokens
@@ -77,13 +77,13 @@ if errorlevel 1 (
     echo  OK: Ollama already running
 )
 
-:: ── Step 3: Install Pure Intellect ──────────────────────────────────────────
+:: ── Step 3: Install Contextor ──────────────────────────────────────────
 echo.
-echo [3/4] Installing Pure Intellect...
+echo [3/4] Installing Contextor...
 echo  Please wait 5-15 minutes (downloading PyTorch, ChromaDB...).
 echo.
 
-pip install git+https://!GHTOKEN!@github.com/Remchik64/pure-intellect.git
+pip install git+https://!GHTOKEN!@github.com/Remchik64/contextor.git
 if errorlevel 1 (
     echo.
     echo  ERROR: Installation failed!
@@ -93,7 +93,7 @@ if errorlevel 1 (
     exit /b 1
 )
 echo.
-echo  OK: Pure Intellect installed!
+echo  OK: Contextor installed!
 
 :: Clear token from memory
 set GHTOKEN=
@@ -106,24 +106,24 @@ if exist "!SCRIPTS!" set PATH=!SCRIPTS!;!PATH!
 echo.
 echo [4/4] Creating launcher...
 
-set APPDIR=%APPDATA%\PureIntellect
+set APPDIR=%APPDATA%\Contextor
 mkdir "%APPDIR%" >nul 2>&1
 
 echo  Downloading start.bat...
-curl -s -L "https://raw.githubusercontent.com/Remchik64/pure-intellect/main/start.bat" -o "%APPDIR%\start.bat"
+curl -s -L "https://raw.githubusercontent.com/Remchik64/contextor/main/start.bat" -o "%APPDIR%\start.bat"
 if errorlevel 1 (
     echo  WARNING: Could not download start.bat, creating basic launcher...
     (
         echo @echo off
-        echo python -m pure_intellect serve --port 7860
+        echo python -m contextor serve --port 7860
         echo pause
     ) > "%APPDIR%\start.bat"
 )
 echo  OK: Launcher ready
 
-powershell -NoProfile -Command "$ws=New-Object -ComObject WScript.Shell;$s=$ws.CreateShortcut('%USERPROFILE%\Desktop\Pure Intellect.lnk');$s.TargetPath='%APPDIR%\start.bat';$s.Description='Pure Intellect AI';$s.Save()" >nul 2>&1
+powershell -NoProfile -Command "$ws=New-Object -ComObject WScript.Shell;$s=$ws.CreateShortcut('%USERPROFILE%\Desktop\Contextor.lnk');$s.TargetPath='%APPDIR%\start.bat';$s.Description='Contextor AI';$s.Save()" >nul 2>&1
 
-if exist "%USERPROFILE%\Desktop\Pure Intellect.lnk" (
+if exist "%USERPROFILE%\Desktop\Contextor.lnk" (
     echo  OK: Shortcut created on Desktop
 ) else (
     echo  OK: Launcher saved: %APPDIR%\start.bat
@@ -132,7 +132,7 @@ if exist "%USERPROFILE%\Desktop\Pure Intellect.lnk" (
 :: ── Launch ───────────────────────────────────────────────────────────────────
 echo.
 echo  ================================================
-echo   Done! Pure Intellect installed.
+echo   Done! Contextor installed.
 echo.
 echo   Next: open Admin Panel - Models section
 echo   Download model: qwen2.5:3b (2GB) to start
@@ -142,7 +142,7 @@ echo.
 set /p GO="Launch now? (Y/N): "
 if /i "!GO!"=="Y" (
     echo  Starting server...
-    start "Pure Intellect" /min python -m pure_intellect serve --port 7860
+    start "Contextor" /min python -m contextor serve --port 7860
     echo  Waiting for server to be ready...
     timeout /t 6 /nobreak >nul
     echo  Opening browser...
@@ -154,8 +154,8 @@ if /i "!GO!"=="Y" (
 )
 if /i "!GO!"=="N" (
     echo.
-    echo  To start later: double-click Pure Intellect on Desktop
-    echo  Or: python -m pure_intellect serve
+    echo  To start later: double-click Contextor on Desktop
+    echo  Or: python -m contextor serve
     echo.
     pause
 )

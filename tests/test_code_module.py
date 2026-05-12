@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from pure_intellect.core.code_module import CodeModule, CodeSearchResult
+from contextor.core.code_module import CodeModule, CodeSearchResult
 
 
 @pytest.fixture

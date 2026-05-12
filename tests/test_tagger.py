@@ -1,7 +1,7 @@
 """Тесты для ImportanceTagger — P3 LLM-based importance tagging."""
 
 import pytest
-from pure_intellect.core.memory.tagger import (
+from contextor.core.memory.tagger import (
     ImportanceTagger,
     TaggingResult,
 )
@@ -33,7 +33,7 @@ class TestTaggingResult:
     
     def test_total_count(self):
         result = TaggingResult(
-            anchors=["Александр", "pure-intellect"],
+            anchors=["Александр", "contextor"],
             facts=["Python 3.13"],
             transient=["вопрос про attention", "рассуждение"]
         )
@@ -161,7 +161,7 @@ class TestJsonParsing:
         assert result is None
     
     def test_nested_json(self, tagger):
-        raw = '{"anchors": ["проект pure-intellect"], "facts": ["Python 3.13"], "transient": ["вопрос"]  }'
+        raw = '{"anchors": ["проект contextor"], "facts": ["Python 3.13"], "transient": ["вопрос"]  }'
         result = tagger._parse_json(raw)
         assert result is not None
         assert len(result["anchors"]) == 1

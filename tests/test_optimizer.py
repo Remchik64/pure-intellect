@@ -1,10 +1,10 @@
 """Тесты для MemoryOptimizer."""
 
 import pytest
-from pure_intellect.core.memory.fact import Fact, CompressionLevel
-from pure_intellect.core.memory.working_memory import WorkingMemory
-from pure_intellect.core.memory.storage import MemoryStorage
-from pure_intellect.core.memory.optimizer import MemoryOptimizer, OptimizationStats
+from contextor.core.memory.fact import Fact, CompressionLevel
+from contextor.core.memory.working_memory import WorkingMemory
+from contextor.core.memory.storage import MemoryStorage
+from contextor.core.memory.optimizer import MemoryOptimizer, OptimizationStats
 
 
 # ─── Fixtures ───────────────────────────────────────────────────────────────

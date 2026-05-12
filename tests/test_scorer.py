@@ -1,10 +1,10 @@
 """Тесты для AttentionScorer."""
 
 import pytest
-from pure_intellect.core.memory.fact import Fact
-from pure_intellect.core.memory.scorer import AttentionScorer, ScoreResult
-from pure_intellect.core.memory.working_memory import WorkingMemory
-from pure_intellect.core.memory.storage import MemoryStorage
+from contextor.core.memory.fact import Fact
+from contextor.core.memory.scorer import AttentionScorer, ScoreResult
+from contextor.core.memory.working_memory import WorkingMemory
+from contextor.core.memory.storage import MemoryStorage
 
 
 # ─── Fixtures ───────────────────────────────────────────────────────────────

@@ -2,8 +2,8 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from pure_intellect.core.orchestrator import OrchestratorPipeline, OrchestrationResult
-from pure_intellect.core.intent import IntentResult, IntentType
+from contextor.core.orchestrator import OrchestratorPipeline, OrchestrationResult
+from contextor.core.intent import IntentResult, IntentType
 
 
 def make_intent(intent_type: IntentType = IntentType.CHAT) -> IntentResult:
@@ -33,11 +33,11 @@ def mock_pipeline():
     """OrchestratorPipeline со всеми зависимостями замокированными."""
     manager = make_mock_model_manager()
 
-    with patch('pure_intellect.core.orchestrator.IntentDetector') as MockIntent, \
-         patch('pure_intellect.core.orchestrator.Retriever') as MockRetriever, \
-         patch('pure_intellect.core.orchestrator.ContextAssembler') as MockAssembler, \
-         patch('pure_intellect.core.orchestrator.GraphBuilder') as MockGraph, \
-         patch('pure_intellect.core.orchestrator.CardGenerator') as MockCard:
+    with patch('contextor.core.orchestrator.IntentDetector') as MockIntent, \
+         patch('contextor.core.orchestrator.Retriever') as MockRetriever, \
+         patch('contextor.core.orchestrator.ContextAssembler') as MockAssembler, \
+         patch('contextor.core.orchestrator.GraphBuilder') as MockGraph, \
+         patch('contextor.core.orchestrator.CardGenerator') as MockCard:
 
         # Настраиваем mock intent detector
         intent_instance = MockIntent.return_value
@@ -128,22 +128,22 @@ class TestPipelineInit:
     def test_pipeline_creates_with_manager(self):
         """Pipeline создаётся с переданным model_manager."""
         manager = MagicMock()
-        with patch('pure_intellect.core.orchestrator.IntentDetector'), \
-             patch('pure_intellect.core.orchestrator.Retriever'), \
-             patch('pure_intellect.core.orchestrator.ContextAssembler'), \
-             patch('pure_intellect.core.orchestrator.GraphBuilder'), \
-             patch('pure_intellect.core.orchestrator.CardGenerator'):
+        with patch('contextor.core.orchestrator.IntentDetector'), \
+             patch('contextor.core.orchestrator.Retriever'), \
+             patch('contextor.core.orchestrator.ContextAssembler'), \
+             patch('contextor.core.orchestrator.GraphBuilder'), \
+             patch('contextor.core.orchestrator.CardGenerator'):
             pipeline = OrchestratorPipeline(model_manager=manager)
             assert pipeline.model_manager is manager
 
     def test_pipeline_has_required_components(self):
         """Pipeline имеет все необходимые компоненты."""
         manager = MagicMock()
-        with patch('pure_intellect.core.orchestrator.IntentDetector'), \
-             patch('pure_intellect.core.orchestrator.Retriever'), \
-             patch('pure_intellect.core.orchestrator.ContextAssembler'), \
-             patch('pure_intellect.core.orchestrator.GraphBuilder'), \
-             patch('pure_intellect.core.orchestrator.CardGenerator'):
+        with patch('contextor.core.orchestrator.IntentDetector'), \
+             patch('contextor.core.orchestrator.Retriever'), \
+             patch('contextor.core.orchestrator.ContextAssembler'), \
+             patch('contextor.core.orchestrator.GraphBuilder'), \
+             patch('contextor.core.orchestrator.CardGenerator'):
             pipeline = OrchestratorPipeline(model_manager=manager)
             assert hasattr(pipeline, 'intent_detector')
             assert hasattr(pipeline, 'retriever')

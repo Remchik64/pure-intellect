@@ -1,4 +1,4 @@
-# 📦 Pure Intellect — Installation Guide
+# 📦 Contextor — Installation Guide
 
 > Детальное руководство по установке и настройке.
 
@@ -26,10 +26,10 @@
 
 ```powershell
 # PowerShell — скачать install.bat
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat -OutFile "$env:USERPROFILE\Desktop\install.bat"
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/contextor/main/install.bat -OutFile "$env:USERPROFILE\Desktop\install.bat"
 
 # Скачать start.bat
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/start.bat -OutFile "$env:USERPROFILE\Desktop\start.bat"
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/contextor/main/start.bat -OutFile "$env:USERPROFILE\Desktop\start.bat"
 ```
 
 Или скачайте `install.bat` и `start.bat` вручную со страницы репозитория и положите оба на рабочий стол.
@@ -52,13 +52,13 @@ Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellec
 ### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Remchik64/contextor/main/install.sh | bash
 ```
 
 Что делает скрипт:
 1. Проверяет Python 3.11+
 2. Устанавливает Ollama (если нет)
-3. Устанавливает Pure Intellect через pip
+3. Устанавливает Contextor через pip
 4. Запускает сервер
 
 
@@ -73,11 +73,11 @@ curl -fsSL https://ollama.com/install.sh | sh
 # 2. Убедиться что Ollama запущен
 ollama serve &
 
-# 3. Установить Pure Intellect
-pip install git+https://github.com/Remchik64/pure-intellect.git
+# 3. Установить Contextor
+pip install git+https://github.com/Remchik64/contextor.git
 
 # 4. Запустить
-pure-intellect serve
+contextor serve
 
 # Admin Panel: http://localhost:7860
 ```
@@ -88,8 +88,8 @@ pure-intellect serve
 
 ```bash
 # 1. Клонировать
-git clone https://github.com/Remchik64/pure-intellect
-cd pure-intellect
+git clone https://github.com/Remchik64/contextor
+cd contextor
 
 # 2. Создать виртуальное окружение
 python -m venv venv
@@ -100,7 +100,7 @@ source venv/bin/activate      # Linux/macOS
 pip install -e .
 
 # 4. Запустить
-pure-intellect serve --port 7860
+contextor serve --port 7860
 ```
 
 ---
@@ -122,7 +122,7 @@ pure-intellect serve --port 7860
 
 ```bash
 # Найти config.yaml
-pure-intellect config --show-path
+contextor config --show-path
 ```
 
 Основные параметры:
@@ -185,7 +185,7 @@ ollama pull qwen2.5:7b
 ### Порт 7860 занят
 ```bash
 # Запустить на другом порту
-pure-intellect serve --port 8080
+contextor serve --port 8080
 ```
 
 ### Мало VRAM — модель не загружается
@@ -196,5 +196,5 @@ pure-intellect serve --port 8080
 ## Обновление
 
 ```bash
-pip install --upgrade git+https://github.com/Remchik64/pure-intellect.git
+pip install --upgrade git+https://github.com/Remchik64/contextor.git
 ```

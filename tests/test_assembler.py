@@ -2,9 +2,9 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from pure_intellect.core.assembler import ContextAssembler
-from pure_intellect.core.intent import IntentResult, IntentType
-from pure_intellect.core.retriever import RetrievalResult
+from contextor.core.assembler import ContextAssembler
+from contextor.core.intent import IntentResult, IntentType
+from contextor.core.retriever import RetrievalResult
 
 
 def make_intent(intent_type: IntentType = IntentType.CHAT, confidence: float = 0.8) -> IntentResult:
@@ -108,8 +108,8 @@ class TestBuildMessages:
 
     def test_token_budget_not_exceeded(self, assembler):
         """Суммарный размер контекста не превышает max_context_tokens."""
-        from pure_intellect.config import settings
-        from pure_intellect.utils.tokenizer import count_tokens
+        from contextor.config import settings
+        from contextor.utils.tokenizer import count_tokens
 
         messages = assembler.build_messages(query="тест бюджета токенов")
         total = sum(count_tokens(m["content"]) for m in messages)

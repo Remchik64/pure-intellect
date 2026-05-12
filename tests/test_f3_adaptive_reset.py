@@ -15,23 +15,23 @@ from unittest.mock import MagicMock, patch
 @pytest.fixture
 def pipeline():
     """OrchestratorPipeline с заглушенными тяжёлыми зависимостями."""
-    with patch('pure_intellect.core.orchestrator.ModelManager'), \
-         patch('pure_intellect.core.orchestrator.IntentDetector'), \
-         patch('pure_intellect.core.orchestrator.Retriever'), \
-         patch('pure_intellect.core.orchestrator.ContextAssembler'), \
-         patch('pure_intellect.core.orchestrator.GraphBuilder'), \
-         patch('pure_intellect.core.orchestrator.CardGenerator'), \
-         patch('pure_intellect.core.orchestrator.MemoryStorage'), \
-         patch('pure_intellect.core.orchestrator.WorkingMemory'), \
-         patch('pure_intellect.core.orchestrator.MemoryOptimizer'), \
-         patch('pure_intellect.core.orchestrator.AttentionScorer'), \
-         patch('pure_intellect.core.orchestrator.ImportanceTagger'), \
-         patch('pure_intellect.core.orchestrator.CCITracker'), \
-         patch('pure_intellect.core.orchestrator.DualModelRouter'), \
-         patch('pure_intellect.core.orchestrator.SessionPersistence'), \
-         patch('pure_intellect.core.orchestrator.MetaCoordinator'):
+    with patch('contextor.core.orchestrator.ModelManager'), \
+         patch('contextor.core.orchestrator.IntentDetector'), \
+         patch('contextor.core.orchestrator.Retriever'), \
+         patch('contextor.core.orchestrator.ContextAssembler'), \
+         patch('contextor.core.orchestrator.GraphBuilder'), \
+         patch('contextor.core.orchestrator.CardGenerator'), \
+         patch('contextor.core.orchestrator.MemoryStorage'), \
+         patch('contextor.core.orchestrator.WorkingMemory'), \
+         patch('contextor.core.orchestrator.MemoryOptimizer'), \
+         patch('contextor.core.orchestrator.AttentionScorer'), \
+         patch('contextor.core.orchestrator.ImportanceTagger'), \
+         patch('contextor.core.orchestrator.CCITracker'), \
+         patch('contextor.core.orchestrator.DualModelRouter'), \
+         patch('contextor.core.orchestrator.SessionPersistence'), \
+         patch('contextor.core.orchestrator.MetaCoordinator'):
 
-        from pure_intellect.core.orchestrator import OrchestratorPipeline
+        from contextor.core.orchestrator import OrchestratorPipeline
         pipe = OrchestratorPipeline()
         # Сбрасываем mock'и для чистоты теста
         pipe._turns_since_reset = 0
@@ -166,7 +166,7 @@ class TestAdaptiveResetConfig:
     def test_config_has_adaptive_reset_section(self):
         """config.yaml содержит секцию adaptive_reset."""
         from pathlib import Path
-        config_path = Path('/a0/usr/workdir/pure-intellect/config.yaml')
+        config_path = Path('/a0/usr/workdir/contextor/config.yaml')
         if config_path.exists():
             content = config_path.read_text()
             assert 'adaptive_reset' in content

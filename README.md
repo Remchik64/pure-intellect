@@ -4,16 +4,16 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
-[![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2Fpure--intellect-black.svg)](https://github.com/Remchik64/pure-intellect)
+[![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2Fcontextor-black.svg)](https://github.com/Remchik64/contextor)
 
-Pure Intellect is a self-sufficient local AI orchestration server. It solves VRAM limitations and KV-Cache degradation by utilizing a unique **Triad Architecture** and **Smart VRAM Juggler (Swap Manager)**. Instead of context collapsing under heavy files or web searches, PI dynamically manages memory, routes intents, and performs "Map-Reduce" chunk reading, bringing enterprise-grade LLM capabilities to consumer hardware.
+Contextor is a self-sufficient local AI orchestration server. It solves VRAM limitations and KV-Cache degradation by utilizing a unique **Triad Architecture** and **Smart VRAM Juggler (Swap Manager)**. Instead of context collapsing under heavy files or web searches, CTX dynamically manages memory, routes intents, and performs "Map-Reduce" chunk reading, bringing enterprise-grade LLM capabilities to consumer hardware.
 
 ---
 
 ## ✨ Key Capabilities
 
 ### 🏛️ Triad Architecture (3 Models, 1 GPU)
-Pure Intellect splits cognitive tasks across a specialized triad:
+Contextor splits cognitive tasks across a specialized triad:
 - **Coordinator (3B)** — The gatekeeper. Lightning-fast intent classification (`web_search`, `read_document`, RAG) and Soft Reset coordinate generation.
 - **Utility Worker (7B/9B)** — The heavy lifter. Performs background web scraping, reading huge documents, and generating Map-Reduce rolling summaries.
 - **Generator (7B/9B)** — The thinker. Synthesizes final, polished responses using the deeply compressed context.
@@ -41,20 +41,20 @@ Run 3 massive models on just 12GB VRAM + 32GB RAM dynamically.
 ### Auto-Install (Recommended)
 **Windows:**
 ```powershell
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.bat -OutFile install.bat
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/contextor/main/install.bat -OutFile install.bat
 .\install.bat
 ```
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Remchik64/pure-intellect/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Remchik64/contextor/main/install.sh | bash
 ```
 
 ### Manual Installation
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
-pip install git+https://github.com/Remchik64/pure-intellect.git
-pure-intellect serve --port 3005
+pip install git+https://github.com/Remchik64/contextor.git
+contextor serve --port 3005
 ```
 
 ### Web UI
@@ -70,7 +70,7 @@ Open `http://localhost:3005` in your browser.
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                       Pure Intellect                        │
+│                       Contextor                        │
 │   ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐   │
 │   │ Coordinator  │  │ CCI Tracker │  │   Memory System  │   │
 │   │  (Intent)    │  │ (Coherence) │  │  HOT/WARM/COLD   │   │
@@ -91,4 +91,4 @@ Open `http://localhost:3005` in your browser.
 ```
 
 ## 💾 Persistent Storage & Privacy
-Pure Intellect is a **100% private, local-first** application. Except for Organic Web Search commands via DuckDuckGo, it requires no internet access. Memories, system stats, Coordinates, and config profiles are stored systematically in `./storage/sessions/default/` and persist flawlessly across reboots.
+Contextor is a **100% private, local-first** application. Except for Organic Web Search commands via DuckDuckGo, it requires no internet access. Memories, system stats, Coordinates, and config profiles are stored systematically in `./storage/sessions/default/` and persist flawlessly across reboots.

@@ -1,0 +1,3379 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contextor Admin</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-dim: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --yellow: #d29922;
+  --red: #f85149;
+  --purple: #bc8cff;
+  --nav-width: 200px;
+  --header-height: 52px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+a { color: var(--accent); text-decoration: none; }
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ===== LAYOUT ===== */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== HEADER ===== */
+#header {
+  height: var(--header-height);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+#header .logo {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+#header .logo span { color: var(--accent); }
+
+#header .badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.badge .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.badge .dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.badge .dot.yellow { background: var(--yellow); }
+.badge .dot.red { background: var(--red); }
+
+/* ===== MAIN AREA ===== */
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ===== SIDEBAR ===== */
+#sidebar {
+  width: var(--nav-width);
+  background: var(--surface2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: var(--text-dim);
+  border-left: 3px solid transparent;
+  transition: all 0.15s;
+  user-select: none;
+  font-size: 13px;
+}
+
+.nav-item:hover {
+  background: rgba(88, 166, 255, 0.08);
+  color: var(--text);
+}
+
+.nav-item.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.nav-item .nav-icon { font-size: 16px; flex-shrink: 0; }
+
+.nav-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 12px;
+}
+
+/* ===== CONTENT ===== */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.section {
+  display: none;
+  padding: 24px;
+  min-height: 100%;
+}
+
+.section.active { display: block; }
+
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.card-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.card-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* ===== GRID ===== */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+
+@media (max-width: 900px) {
+  .grid-4, .grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 600px) {
+  #sidebar { width: 52px; }
+  .nav-item span:last-child { display: none; }
+  .nav-item { padding: 10px; justify-content: center; }
+  .grid-2, .grid-4, .grid-3 { grid-template-columns: 1fr; }
+  #content { padding: 0; }
+  .section { padding: 16px; }
+}
+
+/* ===== PROGRESS BAR ===== */
+.progress-bar {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  background: var(--accent);
+}
+
+.progress-fill.green { background: var(--green); }
+.progress-fill.yellow { background: var(--yellow); }
+.progress-fill.red { background: var(--red); }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: var(--surface);
+  border-color: var(--text-dim);
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn.primary:hover { background: #79b8ff; border-color: #79b8ff; }
+
+.btn.danger {
+  background: rgba(248,81,73,0.15);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.btn.danger:hover { background: rgba(248,81,73,0.25); }
+
+.btn.success {
+  background: rgba(63,185,80,0.15);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.btn.success:hover { background: rgba(63,185,80,0.25); }
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ===== INPUTS ===== */
+.input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--text-dim); }
+
+input[type=range].input {
+  padding: 4px 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ===== TABLES ===== */
+.table-wrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  text-align: left;
+  padding: 8px 12px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(48,54,61,0.5);
+  vertical-align: middle;
+  color: var(--text);
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ===== CHAT ===== */
+#chat-section {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+}
+
+#chat-section.active {
+  display: flex;
+}
+
+#chat-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+#chat-header h2 { font-size: 16px; font-weight: 600; }
+
+#chat-stats {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.chat-badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.chat-badge.model { color: var(--purple); border-color: var(--purple); }
+.chat-badge.cci { color: var(--accent); border-color: var(--accent); }
+.chat-badge.turn { color: var(--green); border-color: var(--green); }
+
+.reset-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  opacity: 0.8;
+}
+.reset-divider::before,
+.reset-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.4;
+}
+.reset-divider .reset-icon { font-size: 14px; }
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message {
+  display: flex;
+  gap: 12px;
+  max-width: 800px;
+}
+
+.message.user { flex-direction: row-reverse; margin-left: auto; }
+
+.message .avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.message.user .avatar { background: rgba(88,166,255,0.2); border: 1px solid var(--accent); }
+.message.assistant .avatar { background: rgba(188,140,255,0.2); border: 1px solid var(--purple); }
+
+.message .bubble {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  max-width: calc(100% - 44px);
+  line-height: 1.6;
+}
+
+.message.user .bubble {
+  background: rgba(88,166,255,0.1);
+  border-color: rgba(88,166,255,0.3);
+}
+
+.message .bubble pre {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 8px 0;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.message .bubble code {
+  background: var(--surface2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 12px;
+}
+
+.message .bubble pre code { background: none; padding: 0; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.stream-cursor { animation: blink 0.8s infinite; font-weight: bold; color: var(--accent); }
+
+.message .time {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  text-align: right;
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 8px 4px;
+}
+
+.typing-indicator span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  animation: typing 1.2s infinite;
+}
+
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+  30% { opacity: 1; transform: scale(1); }
+}
+
+#chat-input-area {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+#chat-input {
+  flex: 1;
+  resize: none;
+  min-height: 42px;
+  max-height: 140px;
+  line-height: 1.5;
+  overflow-y: auto;
+}
+
+#send-btn {
+  flex-shrink: 0;
+  padding: 10px 16px;
+}
+
+/* ===== MEMORY ===== */
+.memory-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) { .memory-cols { grid-template-columns: 1fr; } }
+
+.memory-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 200px);
+}
+
+.memory-col-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface2);
+  flex-shrink: 0;
+}
+
+.memory-col-header .count {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.memory-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fact-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  transition: border-color 0.15s;
+}
+
+.fact-item:hover { border-color: var(--text-dim); }
+
+.fact-text {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.fact-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.importance-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.importance-badge.high { background: rgba(248,81,73,0.2); color: var(--red); }
+.importance-badge.med { background: rgba(210,153,34,0.2); color: var(--yellow); }
+.importance-badge.low { background: rgba(139,148,158,0.2); color: var(--text-dim); }
+
+.del-fact-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.del-fact-btn:hover { opacity: 1; color: var(--red); }
+
+/* ===== MODELS ===== */
+.model-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.model-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.model-icon.coordinator { background: rgba(88,166,255,0.15); }
+.model-icon.generator { background: rgba(188,140,255,0.15); }
+
+.model-info { flex: 1; min-width: 0; }
+.model-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.model-role { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+.model-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.status-dot.online  { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+.status-dot.active  { background: #ff8c00; box-shadow: 0 0 8px #ff8c00; animation: pulse 2s infinite; }
+.status-dot.ready   { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
+.status-dot.loading { background: var(--yellow);  animation: pulse 1.5s infinite; }
+.status-dot.offline { background: var(--text-dim); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.ollama-model-row td:last-child { text-align: right; }
+
+/* ===== CONNECTIONS ===== */
+.conn-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.conn-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conn-field {
+  margin-bottom: 12px;
+}
+
+.conn-field label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.conn-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conn-value code {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 10px;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 12px;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== CODE SEARCH ===== */
+.search-result {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.search-result .file-path {
+  font-size: 11px;
+  color: var(--accent);
+  font-family: monospace;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.search-result pre {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 12px;
+  overflow-x: auto;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.highlight { background: rgba(88,166,255,0.25); border-radius: 2px; padding: 0 2px; }
+
+/* ===== WATCHER STATUS ===== */
+.watcher-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.watcher-status-text {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.change-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.change-type {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.change-type.modified { background: rgba(210,153,34,0.2); color: var(--yellow); }
+.change-type.created { background: rgba(63,185,80,0.2); color: var(--green); }
+.change-type.deleted { background: rgba(248,81,73,0.2); color: var(--red); }
+
+.change-path {
+  font-family: monospace;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.change-time { color: var(--text-dim); flex-shrink: 0; }
+
+/* ===== TOAST ===== */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  animation: slideIn 0.25s ease, fadeOut 0.3s 2.2s ease forwards;
+  pointer-events: auto;
+}
+
+.toast.success { border-color: var(--green); }
+.toast.error { border-color: var(--red); }
+.toast.info { border-color: var(--accent); }
+
+@keyframes slideIn {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* ===== MISC ===== */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+.sep { height: 20px; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.tag.accent { background: rgba(88,166,255,0.15); border-color: rgba(88,166,255,0.4); color: var(--accent); }
+.tag.green { background: rgba(63,185,80,0.15); border-color: rgba(63,185,80,0.4); color: var(--green); }
+.tag.red { background: rgba(248,81,73,0.15); border-color: rgba(248,81,73,0.4); color: var(--red); }
+.tag.purple { background: rgba(188,140,255,0.15); border-color: rgba(188,140,255,0.4); color: var(--purple); }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.row.between { justify-content: space-between; }
+
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
+.mb-16 { margin-bottom: 16px; }
+
+.text-dim { color: var(--text-dim); }
+.text-accent { color: var(--accent); }
+.text-green { color: var(--green); }
+.text-red { color: var(--red); }
+.text-yellow { color: var(--yellow); }
+.text-purple { color: var(--purple); }
+.text-sm { font-size: 12px; }
+.font-mono { font-family: 'SF Mono', 'Cascadia Code', monospace; }
+
+/* ===== WS Status ===== */
+#ws-status-area {
+  padding: 0 20px 0 auto;
+}
+
+/* ===== Settings ===== */
+.settings-form {
+  max-width: 600px;
+}
+
+.settings-form .card { padding: 24px; }
+
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-row .input { flex: 1; }
+.range-val {
+  min-width: 40px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--accent);
+  font-family: monospace;
+}
+
+/* ===== Session list ===== */
+.session-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.session-item:hover { border-color: var(--accent); }
+.session-item.active-session { border-color: var(--accent); background: var(--surface3, var(--surface2)); }
+.session-item-row { display: flex; align-items: center; gap: 8px; }
+.session-name { font-weight: 600; font-size: 14px; flex: 1; }
+.session-id { font-family: monospace; font-size: 11px; color: var(--text-dim); }
+.session-turns { font-size: 12px; color: var(--text-dim); }
+.session-date { font-size: 11px; color: var(--text-dim); }
+.session-actions { display: flex; gap: 6px; }
+/* ===== Coordinates ===== */
+.coord-item { padding: 8px 12px; background: var(--surface2); border-left: 3px solid var(--accent); border-radius: 4px; margin-bottom: 8px; font-size: 12px; line-height: 1.5; }
+.coord-meta { display: flex; gap: 8px; margin-bottom: 4px; color: var(--text-dim); font-size: 11px; }
+.coord-meta-badge { background: var(--accent); color: #000; border-radius: 3px; padding: 1px 5px; font-size: 10px; }
+
+/* ===== Responsive Sidebar Toggle ===== */
+#sidebar-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+@media (max-width: 480px) {
+  #sidebar-toggle { display: flex; }
+  #sidebar {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    bottom: 0;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.2s;
+  }
+  #sidebar.open { transform: translateX(0); }
+  .nav-item span:last-child { display: block; }
+}
+
+/* endpoint status */
+.endpoint-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.endpoint-path { font-family: monospace; flex: 1; color: var(--text); }
+.endpoint-ok { color: var(--green); font-weight: 600; }
+.endpoint-err { color: var(--red); font-weight: 600; }
+
+/* CCI History mini chart */
+.cci-bars {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 40px;
+  margin-top: 8px;
+}
+
+.cci-bar {
+  flex: 1;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.6;
+  min-height: 2px;
+  transition: height 0.3s;
+}
+
+.cci-bar:hover { opacity: 1; }
+
+/* Thinking bubble styles */
+.thinking-message {
+  background: transparent !important;
+  padding: 4px 0 !important;
+}
+.thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 14px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  font-size: 13px;
+  color: #a5b4fc;
+  user-select: none;
+  transition: background 0.2s;
+  max-width: 80%;
+}
+.thinking-header:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+.thinking-icon {
+  font-size: 16px;
+  animation: pulse-think 1.5s infinite;
+}
+.thinking-toggle {
+  margin-left: auto;
+  font-size: 10px;
+}
+.thinking-content {
+  margin-top: 6px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.2);
+  border-left: 3px solid rgba(99, 102, 241, 0.4);
+  border-radius: 0 8px 8px 0;
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: pre-wrap;
+  font-family: monospace;
+  max-height: 200px;
+  overflow-y: auto;
+  max-width: 80%;
+}
+@keyframes pulse-think {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+
+/* ===== LOGS TERMINAL ===== */
+#section-logs { display: none; }
+#section-logs.active { display: block; }
+.log-toolbar {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.log-toolbar select, .log-toolbar input[type=number] {
+  background: #1a1a2e; color: #00ff00; border: 1px solid #00aa00;
+  padding: 5px 10px; border-radius: 4px; font-family: monospace;
+}
+.log-terminal {
+  background: #000; color: #00ff00; font-family: 'Courier New', Courier, monospace;
+  font-size: 12px; line-height: 1.5; padding: 16px;
+  border-radius: 8px; border: 1px solid #00aa00;
+  height: 600px; overflow-y: auto; white-space: pre-wrap;
+  word-break: break-all;
+}
+.log-line-DEBUG { color: #888; }
+.log-line-INFO { color: #00ff00; }
+.log-line-WARNING { color: #ffaa00; }
+.log-line-ERROR { color: #ff4444; }
+.log-line-CRITICAL { color: #ff0000; font-weight: bold; }
+.log-status {
+  margin-top: 8px; font-size: 12px; color: #888;
+  display: flex; justify-content: space-between;
+}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- HEADER -->
+<header id="header">
+  <button id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+  <div class="logo">🧠 <span>Contextor</span> Admin</div>
+  <div class="badges">
+    <div class="badge" id="badge-gpu"><div class="dot" id="gpu-dot"></div><span id="gpu-label">GPU: —</span></div>
+    <div class="badge" id="badge-ws"><div class="dot" id="ws-dot"></div><span id="ws-label">Offline</span></div>
+    <div class="badge"><span>v0.2</span></div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="nav-item active" data-section="dashboard" onclick="showSection('dashboard')">
+      <span class="nav-icon">🏠</span><span>Dashboard</span>
+    </div>
+    <div class="nav-item" data-section="chat" onclick="showSection('chat')">
+      <span class="nav-icon">💬</span><span>Chat</span>
+    </div>
+    <div class="nav-item" data-section="memory" onclick="showSection('memory')">
+      <span class="nav-icon">🧠</span><span>Memory</span>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" data-section="models" onclick="showSection('models')">
+      <span class="nav-icon">🤖</span><span>Models</span>
+    </div>
+    <div class="nav-item" data-section="projects" onclick="showSection('projects')">
+      <span class="nav-icon">📁</span><span>Projects 🚧</span>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" data-section="connections" onclick="showSection('connections')">
+      <span class="nav-icon">🔌</span><span>Connect 🚧</span>
+    </div>
+    <div class="nav-item" data-section="settings" onclick="showSection('settings')">
+      <span class="nav-icon">⚙️</span><span>Settings 🚧</span>
+    </div>
+    <div class="nav-item" data-section="logs" onclick="showSection('logs')">
+      <span class="nav-icon">📋</span><span>Logs 🚧</span>
+    </div>
+  </nav>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- ======== DASHBOARD ======== -->
+    <div id="section-dashboard" class="section active">
+      <div class="section-title">🏠 Dashboard <small id="dash-updated"></small></div>
+
+      <div class="grid-4">
+        <!-- GPU -->
+        <div class="card">
+          <div class="card-title">🖥️ GPU</div>
+          <div class="card-value" id="d-gpu-pct">—</div>
+          <div class="card-sub" id="d-gpu-vram">VRAM: —</div>
+          <div class="progress-bar"><div class="progress-fill" id="d-gpu-bar" style="width:0%"></div></div>
+        </div>
+        <!-- Memory -->
+        <div class="card">
+          <div class="card-title">🧠 Memory</div>
+          <div class="card-value" id="d-mem-hot">—</div>
+          <div class="card-sub" id="d-mem-total">Total: —</div>
+          <div class="progress-bar"><div class="progress-fill green" id="d-mem-bar" style="width:0%"></div></div>
+        </div>
+        <!-- CCI -->
+        <div class="card">
+          <div class="card-title">📊 CCI Score</div>
+          <div class="card-value" id="d-cci-val">—</div>
+          <div class="card-sub" id="d-cci-sub">Context coherence</div>
+          <div class="progress-bar"><div class="progress-fill yellow" id="d-cci-bar" style="width:0%"></div></div>
+          <div class="cci-bars" id="d-cci-history"></div>
+        </div>
+        <!-- Session -->
+        <div class="card">
+          <div class="card-title">🔄 Session</div>
+          <div class="card-value" id="d-turn">—</div>
+          <div class="card-sub" id="d-reset">Resets: —</div>
+          <div class="mt-8"><span class="tag" id="d-session-id">—</span></div>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- Dual Model Status -->
+      <div class="card">
+        <div class="card-title">🤖 Dual Model Status</div>
+        <div class="grid-2 mt-12">
+          <div class="model-card">
+            <div class="model-icon coordinator">🎯</div>
+            <div class="model-info">
+              <div class="model-name" id="d-coord-name">—</div>
+              <div class="model-role">Coordinator (3B)</div>
+            </div>
+            <div class="model-status">
+              <div class="status-dot" id="d-coord-dot"></div>
+              <span id="d-coord-status" class="text-dim text-sm">—</span>
+            </div>
+          </div>
+          <div class="model-card">
+            <div class="model-icon generator">⚡</div>
+            <div class="model-info">
+              <div class="model-name" id="d-gen-name">—</div>
+              <div class="model-role">Generator (7B)</div>
+            </div>
+            <div class="model-status">
+              <div class="status-dot" id="d-gen-dot"></div>
+              <span id="d-gen-status" class="text-dim text-sm">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- Sessions -->
+      <div class="card">
+        <div class="card-title row between">
+          <span>📋 Сессии</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn" onclick="createNewSession()">+ Новая</button>
+            <button class="btn" onclick="loadSessions()">↻</button>
+          </div>
+        </div>
+        <div class="mt-12" id="d-sessions-list"><div class="empty-state"><div class="empty-icon">📋</div>Загрузка...</div></div>
+      </div>
+
+      <!-- Coordinates -->
+      <div class="card">
+        <div class="card-title row between">
+          <span>🧭 Координаты контекста</span>
+          <button class="btn" onclick="loadCoordinates()">↻</button>
+        </div>
+        <div class="mt-8" id="d-coordinates"><div class="empty-state"><div class="empty-icon">🧭</div>Нет координат</div></div>
+      </div>
+    </div>
+
+    <!-- ======== CHAT ======== -->
+    <div id="section-chat" class="section" style="padding:0; display:none; flex-direction:column; height:100%;">
+      <div id="chat-header">
+        <h2>💬 Chat</h2>
+        <div id="chat-stats">
+          <span class="chat-badge model" id="chat-model-badge">Model: —</span>
+          <span class="chat-badge cci" id="chat-cci-badge">CCI: —</span>
+          <span class="chat-badge turn" id="chat-turn-badge">Turn: 0</span>
+        </div>
+        <button class="btn danger" onclick="clearSession()" style="margin-left:10px;">🗑 Clear</button>
+      </div>
+      <div id="messages"></div>
+      <div id="typing-area" style="padding:0 20px 0; display:none;">
+        <div class="message assistant">
+          <div class="avatar">🧠</div>
+          <div class="bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>
+        </div>
+      </div>
+      <div id="chat-input-area">
+        
+      <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="force-web-search" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent);">
+        <label for="force-web-search" style="cursor: pointer; font-size: 13px; color: var(--accent); font-weight: bold;">🌐 Web Search (1-shot)</label>
+      </div>
+      <textarea id="chat-input" class="input" placeholder="Введите сообщение... (Enter — отправить, Shift+Enter — новая строка)" rows="1"></textarea>
+        <button class="btn primary" id="send-btn" onclick="sendMessage()">▶ Send</button>
+      </div>
+    </div>
+
+    <!-- ======== MEMORY ======== -->
+    <div id="section-memory" class="section">
+      <div class="section-title row between">
+        <span>🧠 Memory Manager</span>
+        <div class="row">
+          <input type="text" class="input" id="memory-search" placeholder="🔍 Поиск..." style="width:220px;" oninput="filterMemory()">
+          <button class="btn" onclick="loadMemory()">↻</button>
+          <button class="btn danger" onclick="clearMemory()">🗑 Очистить</button>
+        </div>
+      </div>
+
+      <div class="memory-cols">
+        <div class="memory-col">
+          <div class="memory-col-header">
+            <span>📍 Координаты</span>
+            <span class="count" id="count-coords">0</span>
+          </div>
+          <div class="memory-list" id="list-coords"></div>
+        </div>
+        <div class="memory-col">
+          <div class="memory-col-header">
+            <span>⚓ Anchor Facts</span>
+            <span class="count" id="count-anchors">0</span>
+          </div>
+          <div class="memory-list" id="list-anchors"></div>
+        </div>
+        <div class="memory-col">
+          <div class="memory-col-header">
+            <span>🔥 Hot Facts</span>
+            <span class="count" id="count-hot">0</span>
+          </div>
+          <div class="memory-list" id="list-hot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======== MODELS ======== -->
+    <div id="section-models" class="section">
+      <div class="section-title row between">
+        <span>🤖 Model Manager</span>
+        <div class="btn-group">
+          <button class="btn" onclick="detectHardware()">🔍 Определить железо</button>
+          <button class="btn" onclick="loadModels()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Hardware Detection Result Card -->
+      <div class="card mb-16" id="hw-result-card" style="display:none;">
+        <div class="card-title">🔍 Ваше железо</div>
+        <div class="grid-2 mt-12">
+          <div>
+            <div class="row" style="gap:8px;align-items:center;">
+              <span class="text-dim">GPU:</span>
+              <span class="font-mono text-accent" id="hw-gpu">—</span>
+              <span class="text-dim" id="hw-vram"></span>
+            </div>
+            <div class="row mt-8" style="gap:8px;align-items:center;">
+              <span class="text-dim">RAM:</span>
+              <span class="font-mono" id="hw-ram">—</span>
+              <span class="text-dim">OS:</span>
+              <span class="font-mono" id="hw-os">—</span>
+            </div>
+          </div>
+          <div>
+            <div class="row" style="gap:8px;align-items:center;">
+              <span class="text-dim">Рекомендация:</span>
+              <span class="font-mono text-accent" id="hw-rec-label">—</span>
+            </div>
+            <div class="mt-8">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                <span class="text-dim">Координатор:</span>
+                <span class="font-mono" id="hw-rec-coord">—</span>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                <span class="text-dim">Генератор:</span>
+                <span class="font-mono" id="hw-rec-gen">—</span>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                <span class="text-dim">Скорость:</span>
+                <span class="font-mono" id="hw-rec-speed">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-12">
+          <button class="btn primary" id="hw-apply-btn" onclick="applyRecommendedModels()">
+            ✅ Применить рекомендованные модели
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Models -->
+      <!-- Active Models -->
+      <div class="card mb-16">
+        <div class="card-title">Активные модели</div>
+        <div class="grid-2 mt-12">
+          <div class="model-card">
+            <div class="model-icon coordinator">🎯</div>
+            <div class="model-info">
+              <div class="model-name" id="m-coord-name">—</div>
+              <div class="model-role">Coordinator (3B)</div>
+            </div>
+            <div class="model-status">
+              <div class="status-dot" id="m-coord-dot"></div>
+              <span id="m-coord-status" class="text-dim text-sm">—</span>
+            </div>
+          </div>
+          <div class="model-card">
+            <div class="model-icon generator">⚡</div>
+            <div class="model-info">
+              <div class="model-name" id="m-gen-name">—</div>
+              <div class="model-role">Generator (7B)</div>
+            </div>
+            <div class="model-status">
+              <div class="status-dot" id="m-gen-dot"></div>
+              <span id="m-gen-status" class="text-dim text-sm">—</span>
+            </div>
+          </div>
+        </div>
+        <!-- Utility Model Row -->
+        <div class="mt-12" style="border-top:1px solid var(--border);padding-top:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div class="model-card" style="flex:1;min-width:220px;">
+              <div class="model-icon" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;">🛠️</div>
+              <div class="model-info">
+                <div class="model-name" id="m-util-name">—</div>
+                <div class="model-role">Utility (Agent Zero)</div>
+              </div>
+              <div class="model-status">
+                <div class="status-dot" id="m-util-dot"></div>
+                <span id="m-util-status" class="text-dim text-sm">—</span>
+              </div>
+            </div>
+            <button class="btn primary" id="warm-util-btn" onclick="warmUtilityModel()" style="white-space:nowrap;">
+              🔥 Загрузить в GPU
+            </button>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
+            Utility model используется Agent Zero напрямую (суммаризация, компактизация чата). Кнопка загружает её в VRAM с keep_alive=-1.
+          </div>
+        </div>
+        <div class="mt-12" style="font-size:12px;color:var(--text-dim);padding:8px 0 2px;border-top:1px solid var(--border);margin-top:12px;">
+          ℹ️ Модели загружаются в VRAM при первом запросе. <strong style="color:var(--text)">✅ Готова</strong> — скачана и назначена. <strong style="color:#ff8c00">🔥 В памяти</strong> — активна в VRAM прямо сейчас.
+        </div>
+      </div>
+
+      <!-- Ollama Models -->
+      <div class="card">
+        <div class="card-title">📦 Доступные модели Ollama</div>
+        <div class="table-wrap mt-12">
+          <table id="ollama-table">
+            <thead>
+              <tr>
+                <th>Модель</th>
+                <th>Размер</th>
+                <th>Изменён</th>
+                <th>Статус</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="ollama-tbody">
+              <tr><td colspan="5" class="empty-state">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Download Model Form -->
+      <div class="card mt-16">
+        <div class="card-title">⬇️ Скачать новую модель</div>
+        <div class="row mt-12" style="gap:8px;">
+          <input type="text" class="input" id="dl-model-input" placeholder="qwen2.5:3b" style="flex:1;"
+            onkeydown="if(event.key==='Enter') downloadModel()">
+          <button class="btn primary" onclick="downloadModel()">▼ Скачать</button>
+        </div>
+        <div id="dl-progress-wrap" style="display:none;margin-top:12px;">
+          <div class="progress-bar" style="margin-bottom:8px;">
+            <div class="progress-fill" id="dl-progress-bar" style="width:0%;transition:width 0.4s;"></div>
+          </div>
+          <div class="text-dim text-sm" id="dl-status-text">Подготовка...</div>
+        </div>
+        <div id="dl-success-wrap" style="display:none;margin-top:12px;" class="text-sm">
+          <span style="color:var(--success,#4ade80);">✅ Модель готова!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======== PROJECTS ======== -->
+    <div id="section-projects" class="section">
+      <div class="section-title">📁 Project Manager</div>
+
+      <!-- Current Project -->
+      <div class="card mb-16">
+        <div class="card-title">Текущий проект</div>
+        <div class="row mt-12">
+          <div style="flex:1;">
+            <div class="font-mono text-accent" id="proj-path">—</div>
+            <div class="text-dim text-sm mt-8" id="proj-files">Файлов: —</div>
+          </div>
+          <div class="btn-group">
+            <button class="btn primary" onclick="indexProject()">⚡ Индексировать</button>
+            <button class="btn" onclick="openNewProject()">📂 Открыть...</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Watcher -->
+      <div class="watcher-bar">
+        <div class="watcher-status-text">
+          <div class="status-dot" id="watcher-dot"></div>
+          <span id="watcher-status-text">Watcher: —</span>
+        </div>
+        <div class="btn-group">
+          <button class="btn success" id="watcher-start-btn" onclick="startWatcher()">● Запустить</button>
+          <button class="btn danger" id="watcher-stop-btn" onclick="stopWatcher()">■ Остановить</button>
+        </div>
+        <button class="btn" onclick="loadWatcherChanges()">↻ Изменения</button>
+      </div>
+
+      <!-- Recent changes -->
+      <div class="card mb-16">
+        <div class="card-title">📝 Последние изменения</div>
+        <div class="mt-12" id="watcher-changes"><div class="empty-state"><div class="empty-icon">📝</div>Нет данных</div></div>
+      </div>
+
+      <!-- Code Search -->
+      <div class="card">
+        <div class="card-title">🔍 Поиск по коду</div>
+        <div class="row mt-12">
+          <input type="text" class="input" id="code-search-input" placeholder="Введите поисковый запрос..." style="flex:1;" onkeydown="if(event.key==='Enter') searchCode()">
+          <button class="btn primary" onclick="searchCode()">🔍 Найти</button>
+        </div>
+        <div class="mt-16" id="code-search-results"></div>
+      </div>
+    </div>
+
+    <!-- ======== CONNECTIONS ======== -->
+    <div id="section-connections" class="section">
+      <div class="section-title">🔌 API Gateway</div>
+
+      <div class="grid-2 mb-16">
+        <!-- Agent Zero -->
+        <div class="conn-card">
+          <h3>🤖 Agent Zero</h3>
+          <div class="conn-field">
+            <label>api_base</label>
+            <div class="conn-value">
+              <code id="az-api-base">http://localhost:7860/v1</code>
+              <button class="btn" onclick="copyText('http://localhost:7860/v1')">📋</button>
+            </div>
+          </div>
+          <div class="conn-field">
+            <label>api_key</label>
+            <div class="conn-value">
+              <code id="az-api-key">contextor</code>
+              <button class="btn" onclick="copyText('contextor')">📋</button>
+            </div>
+          </div>
+          <div class="conn-field">
+            <label>model</label>
+            <div class="conn-value">
+              <code id="az-model">contextor</code>
+              <button class="btn" onclick="copyText('contextor')">📋</button>
+            </div>
+          </div>
+          <div class="mt-12">
+            <button class="btn primary" onclick="copyJSON({api_base:'http://localhost:7860/v1',api_key:'contextor',model:'contextor'})">📋 Копировать JSON</button>
+          </div>
+        </div>
+
+        <!-- Agent Zero Plugin Settings -->
+        <div class="conn-card" style="border: 1px solid rgba(88,166,255,0.3);">
+          <h3>🔌 Agent Zero Plugin Settings</h3>
+          <div class="text-dim text-sm mb-8">Настройки для плагина <code>_contextor</code></div>
+
+          <div class="conn-field">
+            <label>PI Server URL (для Docker)</label>
+            <input type="text" class="input" id="az-pi-server"
+              value="http://host.docker.internal:7860"
+              style="font-family:monospace;font-size:12px;" />
+          </div>
+
+          <div class="conn-field">
+            <label>Utility Model для Agent Zero</label>
+            <select class="input" id="az-utility-model" style="cursor:pointer;">
+              <option value="qwen2.5:3b">qwen2.5:3b (рекомендуется)</option>
+            </select>
+          </div>
+
+          <div class="conn-field">
+            <label>Session ID</label>
+            <input type="text" class="input" id="az-session-id" value="agent_zero" />
+          </div>
+
+          <div class="conn-field">
+            <label>Recall порог сходства</label>
+            <input type="number" class="input" id="az-recall-threshold"
+              value="0.4" min="0.1" max="1.0" step="0.05" style="width:100px;" />
+          </div>
+
+          <div class="mt-12" style="display:flex;gap:8px;">
+            <button class="btn primary" onclick="saveAZPluginConfig()">💾 Сохранить</button>
+            <button class="btn" onclick="loadAZPluginConfig()">↻ Обновить</button>
+          </div>
+          <div id="az-plugin-status" class="mt-8 text-sm text-dim"></div>
+        </div>
+
+
+        <!-- Open WebUI -->
+        <div class="conn-card">
+          <h3>🌐 Open WebUI</h3>
+          <div class="conn-field">
+            <label>OpenAI Base URL</label>
+            <div class="conn-value">
+              <code>http://localhost:7860/v1</code>
+              <button class="btn" onclick="copyText('http://localhost:7860/v1')">📋</button>
+            </div>
+          </div>
+          <div class="conn-field">
+            <label>API Key</label>
+            <div class="conn-value">
+              <code>contextor</code>
+              <button class="btn" onclick="copyText('contextor')">📋</button>
+            </div>
+          </div>
+          <div class="mt-12 text-dim text-sm">В настройках Open WebUI → Admin → Settings → Connections добавьте OpenAI-совместимый сервер.</div>
+        </div>
+
+        <!-- LM Studio -->
+        <div class="conn-card">
+          <h3>🔬 LM Studio</h3>
+          <div class="conn-field">
+            <label>Custom Server URL</label>
+            <div class="conn-value">
+              <code>http://localhost:7860/v1</code>
+              <button class="btn" onclick="copyText('http://localhost:7860/v1')">📋</button>
+            </div>
+          </div>
+          <div class="mt-12 text-dim text-sm">В LM Studio → Developer → Local Server включите режим и укажите Custom Endpoint.</div>
+        </div>
+
+        <!-- Endpoint Status -->
+        <div class="conn-card">
+          <h3>📡 Статус Endpoints</h3>
+          <div class="mt-8" id="endpoint-list">
+            <div class="empty-state">Проверка...</div>
+          </div>
+          <button class="btn mt-12" onclick="checkEndpoints()">↻ Проверить</button>
+        </div>
+      </div>
+
+      <!-- Available Models (OpenAI format) -->
+      <div class="card">
+        <div class="card-title">🎛️ Доступные модели (OpenAI /v1/models)</div>
+        <div class="mt-12" id="openai-models-list"><div class="empty-state">Загрузка...</div></div>
+      </div>
+    </div>
+
+    <!-- ======== SETTINGS ======== -->
+    <div id="section-settings" class="section">
+      <div class="section-title">⚙️ Settings</div>
+
+      <div class="settings-form">
+        <div class="card">
+          <div class="card-title">🤖 Модели</div>
+          <div class="form-group">
+            <label>Coordinator Model</label>
+            <input type="text" class="input" id="cfg-coord" placeholder="qwen2.5:3b">
+          </div>
+          <div class="form-group">
+            <label>Generator Model</label>
+            <input type="text" class="input" id="cfg-gen" placeholder="qwen2.5:7b">
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="card">
+          <div class="card-title">📊 CCI & Reset</div>
+          <div class="form-group">
+            <label>CCI Threshold <span class="text-dim">(0.0 — 1.0)</span></label>
+            <div class="range-row">
+              <input type="range" class="input" id="cfg-cci" min="0" max="1" step="0.01" oninput="document.getElementById('cfg-cci-val').textContent=this.value">
+              <span class="range-val" id="cfg-cci-val">—</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Max Turns Without Reset</label>
+            <input type="number" class="input" id="cfg-max-turns" min="1" max="100">
+          </div>
+          <div class="form-group">
+            <label>Min Turns Between Resets</label>
+            <input type="number" class="input" id="cfg-min-turns" min="1" max="50">
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="card">
+          <div class="card-title">🧠 Memory</div>
+          <div class="form-group">
+            <label>Hot Facts Max</label>
+            <input type="number" class="input" id="cfg-hot-max" min="1" max="200">
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="row">
+          <button class="btn primary" onclick="saveSettings()">💾 Сохранить</button>
+          <button class="btn" onclick="loadSettings()">↻ Перезагрузить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======== LOGS ======== -->
+    <div id="section-logs" class="section">
+      <div class="section-title">📋 Logs <small id="log-counter">Строк: 0 / Буфер: 0</small></div>
+
+      <div class="log-toolbar">
+        <select id="log-level-filter" onchange="loadLogs()">
+          <option value="ALL">Все уровни</option>
+          <option value="DEBUG">DEBUG</option>
+          <option value="INFO">INFO</option>
+          <option value="WARNING">WARNING</option>
+          <option value="ERROR">ERROR</option>
+          <option value="CRITICAL">CRITICAL</option>
+        </select>
+        <input type="number" id="log-limit" value="500" min="50" max="2000" title="Макс. строк" style="width:80px" onchange="loadLogs()">
+        <button class="btn" onclick="loadLogs()">🔄 Обновить</button>
+        <button class="btn" id="log-autoscroll-btn" onclick="toggleLogsAutoScroll()">⬇️ Авто-скролл: ВКЛ</button>
+        <button class="btn" onclick="copyLogs()">📋 Копировать</button>
+        <button class="btn" style="background:#c0392b" onclick="clearServerLogs()">🗑️ Очистить</button>
+      </div>
+
+      <div class="log-terminal" id="log-terminal"></div>
+
+      <div class="log-status">
+        <span>🟢 Авто-обновление каждые 2 сек</span>
+        <span id="log-update-time"></span>
+      </div>
+    </div>
+
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+// ================================================================
+// PURE INTELLECT ADMIN - JavaScript Core
+// ================================================================
+
+'use strict';
+
+const HOST = window.location.host || 'localhost:7860';
+const API = `http://${HOST}`;
+const WS_URL = `ws://${HOST}/ws`;
+
+// ---- State ----
+let ws = null;
+let wsConnected = false;
+let dashRefreshTimer = null;
+let chatHistory = [];
+let isTyping = false;
+let allFacts = { coords: [], anchors: [], hot: [] };
+let currentSection = 'dashboard';
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+
+function showSection(name) {
+  if (typeof stopLogsAutoRefresh === 'function') stopLogsAutoRefresh();
+  document.querySelectorAll('.section').forEach(s => {
+    s.style.display = 'none';
+    s.classList.remove('active');
+  });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const sec = document.getElementById('section-' + name);
+  if (!sec) return;
+
+  if (name === 'chat') {
+    sec.style.display = 'flex';
+    sec.style.flexDirection = 'column';
+    sec.style.height = '100%';
+  } else {
+    sec.style.display = 'block';
+  }
+  sec.classList.add('active');
+
+  const navEl = document.querySelector(`.nav-item[data-section="${name}"]`);
+  if (navEl) navEl.classList.add('active');
+
+  currentSection = name;
+
+  // Close mobile sidebar
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar.classList.contains('open')) sidebar.classList.remove('open');
+
+  // Load section data
+  // Stop models polling if leaving models section
+  if (name !== 'models') stopModelsPolling();
+
+  // Load section data
+  switch (name) {
+    case 'dashboard': loadDashboard(); break;
+    case 'chat': loadChatStats(); break;
+    case 'memory': loadMemory(); break;
+    case 'models': loadModels(); startModelsPolling(); break;
+    case 'projects': loadProjects(); break;
+    case 'connections': loadConnections(); break;
+    case 'settings': loadSettings(); break;
+    case 'logs': startLogsAutoRefresh(); break;
+  }
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ================================================================
+// UTILITIES
+// ================================================================
+
+async function api(path, opts = {}) {
+  try {
+    const res = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
+      ...opts
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.warn('API error', path, e.message);
+    return null;
+  }
+}
+
+async function apiOllama(path) {
+  try {
+    const res = await fetch(`http://${HOST.split(':')[0]}:11434${path}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    // Try localhost:11434 directly
+    try {
+      const res2 = await fetch(`http://localhost:11434${path}`);
+      if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
+      return await res2.json();
+    } catch (e2) {
+      console.warn('Ollama API error', path, e2.message);
+      return null;
+    }
+  }
+}
+
+function toast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${esc(msg)}</span>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 2700);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtSize(bytes) {
+  if (!bytes) return '—';
+  const gb = bytes / 1e9;
+  if (gb >= 1) return gb.toFixed(1) + ' GB';
+  const mb = bytes / 1e6;
+  return mb.toFixed(0) + ' MB';
+}
+
+function fmtDate(s) {
+  if (!s) return '—';
+  try {
+    return new Date(s).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+  } catch { return s; }
+}
+
+function fmtTime() {
+  return new Date().toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Скопировано!', 'success')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    toast('Скопировано!', 'success');
+  });
+}
+
+function copyJSON(obj) {
+  copyText(JSON.stringify(obj, null, 2));
+}
+
+function pct(v, max = 100) {
+  if (v == null || isNaN(v)) return 0;
+  return Math.min(100, Math.max(0, (v / max) * 100));
+}
+
+function colorClass(v) {
+  if (v < 60) return 'green';
+  if (v < 85) return 'yellow';
+  return 'red';
+}
+
+// Simple markdown → HTML (no library)
+function renderMarkdown(text) {
+  if (!text) return '';
+  let s = esc(text);
+
+  // Code blocks
+  s = s.replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code.trim()}</code></pre>`);
+  // Inline code
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Bold
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // Headers
+  s = s.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+  s = s.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+  // Lists
+  s = s.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
+  s = s.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+  // Line breaks (outside pre)
+  s = s.replace(/\n/g, '<br>');
+
+  return s;
+}
+
+// ================================================================
+// WEBSOCKET
+// ================================================================
+
+function connectWS() {
+  if (ws && ws.readyState < 2) return;
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch (e) {
+    setWSStatus(false);
+    return;
+  }
+
+  ws.onopen = () => {
+    wsConnected = true;
+    setWSStatus(true);
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      handleWSMessage(msg);
+    } catch {
+      // plain text
+      appendMessage('assistant', e.data);
+    }
+  };
+
+  ws.onclose = () => {
+    wsConnected = false;
+    setWSStatus(false);
+    setTimeout(connectWS, 4000);
+  };
+
+  ws.onerror = () => {
+    wsConnected = false;
+    setWSStatus(false);
+  };
+}
+
+// Текущий streaming bubble (для накопления токенов)
+let _streamBubble = null;
+let _streamText = '';
+let _thinkingBubble = null;
+let _thinkingText = '';
+
+function startStreamBubble() {
+  hideTyping();
+  const el = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.innerHTML = `
+    <div class="avatar">🧠</div>
+    <div>
+      <div class="bubble stream-bubble"><span class="stream-cursor">▋</span></div>
+      <div class="time">${fmtTime()}</div>
+    </div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  _streamBubble = div.querySelector('.stream-bubble');
+  _streamText = '';
+}
+
+function appendStreamToken(token) {
+  if (!_streamBubble) startStreamBubble();
+  _streamText += token;
+  _streamBubble.innerHTML = renderMarkdown(_streamText) + '<span class="stream-cursor">▋</span>';
+  const el = document.getElementById('messages');
+  el.scrollTop = el.scrollHeight;
+}
+
+function finalizeStreamBubble() {
+  if (_streamBubble) {
+    _streamBubble.innerHTML = renderMarkdown(_streamText);
+    _streamBubble = null;
+    _streamText = '';
+  }
+  hideTyping();
+}
+
+
+function createThinkingBubble() {
+  const chatMessages = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'message assistant thinking-message';
+  div.innerHTML = `
+    <div class="thinking-header" onclick="toggleThinking(this)">
+      <span class="thinking-icon">&#x1F9E0;</span>
+      <span class="thinking-label">&#x1F501; &#x414;&#x443;&#x43C;&#x430;&#x44E;...</span>
+      <span class="thinking-toggle">&#x25BC;</span>
+    </div>
+    <div class="thinking-content"></div>
+  `;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return div.querySelector('.thinking-content');
+}
+
+function appendThinkingToken(token) {
+  if (!_thinkingBubble) return;
+  _thinkingText += token;
+  _thinkingBubble.textContent = _thinkingText;
+  const chatMessages = document.getElementById('chat-messages');
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function finalizeThinkingBubble() {
+  if (_thinkingBubble) {
+    const header = _thinkingBubble.parentElement.querySelector('.thinking-label');
+    if (header) header.innerHTML = '&#x1F4AD; &#x41C;&#x44B;&#x441;&#x43B;&#x438; <small style="opacity:0.6">(&#x43D;&#x430;&#x436;&#x43C;&#x438; &#x447;&#x442;&#x43E;&#x431;&#x44B; &#x440;&#x430;&#x437;&#x432;&#x435;&#x440;&#x43D;&#x443;&#x442;&#x44C;)</small>';
+    const toggle = _thinkingBubble.parentElement.querySelector('.thinking-toggle');
+    if (toggle) toggle.textContent = '▶';
+    _thinkingBubble.style.display = 'none';
+    _thinkingBubble = null;
+    _thinkingText = ''; 
+  }
+}
+
+function toggleThinking(header) {
+  const content = header.nextElementSibling;
+  const toggle = header.querySelector('.thinking-toggle');
+  const label = header.querySelector('.thinking-label');
+  if (!content) return;
+  if (content.style.display === 'none' || content.style.display === '') {
+    content.style.display = 'block';
+    if (toggle) toggle.textContent = '▼';
+    if (label) label.innerHTML = '&#x1F4AD; &#x41C;&#x44B;&#x441;&#x43B;&#x438; <small style="opacity:0.6">(&#x441;&#x432;&#x435;&#x440;&#x43D;&#x443;&#x442;&#x44C;)</small>';
+  } else {
+    content.style.display = 'none';
+    if (toggle) toggle.textContent = '▶';
+    if (label) label.innerHTML = '&#x1F4AD; &#x41C;&#x44B;&#x441;&#x43B;&#x438; <small style="opacity:0.6">(&#x440;&#x430;&#x437;&#x432;&#x435;&#x440;&#x43D;&#x443;&#x442;&#x44C;)</small>';
+  }
+}
+
+function handleWSMessage(msg) {
+  if (msg.type === 'start') {
+    showTyping();
+    _streamBubble = null;
+    _streamText = '';
+  } else if (msg.type === 'token') {
+    appendStreamToken(msg.content || '');
+  } else if (msg.type === 'end') {
+    finalizeStreamBubble();
+    updateChatStats(msg);
+    // Обновляем статистику из API (turn, cci могут быть точнее)
+    loadChatStats();
+  } else if (msg.type === 'reset_marker') {
+    appendResetDivider(msg.turn || 0);
+  } else if (msg.type === 'response' || msg.type === 'message') {
+    hideTyping();
+    appendMessage('assistant', msg.content || msg.message || '');
+  } else if (msg.type === 'status') {
+    updateChatStats(msg);
+  } else if (msg.type === 'thinking_start') {
+    hideTyping();
+    _thinkingBubble = createThinkingBubble();
+    _thinkingText = '';
+  } else if (msg.type === 'thinking') {
+    if (_thinkingBubble) appendThinkingToken(msg.content || '');
+  } else if (msg.type === 'thinking_end') {
+    if (_thinkingBubble) finalizeThinkingBubble();
+  } else if (msg.type === 'error') {
+    finalizeStreamBubble();
+    hideTyping();
+    appendMessage('assistant', '⚠️ Ошибка: ' + (msg.message || 'Unknown'));
+  }
+}
+
+function setWSStatus(online) {
+  const dot = document.getElementById('ws-dot');
+  const label = document.getElementById('ws-label');
+  if (online) {
+    dot.className = 'dot green';
+    label.textContent = 'Online';
+  } else {
+    dot.className = 'dot red';
+    label.textContent = 'Offline';
+  }
+}
+
+// ================================================================
+// DASHBOARD
+// ================================================================
+
+async function loadDashboard() {
+  const [hw, memStats, cciStats, sessInfo, dualStats] = await Promise.all([
+    api('/api/v1/config/hardware'),
+    api('/api/v1/memory/stats'),
+    api('/api/v1/cci/stats'),
+    api('/api/v1/session/info'),
+    api('/api/v1/models/status')  // полный статус: скачана/в VRAM/офлайн
+  ]);
+
+  // GPU
+  if (hw) {
+    const gpuPct = hw.gpu_utilization ?? hw.gpu_percent ?? hw.utilization ?? null;
+    const vramUsed = hw.vram_used ?? hw.memory_used ?? null;
+    const vramTotal = hw.vram_total ?? hw.memory_total ?? null;
+
+    if (gpuPct != null) {
+      document.getElementById('d-gpu-pct').textContent = Math.round(gpuPct) + '%';
+      const bar = document.getElementById('d-gpu-bar');
+      bar.style.width = gpuPct + '%';
+      bar.className = 'progress-fill ' + colorClass(gpuPct);
+      document.getElementById('gpu-dot').className = 'dot ' + (gpuPct > 90 ? 'red' : gpuPct > 70 ? 'yellow' : 'green');
+      document.getElementById('gpu-label').textContent = 'GPU: ' + Math.round(gpuPct) + '%';
+    } else {
+      document.getElementById('d-gpu-pct').textContent = 'N/A';
+      document.getElementById('gpu-label').textContent = 'GPU: N/A';
+    }
+    if (vramUsed != null) {
+      document.getElementById('d-gpu-vram').textContent = `VRAM: ${fmtSize(vramUsed)} / ${fmtSize(vramTotal)}`;
+    }
+  }
+
+  // Memory
+  if (memStats) {
+    const hot = memStats.hot_facts_count ?? memStats.hot_count ?? (memStats.facts ? memStats.facts.length : null) ?? 0;
+    const total = memStats.total_facts ?? memStats.total ?? 0;
+    const maxHot = memStats.hot_facts_max ?? memStats.max_hot ?? 50;
+    document.getElementById('d-mem-hot').textContent = hot + ' hot';
+    document.getElementById('d-mem-total').textContent = `Total: ${total} facts`;
+    const bar = document.getElementById('d-mem-bar');
+    bar.style.width = pct(hot, maxHot) + '%';
+  }
+
+  // CCI
+  if (cciStats) {
+    const score = cciStats.current_score ?? cciStats.score ?? cciStats.cci ?? 0;
+    const pctVal = Math.round(score * 100);
+    document.getElementById('d-cci-val').textContent = pctVal + '%';
+    const bar = document.getElementById('d-cci-bar');
+    bar.style.width = pctVal + '%';
+    bar.className = 'progress-fill ' + (pctVal > 80 ? 'red' : pctVal > 60 ? 'yellow' : 'green');
+
+    // Mini history
+    const history = cciStats.history ?? cciStats.scores ?? [];
+    const barsEl = document.getElementById('d-cci-history');
+    if (history.length) {
+      barsEl.innerHTML = history.slice(-20).map(v => {
+        const h = Math.round(pct(v, 1) * 0.4) + 2;
+        const c = v > 0.8 ? 'var(--red)' : v > 0.6 ? 'var(--yellow)' : 'var(--accent)';
+        return `<div class="cci-bar" style="height:${h}px; background:${c}" title="${(v*100).toFixed(0)}%"></div>`;
+      }).join('');
+    }
+  }
+
+  // Session
+  if (sessInfo) {
+    const turns = sessInfo.turn_count ?? sessInfo.turns ?? sessInfo.current_turn ?? 0;
+    const resets = sessInfo.reset_count ?? sessInfo.resets ?? 0;
+    const sid = sessInfo.session_id ?? sessInfo.id ?? '—';
+    document.getElementById('d-turn').textContent = 'Turn ' + turns;
+    document.getElementById('d-reset').textContent = `Resets: ${resets}`;
+    document.getElementById('d-session-id').textContent = String(sid).slice(0, 16);
+  }
+
+  // Dual model
+  if (dualStats) {
+    updateDualModelUI(dualStats, 'd');
+  }
+
+  // Sessions list
+  loadSessions();
+  loadCoordinates();
+
+  document.getElementById('dash-updated').textContent = `— обновлено в ${fmtTime()}`;
+}
+
+function updateDualModelUI(stats, prefix) {
+  const coord = stats.coordinator ?? stats.coord ?? {};
+  const gen = stats.generator ?? stats.gen ?? {};
+
+  const coordName = coord.model ?? coord.name ?? '—';
+  const genName = gen.model ?? gen.name ?? '—';
+
+  // Определяем статус: поддерживаем оба формата
+  // Новый формат: coord.status = 'active'|'ready'|'offline'
+  // Старый формат: coord.ready/loaded = boolean
+  function resolveStatus(role) {
+    if (role.status === 'active')  return 'active';
+    if (role.status === 'ready')   return 'ready';
+    if (role.status === 'offline') return 'offline';
+    // legacy fallback: boolean ready/loaded
+    const ok = role.ready ?? role.loaded ?? false;
+    return ok ? 'ready' : 'offline';
+  }
+
+  const STATUS_LABEL = {
+    active:  '🔥 В памяти',
+    ready:   '✅ Готова',
+    offline: '❌ Не скачана',
+  };
+
+  const coordStatus = resolveStatus(coord);
+  const genStatus   = resolveStatus(gen);
+
+  const cn = document.getElementById(`${prefix}-coord-name`);
+  const gn = document.getElementById(`${prefix}-gen-name`);
+  const cd = document.getElementById(`${prefix}-coord-dot`);
+  const gd = document.getElementById(`${prefix}-gen-dot`);
+  const cs = document.getElementById(`${prefix}-coord-status`);
+  const gs = document.getElementById(`${prefix}-gen-status`);
+
+  if (cn) cn.textContent = coordName;
+  if (gn) gn.textContent = genName;
+  if (cd) cd.className = 'status-dot ' + coordStatus;
+  if (gd) gd.className = 'status-dot ' + genStatus;
+  if (cs) cs.textContent = STATUS_LABEL[coordStatus] ?? coordStatus;
+  if (gs) gs.textContent = STATUS_LABEL[genStatus]   ?? genStatus;
+}
+
+async function loadSessions() {
+  const data = await api('/api/v1/sessions');
+  const el = document.getElementById('d-sessions-list');
+  if (!data) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div>Не удалось загрузить</div>'; return; }
+
+  const sessions = Array.isArray(data) ? data : (data.sessions ?? []);
+  if (!sessions.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>Нет сессий</div>';
+    return;
+  }
+
+  el.innerHTML = sessions.map(s => {
+    const id = s.session_id ?? s.id ?? '?';
+    const name = s.display_name ?? id;
+    const turns = s.turn ?? s.turn_count ?? s.turns ?? 0;
+    const active = s.is_active ?? s.active ?? false;
+    const icon = s.icon ?? '💬';
+    const date = s.last_active ? new Date(s.last_active).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="session-item ${active ? 'active-session' : ''}" onclick="switchSession('${esc(id)}')">
+      <div class="session-item-row">
+        <span>${icon}</span>
+        <span class="session-name">${esc(name)}</span>
+        ${active ? '<span class="tag green" style="font-size:10px">Активна</span>' : ''}
+      </div>
+      <div class="session-item-row">
+        <span class="session-turns">${turns} turns</span>
+        <span class="session-date">${date}</span>
+        <span style="flex:1"></span>
+        <button class="btn" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();renameSession('${esc(id)}','${esc(name)}')">✏️</button>
+        ${!active ? `<button class="btn danger" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();deleteSessionById('${esc(id)}')">🗑</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function switchSession(sessionId) {
+  const r = await api(`/api/v1/sessions/${encodeURIComponent(sessionId)}/switch`, { method: 'POST' });
+  if (r) { loadSessions(); loadDashboard(); showToast('Сессия переключена: ' + sessionId); }
+}
+
+async function deleteSessionById(sessionId) {
+  if (!confirm(`Удалить сессию "${sessionId}"? Данные будут потеряны.`)) return;
+  const r = await api(`/api/v1/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+  if (r) { loadSessions(); showToast('Сессия удалена'); }
+}
+
+async function renameSession(sessionId, currentName) {
+  const newName = prompt('Новое имя сессии:', currentName);
+  if (!newName || newName === currentName) return;
+  const r = await api(`/api/v1/sessions/${encodeURIComponent(sessionId)}/rename`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ display_name: newName })
+  });
+  if (r) { loadSessions(); showToast('Переименовано: ' + newName); }
+}
+
+async function createNewSession() {
+  const name = prompt('Имя новой сессии (оставьте пустым для автогенерации):');
+  const body = { session_type: 'chat' };
+  if (name && name.trim()) body.display_name = name.trim();
+  const r = await api('/api/v1/sessions/new', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (r) { loadSessions(); loadDashboard(); showToast('Создана новая сессия'); }
+}
+
+
+async function deleteCoordinate(turn) {
+  if (!confirm('Точно удалить эту координату? Она будет потеряна навсегда.')) return;
+  const r = await fetch(`/api/v1/coordinates/${turn}`, { method: 'DELETE' });
+  if (r.ok) loadCoordinates();
+}
+
+async function loadCoordinates() {
+  const data = await api('/api/v1/coordinates');
+  const el = document.getElementById('d-coordinates');
+  if (!data) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div>Ошибка загрузки</div>'; return; }
+
+  const stats = data.stats ?? {};
+  const active = data.active_coordinates ?? [];
+  const meta = data.meta_coordinate;
+  const archived = stats.archived_batches ?? 0;
+
+  if (!active.length && !meta) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🧭</div>Координаты появятся после первого Soft Reset<br><small style="color:var(--text-dim)">Архивировано батчей: ${archived}</small></div>`;
+    return;
+  }
+
+  let html = `<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">Активных: ${active.length} | Архивных батчей: ${archived} | ~${data.prompt_tokens_estimate ?? 0} токенов</div>`;
+
+  if (meta) {
+    html += `<div class="coord-item">
+      <div class="coord-meta"><span class="coord-meta-badge">МЕТА</span><span>Turn ${meta.turn}</span><span>${meta.created_at ? new Date(meta.created_at).toLocaleDateString('ru-RU') : ''}</span></div>
+      <div>${esc(meta.content)}</div>
+    </div>`;
+  }
+
+  active.forEach((c, i) => {
+    html += `<div class="coord-item">
+      <div class="coord-meta"><span class="coord-meta-badge">#${i+1}</span><span>Turn ${c.turn}</span><span>${c.created_at ? new Date(c.created_at).toLocaleDateString('ru-RU') : ''}</span></div>
+      <div>${esc(c.content)}</div><button class='btn danger' style='margin-top:8px;font-size:10px;padding:4px 8px;' onclick='deleteCoordinate(${c.turn})'>🗑 Удалить</button>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function showToast(msg) {
+  let t = document.getElementById('pi-toast');
+  if (!t) { t = document.createElement('div'); t.id = 'pi-toast'; t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--accent);color:#000;padding:10px 18px;border-radius:8px;font-size:14px;z-index:9999;transition:opacity 0.3s'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 2500);
+}
+
+function startDashboardRefresh() {
+  if (dashRefreshTimer) clearInterval(dashRefreshTimer);
+  dashRefreshTimer = setInterval(() => {
+    if (currentSection === 'dashboard') loadDashboard();
+  }, 5000);
+}
+
+// ================================================================
+// CHAT
+// ================================================================
+
+function appendMessage(role, content) {
+  const el = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  const isUser = role === 'user';
+  const avatar = isUser ? '👤' : '🧠';
+  const time = fmtTime();
+  div.innerHTML = `
+    <div class="avatar">${avatar}</div>
+    <div>
+      <div class="bubble">${isUser ? esc(content) : renderMarkdown(content)}</div>
+      <div class="time">${time}</div>
+    </div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function appendResetDivider(turn) {
+  const el = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'reset-divider';
+  div.innerHTML = `<span class="reset-icon">🔄</span> Контекст обновлён (Turn ${turn}) — факты сохранены в памяти`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function showTyping() {
+  document.getElementById('typing-area').style.display = 'block';
+  isTyping = true;
+  const el = document.getElementById('messages');
+  el.scrollTop = el.scrollHeight;
+}
+
+function hideTyping() {
+  document.getElementById('typing-area').style.display = 'none';
+  isTyping = false;
+}
+
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  if (!wsConnected) {
+    toast('WebSocket не подключён', 'error');
+    connectWS();
+    return;
+  }
+  appendMessage('user', text);
+  input.value = '';
+  input.style.height = 'auto';
+  showTyping();
+  try {
+    const sf = document.getElementById('force-web-search');
+    const forceWebSearch = sf ? sf.checked : false;
+    if (sf) sf.checked = false; // Auto-disable
+    ws.send(JSON.stringify({ type: 'chat', message: text, content: text, force_web_search: forceWebSearch }));
+  } catch (e) {
+    hideTyping();
+    toast('Ошибка отправки: ' + e.message, 'error');
+  }
+}
+
+function updateChatStats(msg) {
+  if (msg.turn != null) document.getElementById('chat-turn-badge').textContent = `Turn: ${msg.turn}`;
+  if (msg.cci != null) document.getElementById('chat-cci-badge').textContent = `CCI: ${(msg.cci * 100).toFixed(0)}%`;
+  if (msg.model) document.getElementById('chat-model-badge').textContent = `Model: ${msg.model}`;
+}
+
+async function loadChatStats() {
+  const [cciData, sessData, dualData] = await Promise.all([
+    api('/api/v1/cci/stats'),
+    api('/api/v1/session/info'),
+    api('/api/v1/dual-model/stats')
+  ]);
+  if (cciData) {
+    const score = cciData.current_score ?? cciData.score ?? cciData.cci ?? 0;
+    document.getElementById('chat-cci-badge').textContent = `CCI: ${(score * 100).toFixed(0)}%`;
+  }
+  if (sessData) {
+    const turns = sessData.turn_count ?? sessData.turns ?? 0;
+    document.getElementById('chat-turn-badge').textContent = `Turn: ${turns}`;
+  }
+  if (dualData) {
+    const gen = dualData.generator ?? dualData.gen ?? {};
+    const name = gen.model ?? gen.name ?? '—';
+    document.getElementById('chat-model-badge').textContent = `Model: ${name}`;
+  }
+}
+
+async function clearSession() {
+  if (!confirm('Очистить текущую сессию?')) return;
+  const r = await api('/api/v1/session', { method: 'DELETE' });
+  if (r !== null) {
+    document.getElementById('messages').innerHTML = '';
+    toast('Сессия очищена', 'success');
+  } else {
+    toast('Ошибка очистки', 'error');
+  }
+}
+
+// Auto-resize textarea
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('chat-input');
+  ta.addEventListener('input', () => {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+  });
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+});
+
+// ================================================================
+// MEMORY
+// ================================================================
+
+async function loadMemory() {
+  const stats = await api('/api/v1/memory/stats');
+  const factsData = await fetch('/api/v1/memory/facts').then(r => r.json()).catch(e => null);
+  allFacts = { coords: [], anchors: [], hot: [] };
+
+  if (factsData && factsData.facts) {
+    const facts = factsData.facts;
+    facts.forEach(f => {
+      const src = f.source ?? '';
+      const isAnchor = f.is_anchor ?? false;
+      const isCoord = src === 'soft_reset' || src === 'coordinate' || f.type === 'coordinate';
+      if (isCoord) allFacts.coords.push(f);
+      else if (isAnchor) allFacts.anchors.push(f);
+      else allFacts.hot.push(f);
+    });
+  }
+
+  renderMemory();
+}
+
+function renderMemory(filter = '') {
+  const q = filter.toLowerCase();
+  const renderList = (facts, listId, countId) => {
+    const el = document.getElementById(listId);
+    const cnt = document.getElementById(countId);
+    const filtered = q ? facts.filter(f => (f.content || f.text || '').toLowerCase().includes(q)) : facts;
+    cnt.textContent = filtered.length;
+    if (!filtered.length) {
+      el.innerHTML = '<div class="empty-state">Нет данных</div>';
+      return;
+    }
+    el.innerHTML = filtered.map((f, i) => {
+      const text = f.content ?? f.text ?? JSON.stringify(f);
+      const imp = f.importance ?? f.score ?? 0.5;
+      const impClass = imp > 0.7 ? 'high' : imp > 0.4 ? 'med' : 'low';
+      const impLabel = imp > 0.7 ? '🔴' : imp > 0.4 ? '🟡' : '⚪';
+      return `<div class="fact-item" id="fact-${listId}-${i}">
+        <div class="fact-text">${esc(text)}</div>
+        <div class="fact-meta">
+          <span class="importance-badge ${impClass}">${impLabel} ${imp.toFixed ? imp.toFixed(2) : imp}</span>
+          <button class="del-fact-btn" onclick="deleteFact('${listId}', ${i})">×</button>
+        </div>
+      </div>`;
+    }).join('');
+  };
+
+  renderList(allFacts.coords, 'list-coords', 'count-coords');
+  renderList(allFacts.anchors, 'list-anchors', 'count-anchors');
+  renderList(allFacts.hot, 'list-hot', 'count-hot');
+}
+
+function filterMemory() {
+  const q = document.getElementById('memory-search').value;
+  renderMemory(q);
+}
+
+async function deleteFact(listId, idx) {
+  // Remove locally (API for delete by content/id would need backend support)
+  const map = { 'list-coords': 'coords', 'list-anchors': 'anchors', 'list-hot': 'hot' };
+  const key = map[listId];
+  if (key) {
+    allFacts[key].splice(idx, 1);
+    renderMemory(document.getElementById('memory-search').value);
+    toast('Факт удалён (локально)', 'info');
+  }
+}
+
+async function clearMemory() {
+  if (!confirm('Очистить всю рабочую память?')) return;
+  const r = await api('/api/v1/memory/clear', { method: 'POST' });
+  if (r !== null) {
+    toast('Память очищена', 'success');
+    loadMemory();
+  } else {
+    toast('Ошибка очистки памяти', 'error');
+  }
+}
+
+// ================================================================
+// MODELS
+// ================================================================
+
+let _modelsStatusInterval = null;
+
+async function loadModels() {
+  // 1. Получаем полный статус моделей (скачанные + VRAM + назначенные)
+  const statusData = await api('/api/v1/models/status');
+  if (statusData && !statusData.error) {
+    updateDualModelUI(statusData, 'm');
+    window._modelsActiveInVram = new Set(statusData.active_in_vram ?? []);
+    window._modelsDownloaded   = new Set(statusData.downloaded ?? []);
+    window._modelsCoordinator  = statusData.coordinator?.model ?? '';
+    window._modelsGenerator    = statusData.generator?.model ?? '';
+  } else {
+    const dualData = await api('/api/v1/dual-model/stats');
+    if (dualData) updateDualModelUI(dualData, 'm');
+  }
+
+  // Utility model из AZ plugin config
+  try {
+    const azCfg = await api('/api/v1/az-plugin/config');
+    const utilModel = azCfg?.utility_model ?? '';
+    window._modelsUtility = utilModel;
+    const utilName = document.getElementById('m-util-name');
+    const utilDot  = document.getElementById('m-util-dot');
+    const utilStat = document.getElementById('m-util-status');
+    if (utilName) utilName.textContent = utilModel || '—';
+    if (utilModel) {
+      const active = window._modelsActiveInVram ?? new Set();
+      const inVram = active.has(utilModel);
+      if (utilDot) { utilDot.className = 'status-dot ' + (inVram ? 'active' : ''); }
+      if (utilStat) { utilStat.textContent = inVram ? '🔥 В памяти' : '✅ Готова'; utilStat.style.color = inVram ? '#ff8c00' : 'var(--accent)'; }
+    } else {
+      if (utilDot) utilDot.className = 'status-dot';
+      if (utilStat) { utilStat.textContent = 'Не задана'; utilStat.style.color = 'var(--text-dim)'; }
+    }
+  } catch(e) { /* ignore */ }
+
+  // 2. Список скачанных моделей Ollama (через наш прокси)
+  const ollamaData = await api('/api/v1/ollama/models');
+  const tbody = document.getElementById('ollama-tbody');
+
+  if (!ollamaData) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="empty-icon">⚠️</div>Ollama недоступен</td></tr>';
+    return;
+  }
+
+  const models = ollamaData.models ?? [];
+  if (!models.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Нет моделей</td></tr>';
+    return;
+  }
+
+  const active  = window._modelsActiveInVram ?? new Set();
+  const coord   = window._modelsCoordinator ?? '';
+  const gen     = window._modelsGenerator ?? '';
+
+  function modelStatusBadge(name) {
+    if (active.has(name))         return '<span style="color:#ff8c00" title="Загружена в VRAM">🔥 В памяти</span>';
+    if (name === coord || name === gen) return '<span style="color:var(--accent)" title="Скачана, назначена">✅ Готова</span>';
+    return '<span style="color:var(--text-dim)" title="Скачана, не назначена">💾 Скачана</span>';
+  }
+
+  function roleTag(name) {
+    const tags = [];
+    const util = window._modelsUtility ?? '';
+    if (name === coord) tags.push('<span style="font-size:10px;background:rgba(88,166,255,.2);color:var(--accent);padding:1px 6px;border-radius:4px;">🎯 Координатор</span>');
+    if (name === gen)   tags.push('<span style="font-size:10px;background:rgba(188,140,255,.2);color:#bc8cff;padding:1px 6px;border-radius:4px;">⚡ Генератор</span>');
+    if (name === util)  tags.push('<span style="font-size:10px;background:rgba(124,58,237,.2);color:#a78bfa;padding:1px 6px;border-radius:4px;">🛠️ Утилита</span>');
+    return tags.join(' ');
+  }
+  tbody.innerHTML = models.map(m => {
+    const name     = m.name ?? m.model ?? '—';
+    const size     = fmtSize(m.size);
+    const modified = fmtDate(m.modified_at ?? m.modified);
+    const util     = window._modelsUtility ?? '';
+    return `<tr class="ollama-model-row">
+      <td><strong>${esc(name)}</strong><br><small>${roleTag(name)}</small></td>
+      <td class="text-dim">${size}</td>
+      <td class="text-dim">${modified}</td>
+      <td>${modelStatusBadge(name)}</td>
+      <td>
+        <div class="btn-group">
+          <button class="btn" onclick="setModel('coordinator','${esc(name)}')">🎯 Координатор</button>
+          <button class="btn" onclick="setModel('generator','${esc(name)}')">⚡ Генератор</button>
+          <button class="btn" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="setUtilityModel('${esc(name)}')">🛠️ Утилита</button>
+          <button class="btn" style="background:rgba(255,80,80,.15);color:#ff5050;border-color:rgba(255,80,80,.3)" onclick="deleteModel('${esc(name)}')">🗑️ Удалить</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function setUtilityModel(name) {
+  // Сохраняем utility_model в AZ plugin config
+  const current = await api('/api/v1/az-plugin/config');
+  if (!current) { toast('Ошибка получения конфига', 'error'); return; }
+  current.utility_model = name;
+  const r = await api('/api/v1/az-plugin/config', {
+    method: 'POST',
+    body: JSON.stringify(current)
+  });
+  if (r && !r.error) {
+    toast(`🛠️ Utility model → ${name}`, 'success');
+    loadModels();
+  } else {
+    toast('Ошибка сохранения utility model', 'error');
+  }
+}
+
+async function warmUtilityModel() {
+  const util = window._modelsUtility;
+  if (!util) { toast('Utility model не задана. Выберите модель из таблицы → 🛠️ Утилита', 'warning'); return; }
+  const btn = document.getElementById('warm-util-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Загружаем...'; }
+  try {
+    const r = await api('/api/v1/models/warm', {
+      method: 'POST',
+      body: JSON.stringify({ model: util, role: 'utility' })
+    });
+    if (r && r.status === 'loaded') {
+      toast(`🔥 ${util} (${r.size_gb} GB) загружена в GPU`, 'success');
+      loadModels();
+    } else {
+      toast(`Ошибка: ${r?.detail ?? 'неизвестная ошибка'}`, 'error');
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔥 Загрузить в GPU'; }
+}
+}
+
+// Запускаем/останавливаем polling статусов при переключении секций
+function startModelsPolling() {
+  if (_modelsStatusInterval) return;
+  _modelsStatusInterval = setInterval(loadModels, 10000);
+}
+function stopModelsPolling() {
+  if (_modelsStatusInterval) { clearInterval(_modelsStatusInterval); _modelsStatusInterval = null; }
+}
+
+async function setModel(role, name) {
+  // POST /api/v1/models/switch — прямое переключение без перезапуска
+  const r = await api('/api/v1/models/switch', {
+    method: 'POST',
+    body: JSON.stringify({ role, model: name })
+  });
+  if (r !== null && r.status === 'switched') {
+    toast(`${role === 'coordinator' ? '🎯 Координатор' : '⚡ Генератор'} → ${name}`, 'success');
+    loadModels();  // обновим статусы сразу после смены
+  } else {
+    // Fallback: обновляем поле в настройках
+    if (role === 'coordinator') { const el = document.getElementById('cfg-coord'); if (el) el.value = name; }
+    else                        { const el = document.getElementById('cfg-gen');   if (el) el.value = name; }
+    toast(`Модель выбрана: ${name}. Нажмите «Сохранить настройки».`, 'info');
+    showSection('settings');
+  }
+}
+
+async function deleteModel(name) {
+  if (!confirm(`Удалить модель "${name}" с диска?\n\nЭто действие нельзя отменить!`)) return;
+  const r = await api(`/api/v1/models/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  if (r && r.status === 'deleted') {
+    toast(`🗑️ Модель "${name}" удалена`, 'success');
+    loadModels();
+  } else {
+    toast(`Ошибка удаления: ${r?.detail ?? 'неизвестная ошибка'}`, 'error');
+  }
+}
+
+
+
+// ================================================================
+// HARDWARE DETECTION
+// ================================================================
+
+let _hwData = null;  // stores last hardware detection result
+
+async function detectHardware() {
+  const btn = document.querySelector('button[onclick="detectHardware()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Определяем...'; }
+
+  try {
+    const data = await api('/api/v1/hardware/detect');
+    if (!data) {
+      toast('Не удалось получить данные о железе', 'error');
+      return;
+    }
+    _hwData = data;
+
+    // API response structure:
+    // { hardware: {gpu, vram_gb, ram_gb, os, cpu, ...},
+    //   recommendation: {coordinator, generator, mode, speed_estimate, status, ...} }
+    console.log('[detectHardware] raw response:', JSON.stringify(data, null, 2));
+
+    const hw  = data.hardware  ?? {};
+    const rec = data.recommendation ?? data.rec ?? {};
+
+    // GPU info — hw.gpu is a string e.g. "NVIDIA RTX 3080"
+    const gpuName = hw.gpu ?? hw.gpu_name ?? hw.gpu_model ?? 'Net GPU';
+    const vram    = hw.vram_gb ?? hw.gpu_vram_gb ?? null;
+    document.getElementById('hw-gpu').textContent  = gpuName;
+    document.getElementById('hw-vram').textContent = vram != null ? vram + ' GB' : '';
+
+    // RAM + OS
+    const ram = hw.ram_gb ?? hw.ram ?? null;
+    const os  = hw.os ?? hw.platform ?? '—';
+    document.getElementById('hw-ram').textContent = ram != null ? Number(ram).toFixed(1) + ' GB' : '—';
+    document.getElementById('hw-os').textContent  = os;
+
+    // Recommendation — rec.mode e.g. "GPU FULL", rec.status e.g. "✅ Отлично"
+    const recLabel = rec.status ?? rec.mode ?? rec.tier ?? rec.label ?? '—';
+    document.getElementById('hw-rec-label').textContent = recLabel;
+    document.getElementById('hw-rec-coord').textContent = rec.coordinator ?? rec.coordinator_model ?? '—';
+    document.getElementById('hw-rec-gen').textContent   = rec.generator   ?? rec.generator_model   ?? '—';
+    const speed = rec.speed_estimate ?? rec.speed ?? rec.tokens_per_sec ?? null;
+    document.getElementById('hw-rec-speed').textContent = speed ? speed : '—';
+
+    document.getElementById('hw-result-card').style.display = '';
+    toast('Железо определено!', 'success');
+  } catch (e) {
+    toast('Ошибка определения железа: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔍 Определить железо'; }
+  }
+}
+
+async function applyRecommendedModels() {
+  if (!_hwData) { toast('Сначала определите железо', 'warning'); return; }
+  const rec = _hwData.recommendation ?? _hwData.rec ?? {};
+  const coord = rec.coordinator ?? rec.coordinator_model;
+  const gen   = rec.generator   ?? rec.generator_model;
+
+  if (!coord && !gen) {
+    toast('Нет рекомендаций для применения', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('hw-apply-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Применяем...'; }
+
+  let ok = 0;
+  try {
+    if (coord) {
+      const r1 = await api('/api/v1/models/switch', {
+        method: 'POST',
+        body: JSON.stringify({ role: 'coordinator', model: coord })
+      });
+      if (r1 !== null) ok++;
+    }
+    if (gen) {
+      const r2 = await api('/api/v1/models/switch', {
+        method: 'POST',
+        body: JSON.stringify({ role: 'generator', model: gen })
+      });
+      if (r2 !== null) ok++;
+    }
+    if (ok > 0) {
+      toast(`✅ Применены рекомендованные модели (${ok})`, 'success');
+      loadModels();
+    } else {
+      toast('Не удалось применить модели — проверьте API', 'error');
+    }
+  } catch (e) {
+    toast('Ошибка: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Применить рекомендованные модели'; }
+  }
+}
+
+// ================================================================
+// MODEL DOWNLOAD
+// ================================================================
+
+let _dlPollTimer = null;
+
+async function downloadModel() {
+  const input = document.getElementById('dl-model-input');
+  const modelName = (input?.value ?? '').trim();
+  if (!modelName) { toast('Введите название модели', 'warning'); return; }
+
+  const progressWrap = document.getElementById('dl-progress-wrap');
+  const progressBar  = document.getElementById('dl-progress-bar');
+  const statusText   = document.getElementById('dl-status-text');
+  const successWrap  = document.getElementById('dl-success-wrap');
+  const dlBtn        = document.querySelector('button[onclick="downloadModel()"]');
+
+  // Reset UI
+  progressWrap.style.display = '';
+  successWrap.style.display  = 'none';
+  progressBar.style.width    = '5%';
+  statusText.textContent     = `Скачивание ${modelName}...`;
+  if (dlBtn) { dlBtn.disabled = true; }
+
+  // Stop any existing poll
+  if (_dlPollTimer) { clearInterval(_dlPollTimer); _dlPollTimer = null; }
+
+  try {
+    const r = await api('/api/v1/models/download', {
+      method: 'POST',
+      body: JSON.stringify({ model: modelName })
+    });
+    if (r === null) {
+      statusText.textContent = '❌ Ошибка запуска скачивания';
+      if (dlBtn) dlBtn.disabled = false;
+      return;
+    }
+    toast(`Скачивание ${modelName} запущено...`, 'info');
+  } catch (e) {
+    statusText.textContent = '❌ ' + e.message;
+    if (dlBtn) dlBtn.disabled = false;
+    return;
+  }
+
+  // Poll progress every 3 seconds
+  let elapsed = 0;
+  _dlPollTimer = setInterval(async () => {
+    elapsed += 3;
+    try {
+      const check = await api(`/api/v1/models/download/check/${encodeURIComponent(modelName)}`);
+      if (!check) return;
+
+      // Update progress bar — check.percent is real progress from Ollama streaming
+      const pct = check.percent ?? check.progress ?? null;
+      if (pct !== null && pct > 0) {
+        progressBar.style.width = Math.min(Math.max(pct, 5), 99) + '%';
+      } else {
+        // Indeterminate animation until first real percent arrives
+        const pseudo = Math.min(5 + elapsed * 1.2, 60);
+        progressBar.style.width = pseudo + '%';
+      }
+
+      // Status text: show speed + percent when available
+      const status = check.status ?? '';
+      const speedStr = check.speed ? ` — ${check.speed}` : '';
+      const pctStr   = pct != null && pct > 0 ? ` (${pct}%)` : '';
+      const msgStr   = check.status_msg || check.message || `Скачиваем ${modelName}...`;
+      statusText.textContent = msgStr + pctStr + speedStr;
+
+      // Stop polling on error
+      if (status === 'error') {
+        clearInterval(_dlPollTimer);
+        _dlPollTimer = null;
+        statusText.textContent = '❌ Ошибка: ' + (check.error || 'неизвестно');
+        if (dlBtn) dlBtn.disabled = false;
+        return;
+      }
+
+      // Stop polling when done
+      if (check.ready === true || status === 'done' || status === 'ready') {
+        clearInterval(_dlPollTimer);
+        _dlPollTimer = null;
+        progressBar.style.width = '100%';
+        statusText.textContent = '✅ Завершено!';
+        setTimeout(() => { progressWrap.style.display = 'none'; }, 1500);
+        successWrap.style.display = '';
+        if (dlBtn) dlBtn.disabled = false;
+        if (input) input.value = '';
+        toast(`✅ Модель ${modelName} готова!`, 'success');
+        loadModels();
+      }
+    } catch (e) {
+      // Non-fatal poll error — keep trying
+      statusText.textContent = `Ожидаем... (${elapsed}с)`;
+    }
+  }, 3000);
+}
+
+
+// ================================================================
+// PROJECTS
+// ================================================================
+
+async function loadProjects() {
+  const [stats, watcherSt] = await Promise.all([
+    api('/api/v1/code/stats'),
+    api('/api/v1/code/watcher/status')
+  ]);
+
+  if (stats) {
+    const path = stats.project_path ?? stats.path ?? stats.root ?? '—';
+    const files = stats.indexed_files ?? stats.file_count ?? stats.files ?? '—';
+    document.getElementById('proj-path').textContent = path;
+    document.getElementById('proj-files').textContent = `Файлов: ${files} (индексировано)`;
+  }
+
+  updateWatcherStatus(watcherSt);
+  loadWatcherChanges();
+}
+
+function updateWatcherStatus(data) {
+  const dot = document.getElementById('watcher-dot');
+  const text = document.getElementById('watcher-status-text');
+  const startBtn = document.getElementById('watcher-start-btn');
+  const stopBtn = document.getElementById('watcher-stop-btn');
+
+  const running = data?.running ?? data?.active ?? data?.status === 'running' ?? false;
+
+  if (running) {
+    dot.className = 'status-dot online';
+    text.textContent = 'Watcher: Активен';
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+  } else {
+    dot.className = 'status-dot offline';
+    text.textContent = 'Watcher: Остановлен';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+  }
+}
+
+async function startWatcher() {
+  const r = await api('/api/v1/code/watcher/start', { method: 'POST' });
+  if (r !== null) { toast('Watcher запущен', 'success'); loadProjects(); }
+  else toast('Ошибка запуска Watcher', 'error');
+}
+
+async function stopWatcher() {
+  const r = await api('/api/v1/code/watcher/stop', { method: 'POST' });
+  if (r !== null) { toast('Watcher остановлен', 'info'); loadProjects(); }
+  else toast('Ошибка остановки', 'error');
+}
+
+async function loadWatcherChanges() {
+  const data = await api('/api/v1/code/watcher/changes');
+  const el = document.getElementById('watcher-changes');
+  const changes = Array.isArray(data) ? data : (data?.changes ?? []);
+
+  if (!changes.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div>Нет изменений</div>';
+    return;
+  }
+
+  el.innerHTML = changes.slice(0, 20).map(c => {
+    const type = c.type ?? c.event ?? 'modified';
+    const path = c.path ?? c.file ?? '—';
+    const time = c.timestamp ?? c.time ?? '';
+    return `<div class="change-item">
+      <span class="change-type ${type}">${type.toUpperCase()}</span>
+      <span class="change-path">${esc(path)}</span>
+      <span class="change-time">${fmtDate(time)}</span>
+    </div>`;
+  }).join('');
+}
+
+async function indexProject() {
+  toast('Индексирование...', 'info');
+  const r = await api('/api/v1/code/index', { method: 'POST' });
+  if (r !== null) toast('Индексирование запущено', 'success');
+  else toast('Ошибка индексирования', 'error');
+}
+
+async function openNewProject() {
+  const path = prompt('Введите путь к папке проекта:');
+  if (!path) return;
+  const r = await api('/api/v1/code/project', { method: 'POST', body: JSON.stringify({ path }) });
+  if (r !== null) { toast('Проект открыт', 'success'); loadProjects(); }
+  else toast('Ошибка открытия проекта', 'error');
+}
+
+async function searchCode() {
+  const q = document.getElementById('code-search-input').value.trim();
+  if (!q) return;
+  const el = document.getElementById('code-search-results');
+  el.innerHTML = '<div class="empty-state">Поиск...</div>';
+
+  const data = await api(`/api/v1/code/search?q=${encodeURIComponent(q)}`);
+  const results = Array.isArray(data) ? data : (data?.results ?? []);
+
+  if (!results.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div>Ничего не найдено</div>';
+    return;
+  }
+
+  el.innerHTML = results.slice(0, 15).map(r => {
+    const file = r.file ?? r.path ?? '—';
+    const snippet = r.content ?? r.snippet ?? r.text ?? '';
+    const line = r.line ?? r.start_line ?? '';
+    // Highlight query in snippet
+    const highlighted = esc(snippet).replace(
+      new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+      m => `<mark class="highlight">${m}</mark>`
+    );
+    return `<div class="search-result">
+      <div class="file-path">📄 ${esc(file)}${line ? ` <span class="text-dim">:${line}</span>` : ''}</div>
+      <pre>${highlighted}</pre>
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// CONNECTIONS
+// ================================================================
+
+async function loadConnections() {
+  checkEndpoints();
+  loadOpenAIModels();
+  loadAZPluginConfig();
+}
+
+async function checkEndpoints() {
+  const endpoints = [
+    { path: '/api/v1/session/info', label: 'Session Info' },
+    { path: '/api/v1/memory/stats', label: 'Memory Stats' },
+    { path: '/api/v1/cci/stats', label: 'CCI Stats' },
+    { path: '/api/v1/dual-model/stats', label: 'Dual Model' },
+    { path: '/v1/models', label: 'OpenAI Models' },
+    { path: '/api/v1/code/stats', label: 'Code Stats' }
+  ];
+
+  const el = document.getElementById('endpoint-list');
+  el.innerHTML = '<div class="empty-state">Проверка...</div>';
+
+  const results = await Promise.all(endpoints.map(async ep => {
+    try {
+      const r = await fetch(API + ep.path, { signal: AbortSignal.timeout(3000) });
+      return { ...ep, ok: r.ok, status: r.status };
+    } catch {
+      return { ...ep, ok: false, status: 0 };
+    }
+  }));
+
+  el.innerHTML = results.map(r => `
+    <div class="endpoint-row">
+      <span class="endpoint-path">${esc(r.path)}</span>
+      <span class="text-dim">${esc(r.label)}</span>
+      <span class="${r.ok ? 'endpoint-ok' : 'endpoint-err'}">${r.ok ? '✓ ' + r.status : '✗ ' + (r.status || 'ERR')}</span>
+    </div>`).join('');
+}
+
+async function loadOpenAIModels() {
+  const data = await api('/v1/models');
+  const el = document.getElementById('openai-models-list');
+  const models = data?.data ?? (Array.isArray(data) ? data : []);
+
+  if (!models.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🎛️</div>Нет доступных моделей</div>';
+    return;
+  }
+
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th>Object</th><th>Создан</th></tr></thead>
+    <tbody>${models.map(m => `
+      <tr>
+        <td class="font-mono text-accent">${esc(m.id)}</td>
+        <td class="text-dim">${esc(m.object ?? '—')}</td>
+        <td class="text-dim">${m.created ? fmtDate(new Date(m.created * 1000).toISOString()) : '—'}</td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+// ================================================================
+// SETTINGS
+// ================================================================
+
+async function loadSettings() {
+  const data = await api('/api/v1/config');
+  if (!data) { toast('Не удалось загрузить настройки', 'error'); return; }
+
+  // Try various config shapes
+  const coord = data.coordinator_model ?? data.coordinator?.model ?? data.models?.coordinator ?? '';
+  const gen = data.generator_model ?? data.generator?.model ?? data.models?.generator ?? '';
+  const cciThr = data.cci_threshold ?? data.cci?.threshold ?? data.threshold ?? 0.7;
+  const maxTurns = data.max_turns_without_reset ?? data.adaptive_reset?.max_turns ?? data.max_turns ?? 20;
+  const minTurns = data.min_turns_between_resets ?? data.adaptive_reset?.min_turns ?? data.min_turns ?? 5;
+  const hotMax = data.hot_facts_max ?? data.memory?.hot_facts_max ?? data.max_hot_facts ?? 30;
+
+  document.getElementById('cfg-coord').value = coord;
+  document.getElementById('cfg-gen').value = gen;
+  document.getElementById('cfg-cci').value = cciThr;
+  document.getElementById('cfg-cci-val').textContent = cciThr;
+  document.getElementById('cfg-max-turns').value = maxTurns;
+  document.getElementById('cfg-min-turns').value = minTurns;
+  document.getElementById('cfg-hot-max').value = hotMax;
+}
+
+async function saveSettings() {
+  const payload = {
+    coordinator_model: document.getElementById('cfg-coord').value,
+    generator_model: document.getElementById('cfg-gen').value,
+    cci_threshold: parseFloat(document.getElementById('cfg-cci').value),
+    max_turns_without_reset: parseInt(document.getElementById('cfg-max-turns').value),
+    min_turns_between_resets: parseInt(document.getElementById('cfg-min-turns').value),
+    hot_facts_max: parseInt(document.getElementById('cfg-hot-max').value)
+  };
+
+  const r = await api('/api/v1/config/reload', { method: 'POST', body: JSON.stringify(payload) });
+  if (r !== null) toast('Настройки сохранены', 'success');
+  else {
+    // Fallback: try PATCH /api/v1/config
+    const r2 = await api('/api/v1/config', { method: 'PATCH', body: JSON.stringify(payload) });
+    if (r2 !== null) toast('Настройки сохранены', 'success');
+    else toast('Ошибка сохранения', 'error');
+  }
+}
+
+// ================================================================
+// INIT
+// ================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  connectWS();
+  showSection('dashboard');
+  startDashboardRefresh();
+});
+
+// Keyboard shortcut: Alt+1..7 → sections
+document.addEventListener('keydown', e => {
+  if (e.altKey) {
+    const sections = ['dashboard','chat','memory','models','projects','connections','settings','logs'];
+    const idx = parseInt(e.key) - 1;
+    if (idx >= 0 && idx < sections.length) showSection(sections[idx]);
+  }
+});
+
+// ── Agent Zero Plugin Config ──────────────────────────────
+async function loadAZPluginConfig() {
+  try {
+    const r = await fetch('/api/v1/az-plugin/config');
+    const data = await r.json();
+
+    // Заполняем поля
+    const piServer = document.getElementById('az-pi-server');
+    const sessionId = document.getElementById('az-session-id');
+    const threshold = document.getElementById('az-recall-threshold');
+    const modelSelect = document.getElementById('az-utility-model');
+
+    if (piServer) piServer.value = data.pi_server || 'http://host.docker.internal:7860';
+    if (sessionId) sessionId.value = data.session_id || 'agent_zero';
+    if (threshold) threshold.value = data.recall_threshold || 0.4;
+
+    // Заполняем dropdown моделями из Ollama
+    if (modelSelect && data.available_models && data.available_models.length > 0) {
+      modelSelect.innerHTML = '';
+      data.available_models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        if (m === data.utility_model) opt.selected = true;
+        modelSelect.appendChild(opt);
+      });
+    } else if (modelSelect && data.utility_model) {
+      modelSelect.innerHTML = `<option value="${data.utility_model}" selected>${data.utility_model}</option>`;
+    }
+
+    const status = document.getElementById('az-plugin-status');
+    if (status) status.textContent = '✅ Конфиг загружен';
+  } catch(e) {
+    const status = document.getElementById('az-plugin-status');
+    if (status) status.textContent = '❌ Ошибка загрузки: ' + e.message;
+  }
+}
+
+async function saveAZPluginConfig() {
+  const status = document.getElementById('az-plugin-status');
+  try {
+    const config = {
+      pi_server: document.getElementById('az-pi-server')?.value || 'http://host.docker.internal:7860',
+      utility_model: document.getElementById('az-utility-model')?.value || 'qwen2.5:3b',
+      session_id: document.getElementById('az-session-id')?.value || 'agent_zero',
+      recall_threshold: parseFloat(document.getElementById('az-recall-threshold')?.value || 0.4),
+      recall_limit: 5,
+      recall_enabled: true,
+      memorize_enabled: true
+    };
+
+    if (status) status.textContent = '⏳ Сохранение...';
+
+    const r = await fetch('/api/v1/az-plugin/config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(config)
+    });
+    const data = await r.json();
+
+    if (r.ok) {
+      if (status) status.textContent = `✅ Сохранено! Utility: ${config.utility_model}, PI: ${config.pi_server}`;
+    } else {
+      if (status) status.textContent = '❌ Ошибка: ' + (data.detail || JSON.stringify(data));
+    }
+  } catch(e) {
+    if (status) status.textContent = '❌ Ошибка: ' + e.message;
+  }
+}
+
+// ── LOGS ──────────────────────────────────────────────────────────────────────
+let _logsAutoRefresh = null;
+let _logsAutoScroll = true;
+let _logsLastCount = 0;
+
+async function loadLogs() {
+  const level = document.getElementById('log-level-filter')?.value || 'ALL';
+  const limit = parseInt(document.getElementById('log-limit')?.value || '500');
+  try {
+    const r = await fetch(`/api/v1/logs?level=${level}&limit=${limit}`);
+    const data = await r.json();
+    const terminal = document.getElementById('log-terminal');
+    const counter = document.getElementById('log-counter');
+    if (!terminal) return;
+    const newCount = data.total;
+    if (newCount !== _logsLastCount) {
+      const lines = data.lines || [];
+      terminal.innerHTML = lines.map(e => {
+        const cls = 'log-line-' + (e.level || 'INFO');
+        const escaped = e.line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return `<span class="${cls}">${escaped}</span>`;
+      }).join('\n');
+      if (_logsAutoScroll) terminal.scrollTop = terminal.scrollHeight;
+      _logsLastCount = newCount;
+    }
+    if (counter) counter.textContent = `Строк: ${data.count} / Буфер: ${data.total}`;
+  } catch(e) {
+    console.error('Logs fetch error:', e);
+  }
+}
+
+function startLogsAutoRefresh() {
+  stopLogsAutoRefresh();
+  loadLogs();
+  _logsAutoRefresh = setInterval(loadLogs, 2000);
+}
+
+function stopLogsAutoRefresh() {
+  if (_logsAutoRefresh) { clearInterval(_logsAutoRefresh); _logsAutoRefresh = null; }
+}
+
+function copyLogs() {
+  const terminal = document.getElementById('log-terminal');
+  if (!terminal) return;
+  navigator.clipboard.writeText(terminal.innerText).then(() => {
+    showToast('📋 Логи скопированы в буфер обмена', 'success');
+  }).catch(() => {
+    showToast('❌ Ошибка копирования', 'error');
+  });
+}
+
+async function clearServerLogs() {
+  try {
+    await fetch('/api/v1/logs', {method: 'DELETE'});
+    _logsLastCount = 0;
+    document.getElementById('log-terminal').innerHTML = '';
+    document.getElementById('log-counter').textContent = 'Строк: 0 / Буфер: 0';
+    showToast('🗑️ Логи очищены', 'info');
+  } catch(e) {
+    showToast('❌ Ошибка очистки: ' + e.message, 'error');
+  }
+}
+
+function toggleLogsAutoScroll() {
+  _logsAutoScroll = !_logsAutoScroll;
+  const btn = document.getElementById('log-autoscroll-btn');
+  if (btn) btn.textContent = _logsAutoScroll ? '⬇️ Авто-скролл: ВКЛ' : '⬇️ Авто-скролл: ВЫКЛ';
+}
+
+
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@ import pytest
 
 # ── config_loader tests ──────────────────────────────────
 
-from pure_intellect.engines.config_loader import (
+from contextor.engines.config_loader import (
     AppConfig,
     HardwareConfig,
     MemoryConfig,
@@ -91,7 +91,7 @@ class TestLoadConfig:
 
     def test_load_defaults_no_file(self):
         """Без файла возвращаем defaults."""
-        with patch("pure_intellect.engines.config_loader._find_config_yaml", return_value=None):
+        with patch("contextor.engines.config_loader._find_config_yaml", return_value=None):
             cfg = load_config()
         assert isinstance(cfg, AppConfig)
         assert cfg.coordinator.model == "qwen2.5:3b"
@@ -125,7 +125,7 @@ memory:
             tmp_path = Path(f.name)
 
         try:
-            with patch("pure_intellect.engines.config_loader._find_config_yaml",
+            with patch("contextor.engines.config_loader._find_config_yaml",
                        return_value=tmp_path):
                 cfg = load_config()
 
@@ -147,7 +147,7 @@ memory:
             tmp_path = Path(f.name)
 
         try:
-            with patch("pure_intellect.engines.config_loader._find_config_yaml",
+            with patch("contextor.engines.config_loader._find_config_yaml",
                        return_value=tmp_path):
                 cfg = load_config()  # не должен упасть
             assert isinstance(cfg, AppConfig)
@@ -166,7 +166,7 @@ models:
             tmp_path = Path(f.name)
 
         try:
-            with patch("pure_intellect.engines.config_loader._find_config_yaml",
+            with patch("contextor.engines.config_loader._find_config_yaml",
                        return_value=tmp_path):
                 cfg = load_config()
 
@@ -200,7 +200,7 @@ class TestAppConfigDefaults:
 
 # ── ProviderFactory tests ─────────────────────────────────
 
-from pure_intellect.engines.provider import (
+from contextor.engines.provider import (
     OllamaModelProvider,
     ProviderFactory,
     detect_free_vram_mb,
@@ -388,19 +388,19 @@ class TestHardwareDetection:
 
     def test_detect_optimal_layers_no_vram(self):
         """Нет VRAM → CPU only (0)."""
-        with patch("pure_intellect.engines.provider.detect_free_vram_mb", return_value=0):
+        with patch("contextor.engines.provider.detect_free_vram_mb", return_value=0):
             layers = detect_optimal_gpu_layers(model_size_gb=7.0)
         assert layers == 0
 
     def test_detect_optimal_layers_full_vram(self):
         """Много VRAM → все слои на GPU (-1)."""
-        with patch("pure_intellect.engines.provider.detect_free_vram_mb", return_value=12000):
+        with patch("contextor.engines.provider.detect_free_vram_mb", return_value=12000):
             layers = detect_optimal_gpu_layers(model_size_gb=4.7)
         assert layers == -1
 
     def test_detect_optimal_layers_partial_vram(self):
         """Частичный VRAM → offload часть слоёв."""
-        with patch("pure_intellect.engines.provider.detect_free_vram_mb", return_value=3000):
+        with patch("contextor.engines.provider.detect_free_vram_mb", return_value=3000):
             layers = detect_optimal_gpu_layers(model_size_gb=4.7)
         assert 0 < layers < 32  # частичный offload
 
@@ -410,9 +410,9 @@ class TestDualModelConfigDriven:
 
     def test_loads_from_config_by_default(self):
         """DualModelRouter без аргументов читает из config.yaml."""
-        from pure_intellect.core.dual_model import DualModelRouter
+        from contextor.core.dual_model import DualModelRouter
 
-        with patch("pure_intellect.core.dual_model._load_models_from_config",
+        with patch("contextor.core.dual_model._load_models_from_config",
                    return_value=("test-coordinator:3b", "test-generator:7b")):
             router = DualModelRouter()
 
@@ -421,7 +421,7 @@ class TestDualModelConfigDriven:
 
     def test_explicit_args_override_config(self):
         """Явные аргументы override значения из config."""
-        from pure_intellect.core.dual_model import DualModelRouter
+        from contextor.core.dual_model import DualModelRouter
 
         router = DualModelRouter(
             coordinator_model="custom:3b",
@@ -432,16 +432,16 @@ class TestDualModelConfigDriven:
 
     def test_reload_from_config(self):
         """reload_from_config() обновляет модели без перезапуска."""
-        from pure_intellect.core.dual_model import DualModelRouter
+        from contextor.core.dual_model import DualModelRouter
 
         router = DualModelRouter(
             coordinator_model="old:3b",
             generator_model="old:7b",
         )
 
-        with patch("pure_intellect.core.dual_model._load_models_from_config",
+        with patch("contextor.core.dual_model._load_models_from_config",
                    return_value=("new:3b", "new:7b")):
-            with patch("pure_intellect.engines.config_loader.reload_config"):
+            with patch("contextor.engines.config_loader.reload_config"):
                 router.reload_from_config()
 
         assert router.coordinator_model == "new:3b"
@@ -450,7 +450,7 @@ class TestDualModelConfigDriven:
 
     def test_config_info_returns_dict(self):
         """config_info() возвращает словарь с информацией."""
-        from pure_intellect.core.dual_model import DualModelRouter
+        from contextor.core.dual_model import DualModelRouter
 
         router = DualModelRouter(
             coordinator_model="qwen2.5:3b",

@@ -1,4 +1,4 @@
-# 🔌 Pure Intellect — API Reference
+# 🔌 Contextor — API Reference
 
 > Все рабочие эндпоинты с примерами. Эндпоинты помеченные 🚧 экспериментальные.
 
@@ -23,7 +23,7 @@ http://localhost:7860
 **Request:**
 ```json
 {
-  "model": "pure-intellect",
+  "model": "contextor",
   "messages": [
     {"role": "user", "content": "Привет! Как дела?"}
   ],
@@ -36,7 +36,7 @@ http://localhost:7860
 {
   "id": "chatcmpl-abc123",
   "object": "chat.completion",
-  "model": "pure-intellect",
+  "model": "contextor",
   "choices": [{
     "message": {
       "role": "assistant",
@@ -50,7 +50,7 @@ http://localhost:7860
 **cURL пример:**
 ```bash
 curl http://localhost:7860/v1/chat/completions   -H "Content-Type: application/json"   -d '{
-    "model": "pure-intellect",
+    "model": "contextor",
     "messages": [{"role": "user", "content": "Что ты помнишь?"}],
     "stream": false
   }'
@@ -62,11 +62,11 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="http://localhost:7860/v1",
-    api_key="pure-intellect"  # любая строка
+    api_key="contextor"  # любая строка
 )
 
 response = client.chat.completions.create(
-    model="pure-intellect",
+    model="contextor",
     messages=[{"role": "user", "content": "Расскажи что ты помнишь"}]
 )
 print(response.choices[0].message.content)
@@ -84,7 +84,7 @@ print(response.choices[0].message.content)
   "object": "list",
   "data": [
     {
-      "id": "pure-intellect",
+      "id": "contextor",
       "object": "model",
       "created": 1714000000
     }

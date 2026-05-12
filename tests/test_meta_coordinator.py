@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from pure_intellect.core.memory.meta_coordinator import CoordinateRecord, MetaCoordinator
+from contextor.core.memory.meta_coordinator import CoordinateRecord, MetaCoordinator
 
 
 @pytest.fixture
@@ -95,10 +95,10 @@ class TestGetContextForPrompt:
         assert coordinator.get_context_for_prompt() == ""
 
     def test_single_coordinate_in_context(self, coordinator):
-        coordinator.add_coordinate("УЧАСТНИК: Александр | ПРОЕКТ: pure-intellect", turn=5)
+        coordinator.add_coordinate("УЧАСТНИК: Александр | ПРОЕКТ: contextor", turn=5)
         context = coordinator.get_context_for_prompt()
         assert "Александр" in context
-        assert "pure-intellect" in context
+        assert "contextor" in context
         assert "turn 5" in context.lower() or "5" in context
 
     def test_only_last_active_in_context(self, coordinator):

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pure Intellect — Installer v0.1
+# Contextor — Installer v0.1
 # Local AI with unlimited memory
 # Supports: Linux (Ubuntu/Debian/Arch/Fedora) and macOS
 
@@ -22,7 +22,7 @@ fail(){ echo -e "  ${RED}ERROR:${NC} $*" >&2; exit 1; }
 # ── Banner ────────────────────────────────────────────────────────────────────
 echo -e ""
 echo -e "${BOLD}${CYAN}  ╔══════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${CYAN}  ║     Pure Intellect — Installation v0.1      ║${NC}"
+echo -e "${BOLD}${CYAN}  ║     Contextor — Installation v0.1      ║${NC}"
 echo -e "${BOLD}${CYAN}  ║     Local AI with unlimited memory          ║${NC}"
 echo -e "${BOLD}${CYAN}  ╚══════════════════════════════════════════════╝${NC}"
 echo -e ""
@@ -119,23 +119,23 @@ else
 fi
 sleep 3
 
-# ── Step 3: Install Pure Intellect ───────────────────────────────────────────
-echo -e "\n${BOLD}[3/4] Installing Pure Intellect...${NC}"
+# ── Step 3: Install Contextor ───────────────────────────────────────────
+echo -e "\n${BOLD}[3/4] Installing Contextor...${NC}"
 info "This may take 5-15 minutes (downloading PyTorch, ChromaDB, etc.)"
 echo ""
 
 # Устанавливаем в пользовательский pip (без sudo)
 if ! "$PYTHON_BIN" -m pip install \
-    git+https://github.com/Remchik64/pure-intellect.git \
+    git+https://github.com/Remchik64/contextor.git \
     --quiet --user; then
     fail "Installation failed. Check your internet connection and try again."
 fi
 
 # Проверяем что команда доступна
-if command -v pure-intellect &>/dev/null; then
-    ok "Pure Intellect installed: $(pure-intellect --version 2>/dev/null || echo 'v0.1')"
-elif "$PYTHON_BIN" -m pure_intellect --version &>/dev/null; then
-    ok "Pure Intellect installed (use: python3 -m pure_intellect serve)"
+if command -v contextor &>/dev/null; then
+    ok "Contextor installed: $(contextor --version 2>/dev/null || echo 'v0.1')"
+elif "$PYTHON_BIN" -m contextor --version &>/dev/null; then
+    ok "Contextor installed (use: python3 -m contextor serve)"
 else
     # Пробуем добавить ~/.local/bin в PATH
     LOCAL_BIN="$HOME/.local/bin"
@@ -148,19 +148,19 @@ else
         echo "export PATH=\"$LOCAL_BIN:\$PATH\"" >> "$SHELL_RC"
         info "Added to $SHELL_RC — restart terminal or run: source $SHELL_RC"
     fi
-    ok "Pure Intellect installed"
+    ok "Contextor installed"
 fi
 
 # ── Step 4: Create Launcher ───────────────────────────────────────────────────
 echo -e "\n${BOLD}[4/4] Creating launcher...${NC}"
 
-LAUNCHER_DIR="$HOME/.pure-intellect"
+LAUNCHER_DIR="$HOME/.contextor"
 mkdir -p "$LAUNCHER_DIR"
 
 cat > "$LAUNCHER_DIR/start.sh" << 'LAUNCHER_EOF'
 #!/bin/bash
-# Pure Intellect Launcher
-echo "Starting Pure Intellect..."
+# Contextor Launcher
+echo "Starting Contextor..."
 
 # Start Ollama if not running
 if ! curl -s http://localhost:11434 &>/dev/null; then
@@ -176,10 +176,10 @@ elif command -v open &>/dev/null; then
 fi
 
 # Start server
-if command -v pure-intellect &>/dev/null; then
-    pure-intellect serve --port 7860
+if command -v contextor &>/dev/null; then
+    contextor serve --port 7860
 else
-    python3 -m pure_intellect serve --port 7860
+    python3 -m contextor serve --port 7860
 fi
 LAUNCHER_EOF
 
@@ -188,11 +188,11 @@ ok "Launcher created: $LAUNCHER_DIR/start.sh"
 
 # Desktop entry for Linux
 if [ "$OS" = "Linux" ] && [ -d "$HOME/.local/share/applications" ]; then
-    cat > "$HOME/.local/share/applications/pure-intellect.desktop" << DESKTOP_EOF
+    cat > "$HOME/.local/share/applications/contextor.desktop" << DESKTOP_EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Pure Intellect
+Name=Contextor
 Comment=Local AI with unlimited memory
 Exec=$LAUNCHER_DIR/start.sh
 Icon=utilities-terminal
@@ -210,7 +210,7 @@ echo -e "${BOLD}${GREEN}  ║           Installation Complete!  🎉         ║
 echo -e "${BOLD}${GREEN}  ╚══════════════════════════════════════════════╝${NC}"
 echo -e ""
 echo -e "  ${BOLD}Start:${NC}  $LAUNCHER_DIR/start.sh"
-echo -e "         or:  pure-intellect serve"
+echo -e "         or:  contextor serve"
 echo -e ""
 echo -e "  ${BOLD}Open:${NC}   http://localhost:7860"
 echo -e ""
@@ -218,7 +218,7 @@ echo -e "  ${YELLOW}First run:${NC} go to 🤖 Models section"
 echo -e "            and download a model (e.g. qwen2.5:3b)"
 echo -e ""
 
-read -r -p "  Launch Pure Intellect now? (y/N): " LAUNCH
+read -r -p "  Launch Contextor now? (y/N): " LAUNCH
 if [[ "$LAUNCH" =~ ^[Yy]$ ]]; then
     echo -e "  ${GREEN}Starting...${NC}"
     "$LAUNCHER_DIR/start.sh"

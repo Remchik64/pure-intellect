@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-from pure_intellect.core.code_module import CodeModule
+from contextor.core.code_module import CodeModule
 
 
 # ── CodeModule Watcher API ─────────────────────────────────
@@ -45,7 +45,7 @@ class TestWatcherInCodeModule:
         """start_watcher() запускается когда проект проиндексирован."""
         self.module._is_indexed = True  # Симулируем индексацию
 
-        with patch("pure_intellect.core.code_module.CodeModule.start_watcher") as mock_start:
+        with patch("contextor.core.code_module.CodeModule.start_watcher") as mock_start:
             mock_start.return_value = {"status": "started", "project_path": "/tmp/test_project"}
             result = self.module.start_watcher()
             assert "error" not in result or result.get("status") == "started"
@@ -75,7 +75,7 @@ class TestWatcherInCodeModule:
         }
 
         with patch(
-            "pure_intellect.core.code_module.CodeModule.start_watcher",
+            "contextor.core.code_module.CodeModule.start_watcher",
             return_value={"status": "started", "project_path": "/tmp/test_project"}
         ) as mock_start:
             result = self.module.start_watcher()
@@ -86,7 +86,7 @@ class TestWatcherInCodeModule:
         callback = MagicMock()
         self.module._is_indexed = True
 
-        with patch("pure_intellect.core.watcher_integration.WatcherIntegration") as MockWI:
+        with patch("contextor.core.watcher_integration.WatcherIntegration") as MockWI:
             mock_wi_instance = MagicMock()
             mock_wi_instance._is_running = False
             MockWI.return_value = mock_wi_instance
@@ -102,18 +102,18 @@ class TestWatcherIntegration:
 
     def test_watcher_integration_init(self):
         """WatcherIntegration инициализируется без ошибок."""
-        from pure_intellect.core.watcher_integration import WatcherIntegration
-        with patch("pure_intellect.core.watcher_integration.CardGenerator"), \
-             patch("pure_intellect.core.watcher_integration.GraphBuilder"):
+        from contextor.core.watcher_integration import WatcherIntegration
+        with patch("contextor.core.watcher_integration.CardGenerator"), \
+             patch("contextor.core.watcher_integration.GraphBuilder"):
             wi = WatcherIntegration(project_path="/tmp")
             assert wi._is_running is False
             assert str(wi.project_path) == "/tmp"
 
     def test_watcher_integration_get_status(self):
         """get_status() возвращает правильную структуру."""
-        from pure_intellect.core.watcher_integration import WatcherIntegration
-        with patch("pure_intellect.core.watcher_integration.CardGenerator") as MockCG, \
-             patch("pure_intellect.core.watcher_integration.GraphBuilder") as MockGB:
+        from contextor.core.watcher_integration import WatcherIntegration
+        with patch("contextor.core.watcher_integration.CardGenerator") as MockCG, \
+             patch("contextor.core.watcher_integration.GraphBuilder") as MockGB:
             mock_cg = MagicMock()
             mock_cg.collection.count.return_value = 42
             MockCG.return_value = mock_cg
@@ -132,11 +132,11 @@ class TestWatcherIntegration:
 
     def test_watcher_start_stop(self):
         """start() и stop() работают корректно."""
-        from pure_intellect.core.watcher_integration import WatcherIntegration
-        from pure_intellect.core.watcher import FileWatcher
+        from contextor.core.watcher_integration import WatcherIntegration
+        from contextor.core.watcher import FileWatcher
 
-        with patch("pure_intellect.core.watcher_integration.CardGenerator"), \
-             patch("pure_intellect.core.watcher_integration.GraphBuilder"), \
+        with patch("contextor.core.watcher_integration.CardGenerator"), \
+             patch("contextor.core.watcher_integration.GraphBuilder"), \
              patch.object(FileWatcher, "start"), \
              patch.object(FileWatcher, "stop"):
 
@@ -151,9 +151,9 @@ class TestWatcherIntegration:
 
     def test_changes_log_grows(self):
         """changes_log растёт при каждом событии."""
-        from pure_intellect.core.watcher_integration import WatcherIntegration
-        with patch("pure_intellect.core.watcher_integration.CardGenerator") as MockCG, \
-             patch("pure_intellect.core.watcher_integration.GraphBuilder") as MockGB:
+        from contextor.core.watcher_integration import WatcherIntegration
+        with patch("contextor.core.watcher_integration.CardGenerator") as MockCG, \
+             patch("contextor.core.watcher_integration.GraphBuilder") as MockGB:
 
             mock_cg = MagicMock()
             mock_cg.collection.count.return_value = 0
@@ -180,21 +180,21 @@ class TestFileWatcher:
 
     def test_file_watcher_init(self):
         """FileWatcher инициализируется без ошибок."""
-        from pure_intellect.core.watcher import FileWatcher
+        from contextor.core.watcher import FileWatcher
         watcher = FileWatcher(project_path="/tmp")
         assert watcher.is_running is False
         assert str(watcher.project_path) == "/tmp"
 
     def test_file_watcher_stop_when_not_running(self):
         """stop() не падает когда watcher не запущен."""
-        from pure_intellect.core.watcher import FileWatcher
+        from contextor.core.watcher import FileWatcher
         watcher = FileWatcher(project_path="/tmp")
         watcher.stop()  # Не должно упасть
         assert watcher.is_running is False
 
     def test_file_watcher_hash_detection(self):
         """Watcher обнаруживает реальные изменения через хэш."""
-        from pure_intellect.core.watcher import FileWatcher
+        from contextor.core.watcher import FileWatcher
 
         changes_received = []
 
@@ -224,7 +224,7 @@ class TestFileWatcher:
 
     def test_scan_changes_empty_dir(self):
         """scan_changes() на пустой директории возвращает пустой список."""
-        from pure_intellect.core.watcher import FileWatcher
+        from contextor.core.watcher import FileWatcher
         with tempfile.TemporaryDirectory() as tmp:
             watcher = FileWatcher(project_path=tmp)
             changes = watcher.scan_changes()
@@ -232,7 +232,7 @@ class TestFileWatcher:
 
     def test_scan_changes_detects_new_files(self):
         """scan_changes() обнаруживает новые файлы."""
-        from pure_intellect.core.watcher import FileWatcher
+        from contextor.core.watcher import FileWatcher
         with tempfile.TemporaryDirectory() as tmp:
             # Создаём .py файл
             py_file = Path(tmp) / "test.py"
@@ -303,32 +303,32 @@ class TestWatcherRouterEndpoints:
     """Проверяем что watcher endpoints зарегистрированы в router."""
 
     def test_watcher_status_endpoint_exists(self):
-        from pure_intellect.api.routes import router
+        from contextor.api.routes import router
         paths = [r.path for r in router.routes]
         assert "/code/watcher/status" in paths
 
     def test_watcher_start_endpoint_exists(self):
-        from pure_intellect.api.routes import router
+        from contextor.api.routes import router
         paths = [r.path for r in router.routes]
         assert "/code/watcher/start" in paths
 
     def test_watcher_stop_endpoint_exists(self):
-        from pure_intellect.api.routes import router
+        from contextor.api.routes import router
         paths = [r.path for r in router.routes]
         assert "/code/watcher/stop" in paths
 
     def test_watcher_changes_endpoint_exists(self):
-        from pure_intellect.api.routes import router
+        from contextor.api.routes import router
         paths = [r.path for r in router.routes]
         assert "/code/watcher/changes" in paths
 
     def test_watcher_scan_endpoint_exists(self):
-        from pure_intellect.api.routes import router
+        from contextor.api.routes import router
         paths = [r.path for r in router.routes]
         assert "/code/watcher/scan" in paths
 
     def test_watcher_endpoint_methods(self):
-        from pure_intellect.api.routes import router
+        from contextor.api.routes import router
         methods = {r.path: list(r.methods or []) for r in router.routes}
         assert "GET" in methods.get("/code/watcher/status", [])
         assert "POST" in methods.get("/code/watcher/start", [])

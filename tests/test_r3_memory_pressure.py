@@ -10,8 +10,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pure_intellect.core.memory.fact import Fact
-from pure_intellect.core.memory.working_memory import WorkingMemory
+from contextor.core.memory.fact import Fact
+from contextor.core.memory.working_memory import WorkingMemory
 
 
 @pytest.fixture

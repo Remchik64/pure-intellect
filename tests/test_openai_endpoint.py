@@ -1,6 +1,6 @@
 """Тесты для OpenAI-совместимого API endpoint.
 
-Позволяет использовать Pure Intellect как backend для:
+Позволяет использовать Contextor как backend для:
 - Agent Zero (api_base: http://localhost:7860/v1)
 - Open WebUI
 - LM Studio (как клиент)
@@ -9,7 +9,7 @@
 
 import pytest
 
-from pure_intellect.api.routes import openai_router
+from contextor.api.routes import openai_router
 
 
 # ── Проверка структуры роутера ─────────────────────────────
@@ -40,25 +40,25 @@ class TestOpenAIRouterStructure:
 class TestOpenAISchemas:
 
     def test_openai_message_schema(self):
-        from pure_intellect.api.routes import OpenAIMessage
+        from contextor.api.routes import OpenAIMessage
         msg = OpenAIMessage(role="user", content="Привет!")
         assert msg.role == "user"
         assert msg.content == "Привет!"
 
     def test_openai_chat_request_defaults(self):
-        from pure_intellect.api.routes import OpenAIChatRequest, OpenAIMessage
+        from contextor.api.routes import OpenAIChatRequest, OpenAIMessage
         req = OpenAIChatRequest(
             messages=[OpenAIMessage(role="user", content="test")]
         )
-        assert req.model == "pure-intellect"
+        assert req.model == "contextor"
         assert req.temperature == 0.7
         assert req.max_tokens == 2000
         assert req.stream is False
 
     def test_openai_chat_request_custom(self):
-        from pure_intellect.api.routes import OpenAIChatRequest, OpenAIMessage
+        from contextor.api.routes import OpenAIChatRequest, OpenAIMessage
         req = OpenAIChatRequest(
-            model="pure-intellect-code",
+            model="contextor-code",
             messages=[
                 OpenAIMessage(role="system", content="Ты помощник"),
                 OpenAIMessage(role="user", content="Привет"),
@@ -66,12 +66,12 @@ class TestOpenAISchemas:
             temperature=0.5,
             max_tokens=500,
         )
-        assert req.model == "pure-intellect-code"
+        assert req.model == "contextor-code"
         assert len(req.messages) == 2
         assert req.temperature == 0.5
 
     def test_openai_chat_request_multiple_messages(self):
-        from pure_intellect.api.routes import OpenAIChatRequest, OpenAIMessage
+        from contextor.api.routes import OpenAIChatRequest, OpenAIMessage
         req = OpenAIChatRequest(
             messages=[
                 OpenAIMessage(role="user", content="Меня зовут Александр"),
@@ -96,10 +96,10 @@ class TestOpenAIResponseFormat:
             "object": "list",
             "data": [
                 {
-                    "id": "pure-intellect",
+                    "id": "contextor",
                     "object": "model",
                     "created": 1714000000,
-                    "owned_by": "pure-intellect",
+                    "owned_by": "contextor",
                 }
             ],
         }
@@ -118,7 +118,7 @@ class TestOpenAIResponseFormat:
             "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
             "object": "chat.completion",
             "created": int(time.time()),
-            "model": "pure-intellect",
+            "model": "contextor",
             "choices": [
                 {
                     "index": 0,
@@ -165,11 +165,11 @@ class TestAgentZeroCompatibility:
 
     def test_agent_zero_request_format(self):
         """Agent Zero отправляет запрос именно в таком формате."""
-        from pure_intellect.api.routes import OpenAIChatRequest, OpenAIMessage
+        from contextor.api.routes import OpenAIChatRequest, OpenAIMessage
 
         # Типичный запрос от Agent Zero
         agent_zero_payload = {
-            "model": "pure-intellect",
+            "model": "contextor",
             "messages": [
                 {"role": "system", "content": "You are Agent Zero, an AI assistant."},
                 {"role": "user", "content": "Найди информацию о Python"},
@@ -181,14 +181,14 @@ class TestAgentZeroCompatibility:
 
         # Pydantic должен принять такой payload
         req = OpenAIChatRequest(**agent_zero_payload)
-        assert req.model == "pure-intellect"
+        assert req.model == "contextor"
         assert len(req.messages) == 2
         assert req.messages[0].role == "system"
         assert req.messages[1].role == "user"
 
     def test_system_message_extraction(self):
         """System message корректно извлекается из messages."""
-        from pure_intellect.api.routes import OpenAIMessage
+        from contextor.api.routes import OpenAIMessage
         messages = [
             OpenAIMessage(role="system", content="Ты помощник разработчика"),
             OpenAIMessage(role="user", content="Помоги с кодом"),
@@ -200,8 +200,8 @@ class TestAgentZeroCompatibility:
         assert system_msgs[0].content == "Ты помощник разработчика"
         assert user_msgs[-1].content == "Помоги с кодом"
 
-    def test_pure_intellect_metadata_in_response(self):
-        """Ответ содержит метаданные Pure Intellect."""
+    def test_contextor_metadata_in_response(self):
+        """Ответ содержит метаданные Contextor."""
         # Проверяем что наш ответ расширяет OpenAI формат
         response = {
             "id": "chatcmpl-abc123",
@@ -209,14 +209,14 @@ class TestAgentZeroCompatibility:
             "choices": [{"message": {"role": "assistant", "content": "ok"}, "index": 0, "finish_reason": "stop"}],
             "usage": {"prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8},
             # Наш уникальный раздел:
-            "pure_intellect": {
+            "contextor": {
                 "turn": 5,
                 "coherence_score": 0.87,
                 "memory_facts": 12,
                 "session_id": "default",
             },
         }
-        assert "pure_intellect" in response
-        assert "coherence_score" in response["pure_intellect"]
-        assert "memory_facts" in response["pure_intellect"]
-        assert "session_id" in response["pure_intellect"]
+        assert "contextor" in response
+        assert "coherence_score" in response["contextor"]
+        assert "memory_facts" in response["contextor"]
+        assert "session_id" in response["contextor"]

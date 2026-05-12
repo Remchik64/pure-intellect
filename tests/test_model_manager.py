@@ -3,7 +3,7 @@
 import threading
 import pytest
 from unittest.mock import MagicMock, patch
-from pure_intellect.engine.model_manager import ModelManager
+from contextor.engine.model_manager import ModelManager
 
 
 @pytest.fixture(autouse=True)

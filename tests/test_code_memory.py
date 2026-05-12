@@ -2,7 +2,7 @@
 
 import pytest
 
-from pure_intellect.core.code_memory import (
+from contextor.core.code_memory import (
     CodeFact,
     CodeMemoryExtractor,
     CodeAwareMemoryIntegration,

@@ -1,4 +1,4 @@
-"""Benchmark suite для Pure Intellect memory system.
+"""Benchmark suite для Contextor memory system.
 
 Измеряет эффективность самообновляемой памяти в сравнении с baseline.
 

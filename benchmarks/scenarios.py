@@ -1,4 +1,4 @@
-"""Тестовые сценарии для benchmark Pure Intellect memory system.
+"""Тестовые сценарии для benchmark Contextor memory system.
 
 Каждый сценарий — это набор turns симулирующий реальный разговор.
 Сценарии проверяют конкретные гипотезы о работе памяти.
@@ -40,9 +40,9 @@ LONG_SESSION = Scenario(
     turns=[
         Turn(
             turn_id=1,
-            query="Мы разрабатываем проект pure-intellect — систему памяти для LLM",
-            expected_keywords=["pure-intellect", "память", "LLM"],
-            mock_response="Понял. pure-intellect — это система иерархической памяти для LLM с уровнями L1/L2/L3."
+            query="Мы разрабатываем проект contextor — систему памяти для LLM",
+            expected_keywords=["contextor", "память", "LLM"],
+            mock_response="Понял. contextor — это система иерархической памяти для LLM с уровнями L1/L2/L3."
         ),
         Turn(
             turn_id=2,
@@ -185,8 +185,8 @@ LONG_SESSION = Scenario(
         Turn(
             turn_id=25,
             query="Напомни, как называется наш проект?",  # Тест recall с turn 1
-            expected_keywords=["pure-intellect"],
-            mock_response="Проект называется pure-intellect."
+            expected_keywords=["contextor"],
+            mock_response="Проект называется contextor."
         ),
         Turn(
             turn_id=26,
@@ -276,9 +276,9 @@ REPEAT_QUESTIONS = Scenario(
                 "Проверяет fact recall через длинный промежуток.",
     tags=["repeat", "fact_recall"],
     turns=[
-        Turn(turn_id=1, query="Наш проект называется pure-intellect",
-             expected_keywords=["pure-intellect"],
-             mock_response="pure-intellect — система памяти для LLM."),
+        Turn(turn_id=1, query="Наш проект называется contextor",
+             expected_keywords=["contextor"],
+             mock_response="contextor — система памяти для LLM."),
         Turn(turn_id=2, query="Версия Python: 3.13",
              expected_keywords=["python", "3.13"],
              mock_response="Python 3.13 — последняя стабильная версия."),
@@ -289,8 +289,8 @@ REPEAT_QUESTIONS = Scenario(
             for i in range(3, 16)
         ],
         Turn(turn_id=16, query="Как называется наш проект?",
-             expected_keywords=["pure-intellect"],
-             mock_response="pure-intellect."),
+             expected_keywords=["contextor"],
+             mock_response="contextor."),
         Turn(turn_id=17, query="Какую версию Python используем?",
              expected_keywords=["3.13"],
              mock_response="Python 3.13."),

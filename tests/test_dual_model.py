@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.pure_intellect.core.dual_model import (
+from src.contextor.core.dual_model import (
     DualModelRouter,
     COORDINATOR_MODEL,
     GENERATOR_MODEL,
@@ -15,7 +15,7 @@ from src.pure_intellect.core.dual_model import (
 
 class TestDualModelRouterInit:
     def test_default_models(self):
-        with patch('src.pure_intellect.core.dual_model._load_models_from_config',
+        with patch('src.contextor.core.dual_model._load_models_from_config',
                    return_value=(COORDINATOR_MODEL, GENERATOR_MODEL)):
             router = DualModelRouter()
         assert router.coordinator_model == COORDINATOR_MODEL
@@ -43,7 +43,7 @@ class TestDualModelRouterInit:
         assert router._generator_available is None
 
     def test_repr_pending(self):
-        with patch('src.pure_intellect.core.dual_model._load_models_from_config',
+        with patch('src.contextor.core.dual_model._load_models_from_config',
                    return_value=(COORDINATOR_MODEL, GENERATOR_MODEL)):
             router = DualModelRouter()
         r = repr(router)

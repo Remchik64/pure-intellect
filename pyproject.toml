@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pure-intellect"
+name = "contextor"
 version = "0.1.0"
-description = "Локальный оркестратор для LLM с иерархической памятью и управлением контекстом"
+description = "Local AI Orchestrator with Hierarchical Memory and Context Management"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.11"
@@ -60,17 +60,17 @@ cuda = [
 ]
 
 [project.scripts]
-pure-intellect = "pure_intellect.__main__:main"
+contextor = "contextor.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/Remchik64/pure-intellect"
-Repository = "https://github.com/Remchik64/pure-intellect"
+Homepage = "https://github.com/Remchik64/contextor"
+Repository = "https://github.com/Remchik64/contextor"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-pure_intellect = [
+contextor = [
     "static/*",
     "static/**/*",
     "prompts/*",

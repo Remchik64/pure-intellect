@@ -1,7 +1,7 @@
 """Тесты для Context Coherence Index (CCI)."""
 
 import pytest
-from pure_intellect.core.memory.cci import (
+from contextor.core.memory.cci import (
     CCITracker,
     CoherenceEntry,
     CoherenceResult,

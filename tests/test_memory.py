@@ -4,9 +4,9 @@ import pytest
 import tempfile
 import json
 from pathlib import Path
-from pure_intellect.core.memory.fact import Fact, CompressionLevel
-from pure_intellect.core.memory.working_memory import WorkingMemory
-from pure_intellect.core.memory.storage import MemoryStorage
+from contextor.core.memory.fact import Fact, CompressionLevel
+from contextor.core.memory.working_memory import WorkingMemory
+from contextor.core.memory.storage import MemoryStorage
 
 
 # ─── Fixtures ───────────────────────────────────────────────────────────────

@@ -1,11 +1,11 @@
 @echo off
 setlocal enabledelayedexpansion
-title Pure Intellect
+title Contextor
 color 0A
 
 echo.
 echo  ================================================
-echo   Pure Intellect - Starting
+echo   Contextor - Starting
 echo  ================================================
 echo.
 
@@ -21,8 +21,8 @@ call :check_ollama
 
 :: ── Step 3: Start server and wait ──────────────────────────────────────────
 echo.
-echo [3/4] Starting Pure Intellect...
-start "Pure Intellect Server" /min cmd /c "python -m pure_intellect serve --port 7860 & pause"
+echo [3/4] Starting Contextor...
+start "Contextor Server" /min cmd /c "python -m contextor serve --port 7860 & pause"
 call :wait_server
 if errorlevel 1 (
     echo.
@@ -41,7 +41,7 @@ if errorlevel 1 start http://127.0.0.1:7860
 
 echo.
 echo  ================================================
-echo   Pure Intellect is running!
+echo   Contextor is running!
 echo   URL: http://127.0.0.1:7860
 echo.
 echo   Press any key to STOP the server

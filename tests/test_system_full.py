@@ -63,7 +63,7 @@ def post(path: str, data: dict = None) -> Optional[dict]:
 
 
 print(f"\n{BOLD}{'═'*55}{RESET}")
-print(f"{BOLD}  🧠 Pure Intellect — Full System Test{RESET}")
+print(f"{BOLD}  🧠 Contextor — Full System Test{RESET}")
 print(f"{BOLD}  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{RESET}")
 print(f"{BOLD}{'═'*55}{RESET}")
 
@@ -83,7 +83,7 @@ head("1. Health Check — все эндпоинты")
 
 try:
     r = requests.get(BASE + "/", timeout=5)
-    if r.status_code == 200 and "Pure Intellect" in r.text:
+    if r.status_code == 200 and "Contextor" in r.text:
         ok(f"Web UI: HTTP {r.status_code} — index.html отдаётся")
     else:
         fail(f"Web UI: HTTP {r.status_code}")
@@ -132,7 +132,7 @@ head("3. Диалог — 12 turns с накоплением фактов")
 
 dialogue = [
     # Представление
-    "Привет! Меня зовут Александр. Я разрабатываю проект pure-intellect.",
+    "Привет! Меня зовут Александр. Я разрабатываю проект contextor.",
     "Проект написан на Python 3.13 с использованием FastAPI и ChromaDB.",
     "Главная цель проекта — решить проблему деградации контекста LLM.",
     "У меня видеокарта NVIDIA RTX 3060 с 12GB VRAM.",
@@ -185,7 +185,7 @@ for i, msg in enumerate(dialogue, 1):
                     fail(f"Recall имени: не найдено. Ответ: {short}")
                     recall_results.append(False)
             elif i == 12:
-                found_project = "pure-intellect" in resp_lower or "pure intellect" in resp_lower
+                found_project = "contextor" in resp_lower or "contextor" in resp_lower
                 found_goal = any(w in resp_lower for w in ["контекст", "деградац", "память", "context"])
                 if found_project and found_goal:
                     ok(f"Recall проекта и цели: НАЙДЕНО")

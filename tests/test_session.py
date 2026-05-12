@@ -5,10 +5,10 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from src.pure_intellect.core.session import SessionPersistence
-from src.pure_intellect.core.memory.working_memory import WorkingMemory
-from src.pure_intellect.core.memory.storage import MemoryStorage
-from src.pure_intellect.core.memory.fact import Fact
+from src.contextor.core.session import SessionPersistence
+from src.contextor.core.memory.working_memory import WorkingMemory
+from src.contextor.core.memory.storage import MemoryStorage
+from src.contextor.core.memory.fact import Fact
 
 
 @pytest.fixture
@@ -103,7 +103,7 @@ class TestSessionSave:
         assert len(data["messages"]) == 2
 
     def test_save_anchor_fact(self, session, working_memory, storage):
-        working_memory.add_anchor("Координата: проект pure-intellect", source="coordinate")
+        working_memory.add_anchor("Координата: проект contextor", source="coordinate")
         session.save(working_memory, storage, [], turn=3)
 
         info = session.info()
@@ -136,7 +136,7 @@ class TestSessionLoad:
 
     def test_load_restores_working_memory(self, session, working_memory, storage):
         working_memory.add_text("Меня зовут Александр", source="test")
-        working_memory.add_text("Проект pure-intellect", source="test")
+        working_memory.add_text("Проект contextor", source="test")
         session.save(working_memory, storage, [], turn=1)
 
         wm2 = WorkingMemory(token_budget=2000)
@@ -146,7 +146,7 @@ class TestSessionLoad:
         assert wm2.size() == 2
         contents = [f.content for f in wm2.get_facts()]
         assert "Меня зовут Александр" in contents
-        assert "Проект pure-intellect" in contents
+        assert "Проект contextor" in contents
 
     def test_load_restores_anchor_facts(self, session, working_memory, storage):
         working_memory.add_anchor("Координата сессии", source="coordinate")

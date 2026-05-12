@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from pure_intellect.core.session_manager import (
+from contextor.core.session_manager import (
     SessionInfo,
     SessionManager,
     SESSION_TYPE_CHAT,

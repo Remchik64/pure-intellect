@@ -1,4 +1,4 @@
-"""Benchmark runner для Pure Intellect memory system.
+"""Benchmark runner для Contextor memory system.
 
 Запускает сценарии в двух режимах:
 1. baseline — без памяти (каждый turn изолирован)
@@ -12,11 +12,11 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
-from pure_intellect.core.memory import (
+from contextor.core.memory import (
     WorkingMemory, MemoryStorage, AttentionScorer,
     MemoryOptimizer, CCITracker
 )
-from pure_intellect.core.memory.fact import Fact
+from contextor.core.memory.fact import Fact
 from .scenarios import Scenario, Turn
 
 logger = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ class BaselineRunner:
 class MemoryRunner:
     """Прогоняет сценарий С полной системой памяти.
     
-    Эмулирует реальную работу Pure Intellect:
+    Эмулирует реальную работу Contextor:
     - WorkingMemory хранит горячие факты
     - CCITracker отслеживает coherence
     - MemoryOptimizer управляет lifecycle фактов

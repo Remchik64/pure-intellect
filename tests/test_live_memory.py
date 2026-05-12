@@ -1,4 +1,4 @@
-"""Живой тест памяти Pure Intellect — правильная логика буфера.
+"""Живой тест памяти Contextor — правильная логика буфера.
 
 Концепция:
 - Rolling window: держим последние N токенов как обычный чат
@@ -16,11 +16,11 @@ import httpx
 import time
 sys.path.insert(0, 'src')
 
-from pure_intellect.core.memory import (
+from contextor.core.memory import (
     WorkingMemory, MemoryStorage, AttentionScorer,
     MemoryOptimizer, CCITracker
 )
-from pure_intellect.core.memory.fact import Fact, CompressionLevel
+from contextor.core.memory.fact import Fact, CompressionLevel
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 MODEL = "qwen2.5:3b"
@@ -126,7 +126,7 @@ async def run_live_test():
     # ── Сценарий разговора ──────────────────────────────────────────
     conversation = [
         # Фаза 1: Представление и контекст (turns 1-4)
-        {"q": "Привет! Меня зовут Александр, я разрабатываю проект pure-intellect — систему памяти для LLM. Приятно познакомиться!",
+        {"q": "Привет! Меня зовут Александр, я разрабатываю проект contextor — систему памяти для LLM. Приятно познакомиться!",
          "phase": "intro", "recall_test": False},
         {"q": "Проект написан на Python 3.13, используем FastAPI и ChromaDB. GPU у нас RTX 3060 с 12GB памяти.",
          "phase": "intro", "recall_test": False},
@@ -153,7 +153,7 @@ async def run_live_test():
         {"q": "Кстати, как меня зовут?",
          "phase": "recall", "recall_test": True, "expected": "Александр"},
         {"q": "Напомни как называется наш проект?",
-         "phase": "recall", "recall_test": True, "expected": "pure-intellect"},
+         "phase": "recall", "recall_test": True, "expected": "contextor"},
         {"q": "На каком языке и фреймворке написан backend?",
          "phase": "recall", "recall_test": True, "expected": "Python"},
         {"q": "Какую главную проблему мы решаем?",

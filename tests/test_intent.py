@@ -1,7 +1,7 @@
 """Тесты для IntentDetector — rule-based и JSON parsing."""
 
 import pytest
-from pure_intellect.core.intent import IntentDetector, IntentType, IntentResult
+from contextor.core.intent import IntentDetector, IntentType, IntentResult
 
 
 @pytest.fixture
