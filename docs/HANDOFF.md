@@ -155,3 +155,38 @@ CTX инжектирует не только координату, а **4-сло
 - `docs/ROADMAP.md` — дорожная карта с задачами
 - `docs/architecture.md` — оригинальная архитектура проекта
 - `src/contextor/core/orchestrator.py` — ядро (940 строк)
+ 
+ ---
+ 
+ ## 📝 Дневник разработки
+ 
+ ### 12 мая 2026 — Переименование и новый репозиторий
+ 
+ **Выполнено:**
+ - ✅ Переименование Pure Intellect → Contextor (CTX)
+   - 92 файла изменено, 357+ вхождений обновлено
+   - Пакет: `pure_intellect` → `contextor`
+   - PyPI: `pure-intellect` → `contextor`
+   - Слоган: «Your context, orchestrated.»
+ - ✅ Восстановлен полный README.md (370 строк)
+   - Донаты (Boosty, ЮMoney), автор, лицензия, контакты
+ - ✅ Создан новый репозиторий Contextor-pro на GitHub
+   - Remote: `contextor-pro` → https://github.com/Remchik64/Contextor-pro
+   - Вся история проекта запушена
+   - Старый репо `origin` (pure-intellect) — архивный, НЕ трогать
+ - ✅ Строгое правило: не пушить в неправильный репозиторий
+ 
+ **Коммиты:**
+ - `d5280cb` feat: rename project from Pure Intellect to Contextor (CTX)
+ - `6ad3a39` fix: restore full README with all sections - donations, author, license, contacts
+ - `0e89f10` docs: update HANDOFF.md with Contextor-pro repo info
+ 
+ **Два remote:**
+ | Remote | URL | Назначение |
+ |--------|-----|------------|
+ | `origin` | github.com/Remchik64/pure-intellect | Архив (только чтение) |
+ | `contextor-pro` | github.com/Remchik64/Contextor-pro | Активная разработка |
+ 
+ **Важно:** При git push ВСЕГДА показывать remote и branch, получать подтверждение пользователя. Никогда не путать репозитории.
+ 
+ **Следующий шаг:** Начать реализацию Фазы 1 — UCIP v2, стабильность ядра, CCI improvements.
