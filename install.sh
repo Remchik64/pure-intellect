@@ -23,6 +23,7 @@ fail(){ echo -e "  ${RED}ERROR:${NC} $*" >&2; exit 1; }
 echo -e ""
 echo -e "${BOLD}${CYAN}  ╔══════════════════════════════════════════════╗${NC}"
 echo -e "${BOLD}${CYAN}  ║     Contextor — Installation v0.1      ║${NC}"
+echo -e "${BOLD}${CYAN}  ║     Private Repository Access               ║${NC}"
 echo -e "${BOLD}${CYAN}  ║     Local AI with unlimited memory          ║${NC}"
 echo -e "${BOLD}${CYAN}  ╚══════════════════════════════════════════════╝${NC}"
 echo -e ""
@@ -30,6 +31,25 @@ echo -e ""
 OS=$(uname -s)
 ARCH=$(uname -m)
 info "Detected OS: $OS ($ARCH)"
+
+# ── GitHub Token Input ──────────────────────────────────────────────────────
+echo -e "\n${BOLD}GitHub Token Required${NC}"
+echo "  This installer needs your GitHub Personal Access Token"
+echo "  to download Contextor from the private repository."
+echo ""
+echo "  How to get a token:"
+echo "  1. Go to: https://github.com/settings/tokens"
+echo "  2. Generate new token (classic)"
+echo "  3. Select scope: repo"
+echo "  4. Copy and paste it below"
+echo ""
+read -r -p "  Enter GitHub token (paste and press Enter): " GHTOKEN
+echo ""
+
+if [ -z "$GHTOKEN" ]; then
+    fail "Token cannot be empty!"
+fi
+ok "Token received"
 
 # ── Step 1: Check Python ──────────────────────────────────────────────────────
 echo -e "\n${BOLD}[1/4] Checking Python...${NC}"
@@ -126,10 +146,13 @@ echo ""
 
 # Устанавливаем в пользовательский pip (без sudo)
 if ! "$PYTHON_BIN" -m pip install \
-    git+https://github.com/Remchik64/contextor.git \
+    git+https://${GHTOKEN}@github.com/Remchik64/Contextor-pro.git \
     --quiet --user; then
-    fail "Installation failed. Check your internet connection and try again."
+    fail "Installation failed. Check your token has 'repo' scope."
 fi
+
+# Clear token from memory
+unset GHTOKEN
 
 # Проверяем что команда доступна
 if command -v contextor &>/dev/null; then

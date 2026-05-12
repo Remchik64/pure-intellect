@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
 [![Tests](https://img.shields.io/badge/Tests-465%20passed-brightgreen.svg)](tests/)
-[![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2Fcontextor-black.svg)](https://github.com/Remchik64/contextor)
+[![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2FContextor-pro-black.svg)](https://github.com/Remchik64/Contextor-pro)
 [![Support on Boosty](https://img.shields.io/badge/Support%20on-Boosty-orange.svg)](https://boosty.to/rem64)
 [![Support via YooMoney](https://img.shields.io/badge/Support-ЮMoney-blueviolet.svg)](https://yoomoney.ru/to/4100118846255337)
 
@@ -88,16 +88,16 @@ Contextor solves the fundamental problem of LLM context limitation — **context
 
 **Windows:**
 
-📥 [**Download install.bat**](https://raw.githubusercontent.com/Remchik64/contextor/main/install.bat) — or via PowerShell:
+📥 [**Download install.bat**](https://raw.githubusercontent.com/Remchik64/Contextor-pro/main/install.bat) — or via PowerShell:
 
 ```powershell
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/contextor/main/install.bat -OutFile install.bat
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/Contextor-pro/main/install.bat -OutFile install.bat
 .\install.bat
 ```
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Remchik64/contextor/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Remchik64/Contextor-pro/main/install.sh | bash
 ```
 
 The installer will:
@@ -114,7 +114,7 @@ The installer will:
 curl -fsSL https://ollama.com/install.sh | sh
 
 # 2. Install Contextor
-pip install git+https://github.com/Remchik64/contextor.git
+pip install git+https://github.com/Remchik64/Contextor-pro.git
 
 # 3. Start server
 contextor serve
@@ -279,7 +279,7 @@ The integration goal: Agent Zero uses Contextor as its memory layer — hierarch
 
 ```bash
 # Clone
-git clone https://github.com/Remchik64/contextor
+git clone https://github.com/Remchik64/Contextor-pro
 cd contextor
 
 # Setup
@@ -363,7 +363,7 @@ See [LICENSE](LICENSE) for full terms.
 
 *Built with ❤️ by Ренат Яраев (Remchik64)*
 
-[GitHub](https://github.com/Remchik64/contextor) · [Issues](https://github.com/Remchik64/contextor/issues) · [License](LICENSE) · [VK](https://vk.com/remchik64) · [Boosty](https://boosty.to/rem64) · [ЮMoney](https://yoomoney.ru/to/4100118846255337)
+[GitHub](https://github.com/Remchik64/Contextor-pro) · [Issues](https://github.com/Remchik64/Contextor-pro/issues) · [License](LICENSE) · [VK](https://vk.com/remchik64) · [Boosty](https://boosty.to/rem64) · [ЮMoney](https://yoomoney.ru/to/4100118846255337)
 
 📧 renataraev51@gmail.com · remch2013@yandex.ru
 

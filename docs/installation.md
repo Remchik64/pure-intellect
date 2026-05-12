@@ -26,10 +26,10 @@
 
 ```powershell
 # PowerShell — скачать install.bat
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/contextor/main/install.bat -OutFile "$env:USERPROFILE\Desktop\install.bat"
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/Contextor-pro/main/install.bat -OutFile "$env:USERPROFILE\Desktop\install.bat"
 
 # Скачать start.bat
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/contextor/main/start.bat -OutFile "$env:USERPROFILE\Desktop\start.bat"
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/Contextor-pro/main/start.bat -OutFile "$env:USERPROFILE\Desktop\start.bat"
 ```
 
 Или скачайте `install.bat` и `start.bat` вручную со страницы репозитория и положите оба на рабочий стол.
@@ -52,7 +52,7 @@ Invoke-WebRequest -Uri https://raw.githubusercontent.com/Remchik64/contextor/mai
 ### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Remchik64/contextor/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Remchik64/Contextor-pro/main/install.sh | bash
 ```
 
 Что делает скрипт:
@@ -65,6 +65,7 @@ curl -fsSL https://raw.githubusercontent.com/Remchik64/contextor/main/install.sh
 ---
 
 ## Способ 2 — Ручная установка
+> ⚠️ **Contextor-pro — приватный репозиторий.** Для установки нужен GitHub Personal Access Token с правами `repo`.
 
 ```bash
 # 1. Установить Ollama
@@ -73,8 +74,8 @@ curl -fsSL https://ollama.com/install.sh | sh
 # 2. Убедиться что Ollama запущен
 ollama serve &
 
-# 3. Установить Contextor
-pip install git+https://github.com/Remchik64/contextor.git
+# 3. Установить Contextor (замените YOUR_TOKEN на ваш GitHub PAT)
+pip install git+https://YOUR_TOKEN@github.com/Remchik64/Contextor-pro.git
 
 # 4. Запустить
 contextor serve
@@ -87,8 +88,8 @@ contextor serve
 ## Способ 3 — Development Install (для контрибьюторов)
 
 ```bash
-# 1. Клонировать
-git clone https://github.com/Remchik64/contextor
+# 1. Клонировать (замените YOUR_TOKEN на ваш GitHub PAT)
+git clone https://YOUR_TOKEN@github.com/Remchik64/Contextor-pro.git
 cd contextor
 
 # 2. Создать виртуальное окружение
@@ -196,5 +197,5 @@ contextor serve --port 8080
 ## Обновление
 
 ```bash
-pip install --upgrade git+https://github.com/Remchik64/contextor.git
+pip install --upgrade git+https://github.com/Remchik64/Contextor-pro.git
 ```

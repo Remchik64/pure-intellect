@@ -83,7 +83,7 @@ echo [3/4] Installing Contextor...
 echo  Please wait 5-15 minutes (downloading PyTorch, ChromaDB...).
 echo.
 
-pip install git+https://!GHTOKEN!@github.com/Remchik64/contextor.git
+pip install git+https://!GHTOKEN!@github.com/Remchik64/Contextor-pro.git
 if errorlevel 1 (
     echo.
     echo  ERROR: Installation failed!
@@ -110,7 +110,7 @@ set APPDIR=%APPDATA%\Contextor
 mkdir "%APPDIR%" >nul 2>&1
 
 echo  Downloading start.bat...
-curl -s -L "https://raw.githubusercontent.com/Remchik64/contextor/main/start.bat" -o "%APPDIR%\start.bat"
+curl -s -L "https://raw.githubusercontent.com/Remchik64/Contextor-pro/main/start.bat" -o "%APPDIR%\start.bat"
 if errorlevel 1 (
     echo  WARNING: Could not download start.bat, creating basic launcher...
     (

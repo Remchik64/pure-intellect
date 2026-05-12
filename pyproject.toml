@@ -63,8 +63,8 @@ cuda = [
 contextor = "contextor.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/Remchik64/contextor"
-Repository = "https://github.com/Remchik64/contextor"
+Homepage = "https://github.com/Remchik64/Contextor-pro"
+Repository = "https://github.com/Remchik64/Contextor-pro"
 
 [tool.setuptools.packages.find]
 where = ["src"]
