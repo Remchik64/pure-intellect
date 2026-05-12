@@ -1,9 +1,10 @@
 # 📋 Записка для следующего чата — Contextor Development Context
 
-> Дата: 2026-05-10
+> Дата: 2026-05-12
 > Создал: Agent Zero (hacker profile)
-> Проект: https://github.com/Remchik64/contextor
-> Локальная копия: /a0/usr/workdir/contextor/
+> Проект: https://github.com/Remchik64/Contextor-pro (активная разработка)
+> Архив: https://github.com/Remchik64/pure-intellect (только чтение)
+> Локальная копия: /a0/usr/workdir/pure-intellect/ (пакет переименован в contextor)
 
 ---
 
