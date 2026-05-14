@@ -29,7 +29,7 @@ HOT_PROMOTION_THRESHOLD = 5   # Если факт запрошен N раз — 
 COLD_ARCHIVE_THRESHOLD = 0.05  # Если вес ниже — кандидат на архивирование
 
 # Ollama embedding настройки (fallback)
-OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 OLLAMA_EMBED_MODEL = "nomic-embed-text"  # default, читается из config.yaml при инициализации
 EMBED_TIMEOUT = 60  # секунд (nomic-embed-text первый запуск занимает 15-30 сек)
 

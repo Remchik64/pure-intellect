@@ -1,5 +1,0 @@
-pi_server: http://localhost:7860
-
-coordinator_model: qwen2.5:3b
-generator_model: qwen2.5:7b
-utility_model: qwen2.5:7b

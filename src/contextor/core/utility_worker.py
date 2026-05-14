@@ -10,11 +10,11 @@ def _get_available_utility_model(preferred: str, fallback: str) -> str:
     """Query Ollama to verify model exists. Fall back to generator model if not."""
     try:
         import urllib.request, json as _json
-        resp = urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2)
+        resp = urllib.request.urlopen("http://host.docker.internal:11434/api/tags", timeout=2)
         models = [m["name"] for m in _json.loads(resp.read()).get("models", [])]
         if preferred in models:
             return preferred
-        # Try prefix match (e.g. 'qwen2.5:7b' matches 'qwen2.5:7b-instruct')
+        # Try prefix match (e.g. 'qwen3.5:9b' matches 'qwen3.5:9b-instruct')
         for m in models:
             if m.startswith(preferred.split(":")[0]):
                 return m
@@ -30,7 +30,7 @@ class UtilityWorker:
     def __init__(self, config):
         self.config = config
         self.swap_manager = get_swap_manager()
-        self.ollama_base = "http://localhost:11434"
+        self.ollama_base = "http://host.docker.internal:11434"
 
     def _chunk_text(self, text: str, chunk_size: int = 12000) -> list[str]:
         return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
@@ -63,7 +63,7 @@ class UtilityWorker:
             return f"Не удалось прочитать файл {path}: {e}"
 
     async def _ask_utility_model(self, prompt: str) -> str:
-        utility_model_name = _get_available_utility_model(getattr(self.config, 'utility_model', "qwen2.5:7b"), getattr(self.config, 'chat_model', "qwen3.5:9b"))
+        utility_model_name = _get_available_utility_model(getattr(self.config, 'utility_model', "qwen3.5:9b"), getattr(self.config, 'chat_model', "qwen3.5:9b"))
         logger.info(f"[UtilityWorker] Запрос к {utility_model_name} (num_ctx=4096)")
         async with httpx.AsyncClient(timeout=180.0) as client:
             resp = await client.post(
@@ -97,8 +97,8 @@ class UtilityWorker:
             return raw_text
 
         chunks = self._chunk_text(raw_text, 12000)
-        utility_model_name = _get_available_utility_model(getattr(self.config, 'utility_model', "qwen2.5:7b"), getattr(self.config, 'chat_model', "qwen3.5:9b"))
-        generator_model = getattr(self.config, 'chat_model', "qwen2.5:7b")
+        utility_model_name = _get_available_utility_model(getattr(self.config, 'utility_model', "qwen3.5:9b"), getattr(self.config, 'chat_model', "qwen3.5:9b"))
+        generator_model = getattr(self.config, 'chat_model', "qwen3.5:9b")
 
         logger.info(f"[UtilityWorker] Текст разбит на {len(chunks)} кусков. Начинаем Map-Reduce.")
 

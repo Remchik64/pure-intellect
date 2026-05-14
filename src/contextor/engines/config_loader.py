@@ -18,7 +18,7 @@ except ImportError:
 class ModelConfig:
     """Конфигурация одной модели."""
     provider: str = "ollama"          # ollama | llamacpp | sentence_transformers | auto
-    model: str = "qwen2.5:3b"
+    model: str = "qwen3.5:2b"
     gpu_layers: str | int = "auto"    # auto | -1 | 0 | N
     temperature: float = 0.7
     max_tokens: int = 2048
@@ -80,18 +80,18 @@ class AppConfig:
     """Полная конфигурация приложения."""
     coordinator: ModelConfig = field(default_factory=lambda: ModelConfig(
         provider="ollama",
-        model="qwen2.5:3b",
+        model="qwen3.5:2b",
         temperature=0.2,
         max_tokens=400,
         timeout=60,
     ))
     generator: ModelConfig = field(default_factory=lambda: ModelConfig(
         provider="ollama",
-        model="qwen2.5:7b",
+        model="qwen3.5:9b",
         temperature=0.7,
         max_tokens=2048,
         timeout=120,
-        fallback_model="qwen2.5:3b",
+        fallback_model="qwen3.5:2b",
     ))
     embedder: ModelConfig = field(default_factory=lambda: ModelConfig(
         provider="sentence_transformers",
@@ -100,7 +100,7 @@ class AppConfig:
     ))
     utility: ModelConfig = field(default_factory=lambda: ModelConfig(
         provider="ollama",
-        model="qwen2.5:7b",
+        model="qwen3.5:9b",
         temperature=0.3,
         max_tokens=4096,
         timeout=180,
@@ -151,7 +151,7 @@ def _parse_model_config(data: dict) -> ModelConfig:
     """Создать ModelConfig из словаря YAML."""
     return ModelConfig(
         provider=data.get("provider", "ollama"),
-        model=data.get("model", "qwen2.5:3b"),
+        model=data.get("model", "qwen3.5:2b"),
         gpu_layers=data.get("gpu_layers", "auto"),
         temperature=float(data.get("temperature", 0.7)),
         max_tokens=int(data.get("max_tokens", 2048)),

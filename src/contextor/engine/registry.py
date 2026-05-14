@@ -1,7 +1,7 @@
 """Каталог доступных LLM моделей."""
 
 MODEL_REGISTRY = {
-    "qwen2.5-3b": {
+    "qwen3.5-2b": {
         "name": "Qwen 2.5 3B Instruct",
         "repo": "bartowski/Qwen2.5-3B-Instruct-GGUF",
         "file": "Qwen2.5-3B-Instruct-Q4_K_M.gguf",

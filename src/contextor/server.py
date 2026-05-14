@@ -73,101 +73,37 @@ async def version_info():
 
 
 
-async def _load_az_plugin_utility_model() -> str:
-    """Читает utility_model из az_plugin_config.yaml."""
-    import yaml, pathlib
-    for candidate in [
-        pathlib.Path("az_plugin_config.yaml"),
-        pathlib.Path.home() / "AppData/Roaming/contextor/az_plugin_config.yaml",
-        pathlib.Path.home() / ".contextor/az_plugin_config.yaml",
-        pathlib.Path("/a0/usr/workdir/contextor/az_plugin_config.yaml"),
-    ]:
-        if candidate.exists():
-            try:
-                with open(candidate) as f:
-                    cfg = yaml.safe_load(f) or {}
-                return cfg.get("utility_model", "")
-            except Exception:
-                pass
-    return ""
-
-async def _load_az_plugin_embedding_model() -> str:
-    """Читает embedding_model из az_plugin_config.yaml."""
-    import yaml, pathlib
-    for candidate in [
-        pathlib.Path("az_plugin_config.yaml"),
-        pathlib.Path.home() / "AppData/Roaming/contextor/az_plugin_config.yaml",
-        pathlib.Path.home() / ".contextor/az_plugin_config.yaml",
-        pathlib.Path("/a0/usr/workdir/contextor/az_plugin_config.yaml"),
-    ]:
-        if candidate.exists():
-            try:
-                with open(candidate) as f:
-                    cfg = yaml.safe_load(f) or {}
-                return cfg.get("embedding_model", "")
-            except Exception:
-                pass
-    return ""
-
-
 
 async def _preload_models():
-    """Умная предзагрузка моделей в VRAM с проверкой доступной памяти.
+    """Предзагрузка моделей в VRAM с проверкой доступной памяти.
     
     Логика:
     1. Получаем размер каждой модели через /api/show
     2. Получаем доступный VRAM через nvidia-smi или Ollama /api/ps
-    3. Если все три влезают -> загружаем все три с keep_alive=-1
-    4. Если две влезают -> coordinator + generator
-    5. Если одна -> только generator
+    3. Если две влезают -> coordinator + generator
+    4. Если одна -> только generator
     """
     import httpx
-    import yaml as _yaml
     await asyncio.sleep(3)  # дать серверу полностью подняться
     try:
-        # Приоритет: az_plugin_config.yaml (Admin Panel) > config.yaml (defaults)
-        # Это позволяет пользователю менять модели через Admin Panel без правки кода
-        import pathlib as _pathlib
-        _az_candidates = [
-            _pathlib.Path("az_plugin_config.yaml"),
-            _pathlib.Path.home() / "AppData/Roaming/contextor/az_plugin_config.yaml",
-            _pathlib.Path.home() / ".contextor/az_plugin_config.yaml",
-            _pathlib.Path(__file__).parent.parent.parent.parent / "az_plugin_config.yaml",
-        ]
-        _az_cfg = {}
-        for _c in _az_candidates:
-            if _c.exists():
-                try:
-                    with open(_c) as _f:
-                        _az_cfg = _yaml.safe_load(_f) or {}
-                    logger.info(f"   Config loaded from: {_c}")
-                    break
-                except Exception:
-                    pass
-
-        # Читаем модели из az_plugin_config, fallback на config.yaml
+        # Загружаем модели из config.yaml
         from .engines.config_loader import load_config
-        _cfg_defaults = load_config()
-        coordinator = _az_cfg.get("coordinator_model") or _cfg_defaults.coordinator.model
-        generator = _az_cfg.get("generator_model") or _cfg_defaults.generator.model
+        _cfg = load_config()
+        coordinator = _cfg.coordinator.model
+        generator = _cfg.generator.model
         logger.info(f"   Coordinator: {coordinator} | Generator: {generator}")
-        utility = await _load_az_plugin_utility_model()
-        embedding = await _load_az_plugin_embedding_model()
 
         models_to_load = [coordinator, generator]
-        if utility and utility not in models_to_load:
-            models_to_load.append(utility)
-            logger.info(f"   Utility model: {utility}")
 
         logger.info(f"🧠 VRAM check before preload...")
         
         async with httpx.AsyncClient(timeout=60.0) as client:
-            # Шаг 1: получаем размеры моделей
+            # Шаг 1: получаем размеры моделей через /api/show
             sizes = {}
             for model in models_to_load:
                 try:
                     resp = await client.post(
-                        "http://localhost:11434/api/show",
+                        "http://host.docker.internal:11434/api/show",
                         json={"name": model}
                     )
                     if resp.status_code == 200:
@@ -182,6 +118,24 @@ async def _preload_models():
                 except Exception as e:
                     logger.warning(f"   Size check failed for {model}: {e}")
                     sizes[model] = 0
+
+            # Fallback: если /api/show не вернул размер — берём из /api/tags
+            unknown_models = [m for m in models_to_load if sizes.get(m, 0) == 0]
+            if unknown_models:
+                try:
+                    tags_resp = await client.get("http://host.docker.internal:11434/api/tags")
+                    if tags_resp.status_code == 200:
+                        tags_data = tags_resp.json()
+                        tags_map = {m["name"]: m.get("size", 0) for m in tags_data.get("models", [])}
+                        for model in unknown_models:
+                            tag_size = tags_map.get(model, 0)
+                            if tag_size > 0:
+                                sizes[model] = tag_size
+                                logger.info(f"   {model}: {tag_size / (1024**3):.1f} GB (from /api/tags)")
+                            else:
+                                logger.warning(f"   {model}: size unknown in both /api/show and /api/tags")
+                except Exception as e:
+                    logger.warning(f"   /api/tags fallback failed: {e}")
 
             # Шаг 2: получаем доступный VRAM
             available_vram_bytes = 0
@@ -209,7 +163,7 @@ async def _preload_models():
                 # Fallback: через Ollama /api/tags — берём total VRAM из первой запущенной модели
                 if available_vram_bytes == 0:
                     try:
-                        ps = await client.get("http://localhost:11434/api/ps")
+                        ps = await client.get("http://host.docker.internal:11434/api/ps")
                         if ps.status_code == 200:
                             ps_data = ps.json()
                             running = ps_data.get("models", [])
@@ -230,7 +184,6 @@ async def _preload_models():
             # Шаг 3: умная стратегия загрузки
             coordinator_size = sizes.get(coordinator, 0)
             generator_size = sizes.get(generator, 0)
-            utility_size = sizes.get(utility, 0) if utility else 0
             overhead = 1.25  # 25% overhead для kv cache и compute graph
 
             # SAFETY: если размер модели не удалось получить (0 = неизвестен)
@@ -239,19 +192,13 @@ async def _preload_models():
                 logger.warning("   ⚠️ Model sizes unknown — safe mode: generator only (coordinator on-demand)")
                 load_list = [generator]
             else:
-                all_three = (coordinator_size + generator_size + utility_size) * overhead
                 both_main = (coordinator_size + generator_size) * overhead
 
                 free_gb = available_vram_bytes / (1024**3)
-                logger.info(f"   Need (all 3): {all_three/(1024**3):.1f} GB | Need (2): {both_main/(1024**3):.1f} GB | Free: {free_gb:.1f} GB")
+                logger.info(f"   Need (2): {both_main/(1024**3):.1f} GB | Free: {free_gb:.1f} GB")
 
-                if utility and utility_size > 0 and all_three <= available_vram_bytes:
-                    logger.info("🟢 All 3 models fit! Loading coordinator + generator + utility")
-                    load_list = [coordinator, generator, utility]
-                elif both_main <= available_vram_bytes:
-                    logger.info("🟡 Loading coordinator + generator (utility will load on-demand)")
-                    if utility:
-                        logger.info(f"   Utility ({utility}) will load on GPU when space frees up")
+                if both_main <= available_vram_bytes:
+                    logger.info("🟢 Loading coordinator + generator")
                     load_list = [coordinator, generator]
                 else:
                     logger.info("🟠 Low VRAM: loading generator only")
@@ -260,7 +207,7 @@ async def _preload_models():
             for model in load_list:
                 try:
                     resp = await client.post(
-                        "http://localhost:11434/api/generate",
+                        "http://host.docker.internal:11434/api/generate",
                         json={"model": model, "prompt": "", "keep_alive": -1},
                         timeout=120.0
                     )
@@ -268,21 +215,6 @@ async def _preload_models():
                         logger.info(f"   ✅ {model} loaded (permanent)")
                 except Exception as e:
                     logger.warning(f"   ⚠️ {model}: {e}")
-
-            # Шаг 4: прогреваем embedding модель отдельно через /api/embed
-            if embedding:
-                try:
-                    embed_resp = await client.post(
-                        "http://localhost:11434/api/embed",
-                        json={"model": embedding, "input": "", "keep_alive": -1},
-                        timeout=60.0
-                    )
-                    if embed_resp.status_code == 200:
-                        logger.info(f"   ✅ {embedding} (embedding) loaded (permanent)")
-                    else:
-                        logger.warning(f"   ⚠️ {embedding} (embedding): {embed_resp.status_code}")
-                except Exception as e:
-                    logger.warning(f"   ⚠️ {embedding} (embedding): {e}")
 
 
     except Exception as e:

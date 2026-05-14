@@ -95,7 +95,7 @@ class StreamingManager:
             # Проверяем доступность Ollama
             try:
                 import urllib.request as _ur
-                _ur.urlopen("http://localhost:11434", timeout=2)
+                _ur.urlopen("http://host.docker.internal:11434", timeout=2)
             except Exception:
                 await self.send_json(websocket, {
                     "type": "error",
@@ -113,11 +113,11 @@ class StreamingManager:
                 # Получаем URL Ollama и модель из router
                 try:
                     from contextor.config import settings
-                    ollama_url = getattr(settings, "ollama_url", "http://localhost:11434")
+                    ollama_url = getattr(settings, "ollama_url", "http://host.docker.internal:11434")
                     ollama_model = (
                         model_key
                         or getattr(router, "coordinator_model", None)
-                        or "qwen2.5:3b"
+                        or "qwen3.5:2b"
                     )
                 except Exception:
                     pass

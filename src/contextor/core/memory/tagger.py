@@ -1,6 +1,6 @@
 """ImportanceTagger — LLM-based классификация важности фактов.
 
-P3 улучшение: qwen2.5:3b анализирует каждый turn разговора и классифицирует
+P3 улучшение: qwen3.5:2b анализирует каждый turn разговора и классифицирует
 информацию на три категории:
 
 - anchors:   Критически важные факты (имена, проекты, конфигурации)
@@ -23,8 +23,8 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 # Ollama настройки
-OLLAMA_BASE_URL = "http://localhost:11434"
-TAGGER_MODEL = "qwen2.5:3b"
+OLLAMA_BASE_URL = "http://host.docker.internal:11434"
+TAGGER_MODEL = "qwen3.5:2b"
 TAGGER_TIMEOUT = 12  # секунд
 
 # Rule-based patterns для fallback
@@ -58,7 +58,7 @@ class TaggingResult:
 class ImportanceTagger:
     """Классифицирует важность информации из разговора.
     
-    Использует LLM (qwen2.5:3b) для интеллектуальной классификации.
+    Использует LLM (qwen3.5:2b) для интеллектуальной классификации.
     При недоступности LLM — fallback на rule-based extraction.
     """
     

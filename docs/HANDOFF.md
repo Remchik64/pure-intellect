@@ -190,3 +190,47 @@ CTX инжектирует не только координату, а **4-сло
  **Важно:** При git push ВСЕГДА показывать remote и branch, получать подтверждение пользователя. Никогда не путать репозитории.
  
  **Следующий шаг:** Начать реализацию Фазы 1 — UCIP v2, стабильность ядра, CCI improvements.
+
+### 14 мая 2026 — Очистка Admin Panel от мёртвого кода
+
+**Выполнено:**
+
+1. ✅ **Удаление API Gateway + Agent Zero Integration** (из предыдущего чата)
+   - `index.html` (3392→3009 строк): удалены nav-item Connect, CSS `.conn-card`/`.conn-field`/`.conn-value`, HTML `section-connections`, Utility Model card, JS-функции (`loadConnections`, `checkEndpoints`, `loadOpenAIModels`, `loadAZPluginConfig`, `saveAZPluginConfig`, `setUtilityModel`, `warmUtilityModel`), AZ references в таблице моделей
+   - `routes.py` (1976→1616 строк): удалены `_extract_first_json`, `_inject_pi_notifications`, `_create_az_coordinate`, `_AZ_COORDINATE_MSG_THRESHOLD`, весь блок `is_agent_zero`, секция AZ Plugin Config (`_AZ_PLUGIN_CONFIG_FILE`, `_DEFAULT_AZ_PLUGIN_CONFIG`, `AZPluginConfigModel`, `_load/_save_az_plugin_config`, `GET/POST /az-plugin/config`). `source="agent_zero"` → `source="user"`
+   - `server.py` (310→224 строк): удалены `_load_az_plugin_utility_model`, `_load_az_plugin_embedding_model`. Упрощён приоритет моделей: `config.yaml` → Ollama (убран fallback `az_plugin_config.yaml`)
+   - `az_plugin_config.yaml`: удалён
+
+2. ✅ **Удаление Projects Tab** (из предыдущего чата)
+   - `index.html` (3090→2816 строк): удалены nav-item Projects, CSS `.watcher-bar`/`.watcher-status-text`, HTML `section-projects`, JS-функции (`loadProjects`, `updateWatcherStatus`, `startWatcher`, `stopWatcher`, `loadWatcherChanges`, `indexProject`, `openNewProject`, `searchCode`), убран `'projects'` из массива sections
+   - `routes.py` (1616→1455 строк): удалены `IndexProjectRequest`, `CodeSearchRequest`, эндпоинты `/code/` (index, search, stats, graph, watcher/status|start|stop|changes|scan)
+   - Python-модули (`code_module.py`, `watcher.py`, `code_memory.py`, `watcher_integration.py`) и старые `/watcher/` эндпоинты — сохранены
+
+3. ✅ **Исправление Model Size Detection Warning**
+   - Проблема: `/api/show` возвращает `size=0` для незагруженных моделей → «safe mode: generator only»
+   - Фикс в `server.py`: добавлен fallback на `/api/tags` когда `/api/show` возвращает `size=0`
+   - Результат: корректные размеры (`qwen3.5:2b: 2.6 GB`, `qwen3.5:9b: 6.1 GB`), правильное VRAM-планирование
+
+4. ✅ **Исправление Admin Panel Starts Empty**
+   - Проблема: страница загружалась пустой, `showSection('dashboard')` в DOMContentLoaded
+   - Фикс: изменено на `showSection('chat')`
+
+5. ✅ **Полная чистка мёртвого dashboard-кода** (этот чат)
+   - `index.html` (2816→2448 строк, −368 строк):
+     - Удалён закомментированный dashboard nav item
+     - Удалена закомментированная dashboard HTML-секция
+     - Удалены JS-функции: `loadDashboard()`, `loadSessions()`, `switchSession()`, `deleteSessionById()`, `renameSession()`, `createNewSession()`, `deleteCoordinate()`, `loadCoordinates()`, `startDashboardRefresh()`
+     - Удалены переменные: `dashRefreshTimer`, `case 'dashboard'` в switch
+     - Удалены вызовы: `loadDashboard()` из `switchSession()`/`createNewSession()`, `startDashboardRefresh()` из DOMContentLoaded
+     - Удалены осиротевшие CSS: `.session-item*`, `.coord-item*`, `.cci-bars`, `.cci-bar`, `.grid-4`
+     - Удалён `'dashboard'` из sections array
+   - Восстановлена `updateDualModelUI()` для Models tab
+   - 0 оставшихся ссылок на удалённые функции
+
+**Итого за сессию:** index.html сокращён с 3392→2448 строк (−944 строки, −28%)
+
+**Следующие шаги:**
+- Удалить Python-модули `code_module.py`, `watcher.py`, `code_memory.py`, `watcher_integration.py` если не нужны
+- Удалить старые `/watcher/` эндпоинты из routes.py
+- Проверить и удалить осиротевшие API-эндпоинты в routes.py (sessions, coordinates — если фронтенд больше не вызывает)
+- Начать реализацию Фазы 1 — UCIP v2

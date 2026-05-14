@@ -32,15 +32,15 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Дефолтные значения (используются если config.yaml не найден)
-_DEFAULT_COORDINATOR = "qwen2.5:3b"
-_DEFAULT_GENERATOR = "qwen2.5:7b"
+_DEFAULT_COORDINATOR = "qwen3.5:2b"
+_DEFAULT_GENERATOR = "qwen3.5:9b"
 
 # Алиасы для обратной совместимости
 COORDINATOR_MODEL = _DEFAULT_COORDINATOR
 GENERATOR_MODEL = _DEFAULT_GENERATOR
 
 # Настройки Ollama
-OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 GENERATE_TIMEOUT = 300  # секунд для генератора
 COORDINATE_TIMEOUT = 90  # секунд для координатора
 
@@ -67,7 +67,7 @@ class DualModelRouter:
 
     Использование:
         router = DualModelRouter()                              # из config.yaml
-        router = DualModelRouter(coordinator_model="qwen2.5:3b")  # override
+        router = DualModelRouter(coordinator_model="qwen3.5:2b")  # override
 
         # Для структурированных задач (координаты, теги)
         result = router.coordinate(messages, temperature=0.1)

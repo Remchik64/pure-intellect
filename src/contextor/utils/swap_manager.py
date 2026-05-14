@@ -18,7 +18,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_OLLAMA_BASE = "http://localhost:11434"
+_OLLAMA_BASE = "http://host.docker.internal:11434"
 
 
 class ModelSwapManager:

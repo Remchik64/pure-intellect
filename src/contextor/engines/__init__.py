@@ -22,8 +22,8 @@
 
     # Проверить конфигурацию
     cfg = get_config()
-    print(cfg.coordinator.model)  # qwen2.5:3b
-    print(cfg.generator.model)    # qwen2.5:7b
+    print(cfg.coordinator.model)  # qwen3.5:2b
+    print(cfg.generator.model)    # qwen3.5:9b
 """
 
 from contextor.engines.base import BaseEngine, LLMResponse

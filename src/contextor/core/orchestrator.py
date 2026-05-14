@@ -669,7 +669,7 @@ class OrchestratorPipeline:
         if intent.intent in heavy_intents:
             return "qwen2.5-coder-7b"  # Модель Чата
         else:
-            return "qwen2.5-3b"  # Модель Оркестратора
+            return "qwen3.5-2b"  # Модель Оркестратора
     
     def _build_system_prompt(self, intent: IntentResult, cards: list, graph: list) -> str:
         """Построить system prompt из контекста."""

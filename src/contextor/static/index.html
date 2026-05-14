@@ -226,17 +226,16 @@ a { color: var(--accent); text-decoration: none; }
 /* ===== GRID ===== */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
 
 @media (max-width: 900px) {
-  .grid-4, .grid-3 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 600px) {
   #sidebar { width: 52px; }
   .nav-item span:last-child { display: none; }
   .nav-item { padding: 10px; justify-content: center; }
-  .grid-2, .grid-4, .grid-3 { grid-template-columns: 1fr; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
   #content { padding: 0; }
   .section { padding: 16px; }
 }
@@ -735,57 +734,6 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
 .ollama-model-row td:last-child { text-align: right; }
 
-/* ===== CONNECTIONS ===== */
-.conn-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 20px;
-}
-
-.conn-card h3 {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.conn-field {
-  margin-bottom: 12px;
-}
-
-.conn-field label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  letter-spacing: 0.05em;
-  display: block;
-  margin-bottom: 5px;
-}
-
-.conn-value {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.conn-value code {
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 7px 10px;
-  font-family: 'SF Mono', 'Cascadia Code', monospace;
-  font-size: 12px;
-  color: var(--accent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* ===== CODE SEARCH ===== */
 .search-result {
   background: var(--surface);
@@ -818,26 +766,6 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 }
 
 .highlight { background: rgba(88,166,255,0.25); border-radius: 2px; padding: 0 2px; }
-
-/* ===== WATCHER STATUS ===== */
-.watcher-bar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.watcher-status-text {
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 .change-item {
   display: flex;
@@ -995,31 +923,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   font-family: monospace;
 }
 
-/* ===== Session list ===== */
-.session-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 14px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-.session-item:hover { border-color: var(--accent); }
-.session-item.active-session { border-color: var(--accent); background: var(--surface3, var(--surface2)); }
-.session-item-row { display: flex; align-items: center; gap: 8px; }
-.session-name { font-weight: 600; font-size: 14px; flex: 1; }
-.session-id { font-family: monospace; font-size: 11px; color: var(--text-dim); }
-.session-turns { font-size: 12px; color: var(--text-dim); }
-.session-date { font-size: 11px; color: var(--text-dim); }
-.session-actions { display: flex; gap: 6px; }
-/* ===== Coordinates ===== */
-.coord-item { padding: 8px 12px; background: var(--surface2); border-left: 3px solid var(--accent); border-radius: 4px; margin-bottom: 8px; font-size: 12px; line-height: 1.5; }
-.coord-meta { display: flex; gap: 8px; margin-bottom: 4px; color: var(--text-dim); font-size: 11px; }
-.coord-meta-badge { background: var(--accent); color: #000; border-radius: 3px; padding: 1px 5px; font-size: 10px; }
+
 
 /* ===== Responsive Sidebar Toggle ===== */
 #sidebar-toggle {
@@ -1064,26 +968,6 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .endpoint-path { font-family: monospace; flex: 1; color: var(--text); }
 .endpoint-ok { color: var(--green); font-weight: 600; }
 .endpoint-err { color: var(--red); font-weight: 600; }
-
-/* CCI History mini chart */
-.cci-bars {
-  display: flex;
-  gap: 3px;
-  align-items: flex-end;
-  height: 40px;
-  margin-top: 8px;
-}
-
-.cci-bar {
-  flex: 1;
-  background: var(--accent);
-  border-radius: 2px 2px 0 0;
-  opacity: 0.6;
-  min-height: 2px;
-  transition: height 0.3s;
-}
-
-.cci-bar:hover { opacity: 1; }
 
 /* Thinking bubble styles */
 .thinking-message {
@@ -1183,10 +1067,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
   <!-- SIDEBAR -->
   <nav id="sidebar">
-    <div class="nav-item active" data-section="dashboard" onclick="showSection('dashboard')">
-      <span class="nav-icon">🏠</span><span>Dashboard</span>
-    </div>
-    <div class="nav-item" data-section="chat" onclick="showSection('chat')">
+    <div class="nav-item active" data-section="chat" onclick="showSection('chat')">
       <span class="nav-icon">💬</span><span>Chat</span>
     </div>
     <div class="nav-item" data-section="memory" onclick="showSection('memory')">
@@ -1196,13 +1077,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div class="nav-item" data-section="models" onclick="showSection('models')">
       <span class="nav-icon">🤖</span><span>Models</span>
     </div>
-    <div class="nav-item" data-section="projects" onclick="showSection('projects')">
-      <span class="nav-icon">📁</span><span>Projects 🚧</span>
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-item" data-section="connections" onclick="showSection('connections')">
-      <span class="nav-icon">🔌</span><span>Connect 🚧</span>
-    </div>
+
     <div class="nav-item" data-section="settings" onclick="showSection('settings')">
       <span class="nav-icon">⚙️</span><span>Settings 🚧</span>
     </div>
@@ -1213,100 +1088,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
   <!-- CONTENT -->
   <div id="content">
-
-    <!-- ======== DASHBOARD ======== -->
-    <div id="section-dashboard" class="section active">
-      <div class="section-title">🏠 Dashboard <small id="dash-updated"></small></div>
-
-      <div class="grid-4">
-        <!-- GPU -->
-        <div class="card">
-          <div class="card-title">🖥️ GPU</div>
-          <div class="card-value" id="d-gpu-pct">—</div>
-          <div class="card-sub" id="d-gpu-vram">VRAM: —</div>
-          <div class="progress-bar"><div class="progress-fill" id="d-gpu-bar" style="width:0%"></div></div>
-        </div>
-        <!-- Memory -->
-        <div class="card">
-          <div class="card-title">🧠 Memory</div>
-          <div class="card-value" id="d-mem-hot">—</div>
-          <div class="card-sub" id="d-mem-total">Total: —</div>
-          <div class="progress-bar"><div class="progress-fill green" id="d-mem-bar" style="width:0%"></div></div>
-        </div>
-        <!-- CCI -->
-        <div class="card">
-          <div class="card-title">📊 CCI Score</div>
-          <div class="card-value" id="d-cci-val">—</div>
-          <div class="card-sub" id="d-cci-sub">Context coherence</div>
-          <div class="progress-bar"><div class="progress-fill yellow" id="d-cci-bar" style="width:0%"></div></div>
-          <div class="cci-bars" id="d-cci-history"></div>
-        </div>
-        <!-- Session -->
-        <div class="card">
-          <div class="card-title">🔄 Session</div>
-          <div class="card-value" id="d-turn">—</div>
-          <div class="card-sub" id="d-reset">Resets: —</div>
-          <div class="mt-8"><span class="tag" id="d-session-id">—</span></div>
-        </div>
-      </div>
-
-      <div class="sep"></div>
-
-      <!-- Dual Model Status -->
-      <div class="card">
-        <div class="card-title">🤖 Dual Model Status</div>
-        <div class="grid-2 mt-12">
-          <div class="model-card">
-            <div class="model-icon coordinator">🎯</div>
-            <div class="model-info">
-              <div class="model-name" id="d-coord-name">—</div>
-              <div class="model-role">Coordinator (3B)</div>
-            </div>
-            <div class="model-status">
-              <div class="status-dot" id="d-coord-dot"></div>
-              <span id="d-coord-status" class="text-dim text-sm">—</span>
-            </div>
-          </div>
-          <div class="model-card">
-            <div class="model-icon generator">⚡</div>
-            <div class="model-info">
-              <div class="model-name" id="d-gen-name">—</div>
-              <div class="model-role">Generator (7B)</div>
-            </div>
-            <div class="model-status">
-              <div class="status-dot" id="d-gen-dot"></div>
-              <span id="d-gen-status" class="text-dim text-sm">—</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="sep"></div>
-
-      <!-- Sessions -->
-      <div class="card">
-        <div class="card-title row between">
-          <span>📋 Сессии</span>
-          <div style="display:flex;gap:6px;">
-            <button class="btn" onclick="createNewSession()">+ Новая</button>
-            <button class="btn" onclick="loadSessions()">↻</button>
-          </div>
-        </div>
-        <div class="mt-12" id="d-sessions-list"><div class="empty-state"><div class="empty-icon">📋</div>Загрузка...</div></div>
-      </div>
-
-      <!-- Coordinates -->
-      <div class="card">
-        <div class="card-title row between">
-          <span>🧭 Координаты контекста</span>
-          <button class="btn" onclick="loadCoordinates()">↻</button>
-        </div>
-        <div class="mt-8" id="d-coordinates"><div class="empty-state"><div class="empty-icon">🧭</div>Нет координат</div></div>
-      </div>
-    </div>
-
     <!-- ======== CHAT ======== -->
-    <div id="section-chat" class="section" style="padding:0; display:none; flex-direction:column; height:100%;">
+    <div id="section-chat" class="section active" style="padding:0; display:flex; flex-direction:column; height:100%;">
       <div id="chat-header">
         <h2>💬 Chat</h2>
         <div id="chat-stats">
@@ -1453,28 +1236,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
             </div>
           </div>
         </div>
-        <!-- Utility Model Row -->
-        <div class="mt-12" style="border-top:1px solid var(--border);padding-top:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-            <div class="model-card" style="flex:1;min-width:220px;">
-              <div class="model-icon" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;">🛠️</div>
-              <div class="model-info">
-                <div class="model-name" id="m-util-name">—</div>
-                <div class="model-role">Utility (Agent Zero)</div>
-              </div>
-              <div class="model-status">
-                <div class="status-dot" id="m-util-dot"></div>
-                <span id="m-util-status" class="text-dim text-sm">—</span>
-              </div>
-            </div>
-            <button class="btn primary" id="warm-util-btn" onclick="warmUtilityModel()" style="white-space:nowrap;">
-              🔥 Загрузить в GPU
-            </button>
-          </div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
-            Utility model используется Agent Zero напрямую (суммаризация, компактизация чата). Кнопка загружает её в VRAM с keep_alive=-1.
-          </div>
-        </div>
+
         <div class="mt-12" style="font-size:12px;color:var(--text-dim);padding:8px 0 2px;border-top:1px solid var(--border);margin-top:12px;">
           ℹ️ Модели загружаются в VRAM при первом запросе. <strong style="color:var(--text)">✅ Готова</strong> — скачана и назначена. <strong style="color:#ff8c00">🔥 В памяти</strong> — активна в VRAM прямо сейчас.
         </div>
@@ -1521,176 +1283,6 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       </div>
     </div>
 
-    <!-- ======== PROJECTS ======== -->
-    <div id="section-projects" class="section">
-      <div class="section-title">📁 Project Manager</div>
-
-      <!-- Current Project -->
-      <div class="card mb-16">
-        <div class="card-title">Текущий проект</div>
-        <div class="row mt-12">
-          <div style="flex:1;">
-            <div class="font-mono text-accent" id="proj-path">—</div>
-            <div class="text-dim text-sm mt-8" id="proj-files">Файлов: —</div>
-          </div>
-          <div class="btn-group">
-            <button class="btn primary" onclick="indexProject()">⚡ Индексировать</button>
-            <button class="btn" onclick="openNewProject()">📂 Открыть...</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Watcher -->
-      <div class="watcher-bar">
-        <div class="watcher-status-text">
-          <div class="status-dot" id="watcher-dot"></div>
-          <span id="watcher-status-text">Watcher: —</span>
-        </div>
-        <div class="btn-group">
-          <button class="btn success" id="watcher-start-btn" onclick="startWatcher()">● Запустить</button>
-          <button class="btn danger" id="watcher-stop-btn" onclick="stopWatcher()">■ Остановить</button>
-        </div>
-        <button class="btn" onclick="loadWatcherChanges()">↻ Изменения</button>
-      </div>
-
-      <!-- Recent changes -->
-      <div class="card mb-16">
-        <div class="card-title">📝 Последние изменения</div>
-        <div class="mt-12" id="watcher-changes"><div class="empty-state"><div class="empty-icon">📝</div>Нет данных</div></div>
-      </div>
-
-      <!-- Code Search -->
-      <div class="card">
-        <div class="card-title">🔍 Поиск по коду</div>
-        <div class="row mt-12">
-          <input type="text" class="input" id="code-search-input" placeholder="Введите поисковый запрос..." style="flex:1;" onkeydown="if(event.key==='Enter') searchCode()">
-          <button class="btn primary" onclick="searchCode()">🔍 Найти</button>
-        </div>
-        <div class="mt-16" id="code-search-results"></div>
-      </div>
-    </div>
-
-    <!-- ======== CONNECTIONS ======== -->
-    <div id="section-connections" class="section">
-      <div class="section-title">🔌 API Gateway</div>
-
-      <div class="grid-2 mb-16">
-        <!-- Agent Zero -->
-        <div class="conn-card">
-          <h3>🤖 Agent Zero</h3>
-          <div class="conn-field">
-            <label>api_base</label>
-            <div class="conn-value">
-              <code id="az-api-base">http://localhost:7860/v1</code>
-              <button class="btn" onclick="copyText('http://localhost:7860/v1')">📋</button>
-            </div>
-          </div>
-          <div class="conn-field">
-            <label>api_key</label>
-            <div class="conn-value">
-              <code id="az-api-key">contextor</code>
-              <button class="btn" onclick="copyText('contextor')">📋</button>
-            </div>
-          </div>
-          <div class="conn-field">
-            <label>model</label>
-            <div class="conn-value">
-              <code id="az-model">contextor</code>
-              <button class="btn" onclick="copyText('contextor')">📋</button>
-            </div>
-          </div>
-          <div class="mt-12">
-            <button class="btn primary" onclick="copyJSON({api_base:'http://localhost:7860/v1',api_key:'contextor',model:'contextor'})">📋 Копировать JSON</button>
-          </div>
-        </div>
-
-        <!-- Agent Zero Plugin Settings -->
-        <div class="conn-card" style="border: 1px solid rgba(88,166,255,0.3);">
-          <h3>🔌 Agent Zero Plugin Settings</h3>
-          <div class="text-dim text-sm mb-8">Настройки для плагина <code>_contextor</code></div>
-
-          <div class="conn-field">
-            <label>PI Server URL (для Docker)</label>
-            <input type="text" class="input" id="az-pi-server"
-              value="http://host.docker.internal:7860"
-              style="font-family:monospace;font-size:12px;" />
-          </div>
-
-          <div class="conn-field">
-            <label>Utility Model для Agent Zero</label>
-            <select class="input" id="az-utility-model" style="cursor:pointer;">
-              <option value="qwen2.5:3b">qwen2.5:3b (рекомендуется)</option>
-            </select>
-          </div>
-
-          <div class="conn-field">
-            <label>Session ID</label>
-            <input type="text" class="input" id="az-session-id" value="agent_zero" />
-          </div>
-
-          <div class="conn-field">
-            <label>Recall порог сходства</label>
-            <input type="number" class="input" id="az-recall-threshold"
-              value="0.4" min="0.1" max="1.0" step="0.05" style="width:100px;" />
-          </div>
-
-          <div class="mt-12" style="display:flex;gap:8px;">
-            <button class="btn primary" onclick="saveAZPluginConfig()">💾 Сохранить</button>
-            <button class="btn" onclick="loadAZPluginConfig()">↻ Обновить</button>
-          </div>
-          <div id="az-plugin-status" class="mt-8 text-sm text-dim"></div>
-        </div>
-
-
-        <!-- Open WebUI -->
-        <div class="conn-card">
-          <h3>🌐 Open WebUI</h3>
-          <div class="conn-field">
-            <label>OpenAI Base URL</label>
-            <div class="conn-value">
-              <code>http://localhost:7860/v1</code>
-              <button class="btn" onclick="copyText('http://localhost:7860/v1')">📋</button>
-            </div>
-          </div>
-          <div class="conn-field">
-            <label>API Key</label>
-            <div class="conn-value">
-              <code>contextor</code>
-              <button class="btn" onclick="copyText('contextor')">📋</button>
-            </div>
-          </div>
-          <div class="mt-12 text-dim text-sm">В настройках Open WebUI → Admin → Settings → Connections добавьте OpenAI-совместимый сервер.</div>
-        </div>
-
-        <!-- LM Studio -->
-        <div class="conn-card">
-          <h3>🔬 LM Studio</h3>
-          <div class="conn-field">
-            <label>Custom Server URL</label>
-            <div class="conn-value">
-              <code>http://localhost:7860/v1</code>
-              <button class="btn" onclick="copyText('http://localhost:7860/v1')">📋</button>
-            </div>
-          </div>
-          <div class="mt-12 text-dim text-sm">В LM Studio → Developer → Local Server включите режим и укажите Custom Endpoint.</div>
-        </div>
-
-        <!-- Endpoint Status -->
-        <div class="conn-card">
-          <h3>📡 Статус Endpoints</h3>
-          <div class="mt-8" id="endpoint-list">
-            <div class="empty-state">Проверка...</div>
-          </div>
-          <button class="btn mt-12" onclick="checkEndpoints()">↻ Проверить</button>
-        </div>
-      </div>
-
-      <!-- Available Models (OpenAI format) -->
-      <div class="card">
-        <div class="card-title">🎛️ Доступные модели (OpenAI /v1/models)</div>
-        <div class="mt-12" id="openai-models-list"><div class="empty-state">Загрузка...</div></div>
-      </div>
-    </div>
 
     <!-- ======== SETTINGS ======== -->
     <div id="section-settings" class="section">
@@ -1799,11 +1391,10 @@ const WS_URL = `ws://${HOST}/ws`;
 // ---- State ----
 let ws = null;
 let wsConnected = false;
-let dashRefreshTimer = null;
 let chatHistory = [];
 let isTyping = false;
 let allFacts = { coords: [], anchors: [], hot: [] };
-let currentSection = 'dashboard';
+let currentSection = 'chat';
 
 // ================================================================
 // NAVIGATION
@@ -1843,13 +1434,9 @@ function showSection(name) {
   if (name !== 'models') stopModelsPolling();
 
   // Load section data
-  switch (name) {
-    case 'dashboard': loadDashboard(); break;
-    case 'chat': loadChatStats(); break;
+  switch (name) {    case 'chat': loadChatStats(); break;
     case 'memory': loadMemory(); break;
     case 'models': loadModels(); startModelsPolling(); break;
-    case 'projects': loadProjects(); break;
-    case 'connections': loadConnections(); break;
     case 'settings': loadSettings(); break;
     case 'logs': startLogsAutoRefresh(); break;
   }
@@ -2161,247 +1748,6 @@ function setWSStatus(online) {
   }
 }
 
-// ================================================================
-// DASHBOARD
-// ================================================================
-
-async function loadDashboard() {
-  const [hw, memStats, cciStats, sessInfo, dualStats] = await Promise.all([
-    api('/api/v1/config/hardware'),
-    api('/api/v1/memory/stats'),
-    api('/api/v1/cci/stats'),
-    api('/api/v1/session/info'),
-    api('/api/v1/models/status')  // полный статус: скачана/в VRAM/офлайн
-  ]);
-
-  // GPU
-  if (hw) {
-    const gpuPct = hw.gpu_utilization ?? hw.gpu_percent ?? hw.utilization ?? null;
-    const vramUsed = hw.vram_used ?? hw.memory_used ?? null;
-    const vramTotal = hw.vram_total ?? hw.memory_total ?? null;
-
-    if (gpuPct != null) {
-      document.getElementById('d-gpu-pct').textContent = Math.round(gpuPct) + '%';
-      const bar = document.getElementById('d-gpu-bar');
-      bar.style.width = gpuPct + '%';
-      bar.className = 'progress-fill ' + colorClass(gpuPct);
-      document.getElementById('gpu-dot').className = 'dot ' + (gpuPct > 90 ? 'red' : gpuPct > 70 ? 'yellow' : 'green');
-      document.getElementById('gpu-label').textContent = 'GPU: ' + Math.round(gpuPct) + '%';
-    } else {
-      document.getElementById('d-gpu-pct').textContent = 'N/A';
-      document.getElementById('gpu-label').textContent = 'GPU: N/A';
-    }
-    if (vramUsed != null) {
-      document.getElementById('d-gpu-vram').textContent = `VRAM: ${fmtSize(vramUsed)} / ${fmtSize(vramTotal)}`;
-    }
-  }
-
-  // Memory
-  if (memStats) {
-    const hot = memStats.hot_facts_count ?? memStats.hot_count ?? (memStats.facts ? memStats.facts.length : null) ?? 0;
-    const total = memStats.total_facts ?? memStats.total ?? 0;
-    const maxHot = memStats.hot_facts_max ?? memStats.max_hot ?? 50;
-    document.getElementById('d-mem-hot').textContent = hot + ' hot';
-    document.getElementById('d-mem-total').textContent = `Total: ${total} facts`;
-    const bar = document.getElementById('d-mem-bar');
-    bar.style.width = pct(hot, maxHot) + '%';
-  }
-
-  // CCI
-  if (cciStats) {
-    const score = cciStats.current_score ?? cciStats.score ?? cciStats.cci ?? 0;
-    const pctVal = Math.round(score * 100);
-    document.getElementById('d-cci-val').textContent = pctVal + '%';
-    const bar = document.getElementById('d-cci-bar');
-    bar.style.width = pctVal + '%';
-    bar.className = 'progress-fill ' + (pctVal > 80 ? 'red' : pctVal > 60 ? 'yellow' : 'green');
-
-    // Mini history
-    const history = cciStats.history ?? cciStats.scores ?? [];
-    const barsEl = document.getElementById('d-cci-history');
-    if (history.length) {
-      barsEl.innerHTML = history.slice(-20).map(v => {
-        const h = Math.round(pct(v, 1) * 0.4) + 2;
-        const c = v > 0.8 ? 'var(--red)' : v > 0.6 ? 'var(--yellow)' : 'var(--accent)';
-        return `<div class="cci-bar" style="height:${h}px; background:${c}" title="${(v*100).toFixed(0)}%"></div>`;
-      }).join('');
-    }
-  }
-
-  // Session
-  if (sessInfo) {
-    const turns = sessInfo.turn_count ?? sessInfo.turns ?? sessInfo.current_turn ?? 0;
-    const resets = sessInfo.reset_count ?? sessInfo.resets ?? 0;
-    const sid = sessInfo.session_id ?? sessInfo.id ?? '—';
-    document.getElementById('d-turn').textContent = 'Turn ' + turns;
-    document.getElementById('d-reset').textContent = `Resets: ${resets}`;
-    document.getElementById('d-session-id').textContent = String(sid).slice(0, 16);
-  }
-
-  // Dual model
-  if (dualStats) {
-    updateDualModelUI(dualStats, 'd');
-  }
-
-  // Sessions list
-  loadSessions();
-  loadCoordinates();
-
-  document.getElementById('dash-updated').textContent = `— обновлено в ${fmtTime()}`;
-}
-
-function updateDualModelUI(stats, prefix) {
-  const coord = stats.coordinator ?? stats.coord ?? {};
-  const gen = stats.generator ?? stats.gen ?? {};
-
-  const coordName = coord.model ?? coord.name ?? '—';
-  const genName = gen.model ?? gen.name ?? '—';
-
-  // Определяем статус: поддерживаем оба формата
-  // Новый формат: coord.status = 'active'|'ready'|'offline'
-  // Старый формат: coord.ready/loaded = boolean
-  function resolveStatus(role) {
-    if (role.status === 'active')  return 'active';
-    if (role.status === 'ready')   return 'ready';
-    if (role.status === 'offline') return 'offline';
-    // legacy fallback: boolean ready/loaded
-    const ok = role.ready ?? role.loaded ?? false;
-    return ok ? 'ready' : 'offline';
-  }
-
-  const STATUS_LABEL = {
-    active:  '🔥 В памяти',
-    ready:   '✅ Готова',
-    offline: '❌ Не скачана',
-  };
-
-  const coordStatus = resolveStatus(coord);
-  const genStatus   = resolveStatus(gen);
-
-  const cn = document.getElementById(`${prefix}-coord-name`);
-  const gn = document.getElementById(`${prefix}-gen-name`);
-  const cd = document.getElementById(`${prefix}-coord-dot`);
-  const gd = document.getElementById(`${prefix}-gen-dot`);
-  const cs = document.getElementById(`${prefix}-coord-status`);
-  const gs = document.getElementById(`${prefix}-gen-status`);
-
-  if (cn) cn.textContent = coordName;
-  if (gn) gn.textContent = genName;
-  if (cd) cd.className = 'status-dot ' + coordStatus;
-  if (gd) gd.className = 'status-dot ' + genStatus;
-  if (cs) cs.textContent = STATUS_LABEL[coordStatus] ?? coordStatus;
-  if (gs) gs.textContent = STATUS_LABEL[genStatus]   ?? genStatus;
-}
-
-async function loadSessions() {
-  const data = await api('/api/v1/sessions');
-  const el = document.getElementById('d-sessions-list');
-  if (!data) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div>Не удалось загрузить</div>'; return; }
-
-  const sessions = Array.isArray(data) ? data : (data.sessions ?? []);
-  if (!sessions.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>Нет сессий</div>';
-    return;
-  }
-
-  el.innerHTML = sessions.map(s => {
-    const id = s.session_id ?? s.id ?? '?';
-    const name = s.display_name ?? id;
-    const turns = s.turn ?? s.turn_count ?? s.turns ?? 0;
-    const active = s.is_active ?? s.active ?? false;
-    const icon = s.icon ?? '💬';
-    const date = s.last_active ? new Date(s.last_active).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-    return `<div class="session-item ${active ? 'active-session' : ''}" onclick="switchSession('${esc(id)}')">
-      <div class="session-item-row">
-        <span>${icon}</span>
-        <span class="session-name">${esc(name)}</span>
-        ${active ? '<span class="tag green" style="font-size:10px">Активна</span>' : ''}
-      </div>
-      <div class="session-item-row">
-        <span class="session-turns">${turns} turns</span>
-        <span class="session-date">${date}</span>
-        <span style="flex:1"></span>
-        <button class="btn" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();renameSession('${esc(id)}','${esc(name)}')">✏️</button>
-        ${!active ? `<button class="btn danger" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();deleteSessionById('${esc(id)}')">🗑</button>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function switchSession(sessionId) {
-  const r = await api(`/api/v1/sessions/${encodeURIComponent(sessionId)}/switch`, { method: 'POST' });
-  if (r) { loadSessions(); loadDashboard(); showToast('Сессия переключена: ' + sessionId); }
-}
-
-async function deleteSessionById(sessionId) {
-  if (!confirm(`Удалить сессию "${sessionId}"? Данные будут потеряны.`)) return;
-  const r = await api(`/api/v1/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
-  if (r) { loadSessions(); showToast('Сессия удалена'); }
-}
-
-async function renameSession(sessionId, currentName) {
-  const newName = prompt('Новое имя сессии:', currentName);
-  if (!newName || newName === currentName) return;
-  const r = await api(`/api/v1/sessions/${encodeURIComponent(sessionId)}/rename`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ display_name: newName })
-  });
-  if (r) { loadSessions(); showToast('Переименовано: ' + newName); }
-}
-
-async function createNewSession() {
-  const name = prompt('Имя новой сессии (оставьте пустым для автогенерации):');
-  const body = { session_type: 'chat' };
-  if (name && name.trim()) body.display_name = name.trim();
-  const r = await api('/api/v1/sessions/new', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  if (r) { loadSessions(); loadDashboard(); showToast('Создана новая сессия'); }
-}
-
-
-async function deleteCoordinate(turn) {
-  if (!confirm('Точно удалить эту координату? Она будет потеряна навсегда.')) return;
-  const r = await fetch(`/api/v1/coordinates/${turn}`, { method: 'DELETE' });
-  if (r.ok) loadCoordinates();
-}
-
-async function loadCoordinates() {
-  const data = await api('/api/v1/coordinates');
-  const el = document.getElementById('d-coordinates');
-  if (!data) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div>Ошибка загрузки</div>'; return; }
-
-  const stats = data.stats ?? {};
-  const active = data.active_coordinates ?? [];
-  const meta = data.meta_coordinate;
-  const archived = stats.archived_batches ?? 0;
-
-  if (!active.length && !meta) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🧭</div>Координаты появятся после первого Soft Reset<br><small style="color:var(--text-dim)">Архивировано батчей: ${archived}</small></div>`;
-    return;
-  }
-
-  let html = `<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">Активных: ${active.length} | Архивных батчей: ${archived} | ~${data.prompt_tokens_estimate ?? 0} токенов</div>`;
-
-  if (meta) {
-    html += `<div class="coord-item">
-      <div class="coord-meta"><span class="coord-meta-badge">МЕТА</span><span>Turn ${meta.turn}</span><span>${meta.created_at ? new Date(meta.created_at).toLocaleDateString('ru-RU') : ''}</span></div>
-      <div>${esc(meta.content)}</div>
-    </div>`;
-  }
-
-  active.forEach((c, i) => {
-    html += `<div class="coord-item">
-      <div class="coord-meta"><span class="coord-meta-badge">#${i+1}</span><span>Turn ${c.turn}</span><span>${c.created_at ? new Date(c.created_at).toLocaleDateString('ru-RU') : ''}</span></div>
-      <div>${esc(c.content)}</div><button class='btn danger' style='margin-top:8px;font-size:10px;padding:4px 8px;' onclick='deleteCoordinate(${c.turn})'>🗑 Удалить</button>
-    </div>`;
-  });
-
-  el.innerHTML = html;
-}
 
 function showToast(msg) {
   let t = document.getElementById('pi-toast');
@@ -2410,12 +1756,6 @@ function showToast(msg) {
   setTimeout(() => { t.style.opacity = '0'; }, 2500);
 }
 
-function startDashboardRefresh() {
-  if (dashRefreshTimer) clearInterval(dashRefreshTimer);
-  dashRefreshTimer = setInterval(() => {
-    if (currentSection === 'dashboard') loadDashboard();
-  }, 5000);
-}
 
 // ================================================================
 // CHAT
@@ -2622,6 +1962,45 @@ async function clearMemory() {
 // MODELS
 // ================================================================
 
+function updateDualModelUI(stats, prefix) {
+  const coord = stats.coordinator ?? stats.coord ?? {};
+  const gen = stats.generator ?? stats.gen ?? {};
+
+  const coordName = coord.model ?? coord.name ?? '—';
+  const genName = gen.model ?? gen.name ?? '—';
+
+  function resolveStatus(role) {
+    if (role.status === 'active')  return 'active';
+    if (role.status === 'ready')   return 'ready';
+    if (role.status === 'offline') return 'offline';
+    const ok = role.ready ?? role.loaded ?? false;
+    return ok ? 'ready' : 'offline';
+  }
+
+  const STATUS_LABEL = {
+    active:  '🔥 В памяти',
+    ready:   '✅ Готова',
+    offline: '❌ Не скачана',
+  };
+
+  const coordStatus = resolveStatus(coord);
+  const genStatus   = resolveStatus(gen);
+
+  const cn = document.getElementById(`${prefix}-coord-name`);
+  const gn = document.getElementById(`${prefix}-gen-name`);
+  const cd = document.getElementById(`${prefix}-coord-dot`);
+  const gd = document.getElementById(`${prefix}-gen-dot`);
+  const cs = document.getElementById(`${prefix}-coord-status`);
+  const gs = document.getElementById(`${prefix}-gen-status`);
+
+  if (cn) cn.textContent = coordName;
+  if (gn) gn.textContent = genName;
+  if (cd) cd.className = 'status-dot ' + coordStatus;
+  if (gd) gd.className = 'status-dot ' + genStatus;
+  if (cs) cs.textContent = STATUS_LABEL[coordStatus] ?? coordStatus;
+  if (gs) gs.textContent = STATUS_LABEL[genStatus]   ?? genStatus;
+}
+
 let _modelsStatusInterval = null;
 
 async function loadModels() {
@@ -2638,25 +2017,6 @@ async function loadModels() {
     if (dualData) updateDualModelUI(dualData, 'm');
   }
 
-  // Utility model из AZ plugin config
-  try {
-    const azCfg = await api('/api/v1/az-plugin/config');
-    const utilModel = azCfg?.utility_model ?? '';
-    window._modelsUtility = utilModel;
-    const utilName = document.getElementById('m-util-name');
-    const utilDot  = document.getElementById('m-util-dot');
-    const utilStat = document.getElementById('m-util-status');
-    if (utilName) utilName.textContent = utilModel || '—';
-    if (utilModel) {
-      const active = window._modelsActiveInVram ?? new Set();
-      const inVram = active.has(utilModel);
-      if (utilDot) { utilDot.className = 'status-dot ' + (inVram ? 'active' : ''); }
-      if (utilStat) { utilStat.textContent = inVram ? '🔥 В памяти' : '✅ Готова'; utilStat.style.color = inVram ? '#ff8c00' : 'var(--accent)'; }
-    } else {
-      if (utilDot) utilDot.className = 'status-dot';
-      if (utilStat) { utilStat.textContent = 'Не задана'; utilStat.style.color = 'var(--text-dim)'; }
-    }
-  } catch(e) { /* ignore */ }
 
   // 2. Список скачанных моделей Ollama (через наш прокси)
   const ollamaData = await api('/api/v1/ollama/models');
@@ -2685,17 +2045,14 @@ async function loadModels() {
 
   function roleTag(name) {
     const tags = [];
-    const util = window._modelsUtility ?? '';
     if (name === coord) tags.push('<span style="font-size:10px;background:rgba(88,166,255,.2);color:var(--accent);padding:1px 6px;border-radius:4px;">🎯 Координатор</span>');
     if (name === gen)   tags.push('<span style="font-size:10px;background:rgba(188,140,255,.2);color:#bc8cff;padding:1px 6px;border-radius:4px;">⚡ Генератор</span>');
-    if (name === util)  tags.push('<span style="font-size:10px;background:rgba(124,58,237,.2);color:#a78bfa;padding:1px 6px;border-radius:4px;">🛠️ Утилита</span>');
     return tags.join(' ');
   }
   tbody.innerHTML = models.map(m => {
     const name     = m.name ?? m.model ?? '—';
     const size     = fmtSize(m.size);
     const modified = fmtDate(m.modified_at ?? m.modified);
-    const util     = window._modelsUtility ?? '';
     return `<tr class="ollama-model-row">
       <td><strong>${esc(name)}</strong><br><small>${roleTag(name)}</small></td>
       <td class="text-dim">${size}</td>
@@ -2705,7 +2062,6 @@ async function loadModels() {
         <div class="btn-group">
           <button class="btn" onclick="setModel('coordinator','${esc(name)}')">🎯 Координатор</button>
           <button class="btn" onclick="setModel('generator','${esc(name)}')">⚡ Генератор</button>
-          <button class="btn" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="setUtilityModel('${esc(name)}')">🛠️ Утилита</button>
           <button class="btn" style="background:rgba(255,80,80,.15);color:#ff5050;border-color:rgba(255,80,80,.3)" onclick="deleteModel('${esc(name)}')">🗑️ Удалить</button>
         </div>
       </td>
@@ -2713,43 +2069,6 @@ async function loadModels() {
   }).join('');
 }
 
-async function setUtilityModel(name) {
-  // Сохраняем utility_model в AZ plugin config
-  const current = await api('/api/v1/az-plugin/config');
-  if (!current) { toast('Ошибка получения конфига', 'error'); return; }
-  current.utility_model = name;
-  const r = await api('/api/v1/az-plugin/config', {
-    method: 'POST',
-    body: JSON.stringify(current)
-  });
-  if (r && !r.error) {
-    toast(`🛠️ Utility model → ${name}`, 'success');
-    loadModels();
-  } else {
-    toast('Ошибка сохранения utility model', 'error');
-  }
-}
-
-async function warmUtilityModel() {
-  const util = window._modelsUtility;
-  if (!util) { toast('Utility model не задана. Выберите модель из таблицы → 🛠️ Утилита', 'warning'); return; }
-  const btn = document.getElementById('warm-util-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Загружаем...'; }
-  try {
-    const r = await api('/api/v1/models/warm', {
-      method: 'POST',
-      body: JSON.stringify({ model: util, role: 'utility' })
-    });
-    if (r && r.status === 'loaded') {
-      toast(`🔥 ${util} (${r.size_gb} GB) загружена в GPU`, 'success');
-      loadModels();
-    } else {
-      toast(`Ошибка: ${r?.detail ?? 'неизвестная ошибка'}`, 'error');
-    }
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '🔥 Загрузить в GPU'; }
-}
-}
 
 // Запускаем/останавливаем polling статусов при переключении секций
 function startModelsPolling() {
@@ -2788,7 +2107,6 @@ async function deleteModel(name) {
     toast(`Ошибка удаления: ${r?.detail ?? 'неизвестная ошибка'}`, 'error');
   }
 }
-
 
 
 // ================================================================
@@ -2989,186 +2307,7 @@ async function downloadModel() {
 
 
 // ================================================================
-// PROJECTS
-// ================================================================
 
-async function loadProjects() {
-  const [stats, watcherSt] = await Promise.all([
-    api('/api/v1/code/stats'),
-    api('/api/v1/code/watcher/status')
-  ]);
-
-  if (stats) {
-    const path = stats.project_path ?? stats.path ?? stats.root ?? '—';
-    const files = stats.indexed_files ?? stats.file_count ?? stats.files ?? '—';
-    document.getElementById('proj-path').textContent = path;
-    document.getElementById('proj-files').textContent = `Файлов: ${files} (индексировано)`;
-  }
-
-  updateWatcherStatus(watcherSt);
-  loadWatcherChanges();
-}
-
-function updateWatcherStatus(data) {
-  const dot = document.getElementById('watcher-dot');
-  const text = document.getElementById('watcher-status-text');
-  const startBtn = document.getElementById('watcher-start-btn');
-  const stopBtn = document.getElementById('watcher-stop-btn');
-
-  const running = data?.running ?? data?.active ?? data?.status === 'running' ?? false;
-
-  if (running) {
-    dot.className = 'status-dot online';
-    text.textContent = 'Watcher: Активен';
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-  } else {
-    dot.className = 'status-dot offline';
-    text.textContent = 'Watcher: Остановлен';
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-  }
-}
-
-async function startWatcher() {
-  const r = await api('/api/v1/code/watcher/start', { method: 'POST' });
-  if (r !== null) { toast('Watcher запущен', 'success'); loadProjects(); }
-  else toast('Ошибка запуска Watcher', 'error');
-}
-
-async function stopWatcher() {
-  const r = await api('/api/v1/code/watcher/stop', { method: 'POST' });
-  if (r !== null) { toast('Watcher остановлен', 'info'); loadProjects(); }
-  else toast('Ошибка остановки', 'error');
-}
-
-async function loadWatcherChanges() {
-  const data = await api('/api/v1/code/watcher/changes');
-  const el = document.getElementById('watcher-changes');
-  const changes = Array.isArray(data) ? data : (data?.changes ?? []);
-
-  if (!changes.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div>Нет изменений</div>';
-    return;
-  }
-
-  el.innerHTML = changes.slice(0, 20).map(c => {
-    const type = c.type ?? c.event ?? 'modified';
-    const path = c.path ?? c.file ?? '—';
-    const time = c.timestamp ?? c.time ?? '';
-    return `<div class="change-item">
-      <span class="change-type ${type}">${type.toUpperCase()}</span>
-      <span class="change-path">${esc(path)}</span>
-      <span class="change-time">${fmtDate(time)}</span>
-    </div>`;
-  }).join('');
-}
-
-async function indexProject() {
-  toast('Индексирование...', 'info');
-  const r = await api('/api/v1/code/index', { method: 'POST' });
-  if (r !== null) toast('Индексирование запущено', 'success');
-  else toast('Ошибка индексирования', 'error');
-}
-
-async function openNewProject() {
-  const path = prompt('Введите путь к папке проекта:');
-  if (!path) return;
-  const r = await api('/api/v1/code/project', { method: 'POST', body: JSON.stringify({ path }) });
-  if (r !== null) { toast('Проект открыт', 'success'); loadProjects(); }
-  else toast('Ошибка открытия проекта', 'error');
-}
-
-async function searchCode() {
-  const q = document.getElementById('code-search-input').value.trim();
-  if (!q) return;
-  const el = document.getElementById('code-search-results');
-  el.innerHTML = '<div class="empty-state">Поиск...</div>';
-
-  const data = await api(`/api/v1/code/search?q=${encodeURIComponent(q)}`);
-  const results = Array.isArray(data) ? data : (data?.results ?? []);
-
-  if (!results.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div>Ничего не найдено</div>';
-    return;
-  }
-
-  el.innerHTML = results.slice(0, 15).map(r => {
-    const file = r.file ?? r.path ?? '—';
-    const snippet = r.content ?? r.snippet ?? r.text ?? '';
-    const line = r.line ?? r.start_line ?? '';
-    // Highlight query in snippet
-    const highlighted = esc(snippet).replace(
-      new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
-      m => `<mark class="highlight">${m}</mark>`
-    );
-    return `<div class="search-result">
-      <div class="file-path">📄 ${esc(file)}${line ? ` <span class="text-dim">:${line}</span>` : ''}</div>
-      <pre>${highlighted}</pre>
-    </div>`;
-  }).join('');
-}
-
-// ================================================================
-// CONNECTIONS
-// ================================================================
-
-async function loadConnections() {
-  checkEndpoints();
-  loadOpenAIModels();
-  loadAZPluginConfig();
-}
-
-async function checkEndpoints() {
-  const endpoints = [
-    { path: '/api/v1/session/info', label: 'Session Info' },
-    { path: '/api/v1/memory/stats', label: 'Memory Stats' },
-    { path: '/api/v1/cci/stats', label: 'CCI Stats' },
-    { path: '/api/v1/dual-model/stats', label: 'Dual Model' },
-    { path: '/v1/models', label: 'OpenAI Models' },
-    { path: '/api/v1/code/stats', label: 'Code Stats' }
-  ];
-
-  const el = document.getElementById('endpoint-list');
-  el.innerHTML = '<div class="empty-state">Проверка...</div>';
-
-  const results = await Promise.all(endpoints.map(async ep => {
-    try {
-      const r = await fetch(API + ep.path, { signal: AbortSignal.timeout(3000) });
-      return { ...ep, ok: r.ok, status: r.status };
-    } catch {
-      return { ...ep, ok: false, status: 0 };
-    }
-  }));
-
-  el.innerHTML = results.map(r => `
-    <div class="endpoint-row">
-      <span class="endpoint-path">${esc(r.path)}</span>
-      <span class="text-dim">${esc(r.label)}</span>
-      <span class="${r.ok ? 'endpoint-ok' : 'endpoint-err'}">${r.ok ? '✓ ' + r.status : '✗ ' + (r.status || 'ERR')}</span>
-    </div>`).join('');
-}
-
-async function loadOpenAIModels() {
-  const data = await api('/v1/models');
-  const el = document.getElementById('openai-models-list');
-  const models = data?.data ?? (Array.isArray(data) ? data : []);
-
-  if (!models.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🎛️</div>Нет доступных моделей</div>';
-    return;
-  }
-
-  el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>ID</th><th>Object</th><th>Создан</th></tr></thead>
-    <tbody>${models.map(m => `
-      <tr>
-        <td class="font-mono text-accent">${esc(m.id)}</td>
-        <td class="text-dim">${esc(m.object ?? '—')}</td>
-        <td class="text-dim">${m.created ? fmtDate(new Date(m.created * 1000).toISOString()) : '—'}</td>
-      </tr>`).join('')}
-    </tbody></table></div>`;
-}
 
 // ================================================================
 // SETTINGS
@@ -3221,88 +2360,18 @@ async function saveSettings() {
 
 document.addEventListener('DOMContentLoaded', () => {
   connectWS();
-  showSection('dashboard');
-  startDashboardRefresh();
+  showSection('chat');
 });
 
 // Keyboard shortcut: Alt+1..7 → sections
 document.addEventListener('keydown', e => {
   if (e.altKey) {
-    const sections = ['dashboard','chat','memory','models','projects','connections','settings','logs'];
+    const sections = ['chat','memory','models','settings','logs'];
     const idx = parseInt(e.key) - 1;
     if (idx >= 0 && idx < sections.length) showSection(sections[idx]);
   }
 });
 
-// ── Agent Zero Plugin Config ──────────────────────────────
-async function loadAZPluginConfig() {
-  try {
-    const r = await fetch('/api/v1/az-plugin/config');
-    const data = await r.json();
-
-    // Заполняем поля
-    const piServer = document.getElementById('az-pi-server');
-    const sessionId = document.getElementById('az-session-id');
-    const threshold = document.getElementById('az-recall-threshold');
-    const modelSelect = document.getElementById('az-utility-model');
-
-    if (piServer) piServer.value = data.pi_server || 'http://host.docker.internal:7860';
-    if (sessionId) sessionId.value = data.session_id || 'agent_zero';
-    if (threshold) threshold.value = data.recall_threshold || 0.4;
-
-    // Заполняем dropdown моделями из Ollama
-    if (modelSelect && data.available_models && data.available_models.length > 0) {
-      modelSelect.innerHTML = '';
-      data.available_models.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m;
-        opt.textContent = m;
-        if (m === data.utility_model) opt.selected = true;
-        modelSelect.appendChild(opt);
-      });
-    } else if (modelSelect && data.utility_model) {
-      modelSelect.innerHTML = `<option value="${data.utility_model}" selected>${data.utility_model}</option>`;
-    }
-
-    const status = document.getElementById('az-plugin-status');
-    if (status) status.textContent = '✅ Конфиг загружен';
-  } catch(e) {
-    const status = document.getElementById('az-plugin-status');
-    if (status) status.textContent = '❌ Ошибка загрузки: ' + e.message;
-  }
-}
-
-async function saveAZPluginConfig() {
-  const status = document.getElementById('az-plugin-status');
-  try {
-    const config = {
-      pi_server: document.getElementById('az-pi-server')?.value || 'http://host.docker.internal:7860',
-      utility_model: document.getElementById('az-utility-model')?.value || 'qwen2.5:3b',
-      session_id: document.getElementById('az-session-id')?.value || 'agent_zero',
-      recall_threshold: parseFloat(document.getElementById('az-recall-threshold')?.value || 0.4),
-      recall_limit: 5,
-      recall_enabled: true,
-      memorize_enabled: true
-    };
-
-    if (status) status.textContent = '⏳ Сохранение...';
-
-    const r = await fetch('/api/v1/az-plugin/config', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(config)
-    });
-    const data = await r.json();
-
-    if (r.ok) {
-      if (status) status.textContent = `✅ Сохранено! Utility: ${config.utility_model}, PI: ${config.pi_server}`;
-    } else {
-      if (status) status.textContent = '❌ Ошибка: ' + (data.detail || JSON.stringify(data));
-    }
-  } catch(e) {
-    if (status) status.textContent = '❌ Ошибка: ' + e.message;
-  }
-}
 
 // ── LOGS ──────────────────────────────────────────────────────────────────────
 let _logsAutoRefresh = null;

@@ -49,9 +49,9 @@ class HardwareInfo:
 
 @dataclass
 class ModelRecommendation:
-    coordinator: str = "qwen2.5:3b"
-    generator: str = "qwen2.5:3b"
-    utility: str = "qwen2.5:3b"
+    coordinator: str = "qwen3.5:2b"
+    generator: str = "qwen3.5:2b"
+    utility: str = "qwen3.5:2b"
     mode: str = "CPU ONLY"
     speed_estimate: str = "~2 tok/sec"
     status: str = "⚠️"
@@ -164,7 +164,7 @@ class HardwareDetector:
         # Ollama fallback: если Ollama использует GPU — берём инфо оттуда
         try:
             import urllib.request, json as _json
-            req = urllib.request.urlopen("http://localhost:11434/api/ps", timeout=3)
+            req = urllib.request.urlopen("http://host.docker.internal:11434/api/ps", timeout=3)
             data = _json.loads(req.read())
             models = data.get("models", [])
             for m in models:
@@ -237,18 +237,18 @@ class HardwareDetector:
         # Apple Silicon — unified memory, отличная производительность
         if vendor == "apple":
             if vram_gb >= 16:
-                rec.coordinator = "qwen2.5:3b"
-                rec.generator = "qwen2.5:7b"
-                rec.utility = "qwen2.5:7b"
+                rec.coordinator = "qwen3.5:2b"
+                rec.generator = "qwen3.5:9b"
+                rec.utility = "qwen3.5:9b"
                 rec.mode = "Apple Silicon FULL"
                 rec.speed_estimate = "~20 tok/sec"
                 rec.status = "✅"
                 rec.status_label = "Отлично"
                 rec.num_gpu = 999
             else:
-                rec.coordinator = "qwen2.5:3b"
-                rec.generator = "qwen2.5:3b"
-                rec.utility = "qwen2.5:3b"
+                rec.coordinator = "qwen3.5:2b"
+                rec.generator = "qwen3.5:2b"
+                rec.utility = "qwen3.5:2b"
                 rec.mode = "Apple Silicon"
                 rec.speed_estimate = "~12 tok/sec"
                 rec.status = "✅"
@@ -258,9 +258,9 @@ class HardwareDetector:
 
         # NVIDIA / AMD GPU
         if vram_gb >= 10:
-            rec.coordinator = "qwen2.5:3b"
-            rec.generator = "qwen2.5:7b"
-            rec.utility = "qwen2.5:7b"
+            rec.coordinator = "qwen3.5:2b"
+            rec.generator = "qwen3.5:9b"
+            rec.utility = "qwen3.5:9b"
             rec.mode = "GPU FULL"
             rec.speed_estimate = "~15 tok/sec"
             rec.status = "✅"
@@ -269,9 +269,9 @@ class HardwareDetector:
             rec.notes = "Все три модели (Триада) комфортно чувствуют себя в VRAM/RAM"
 
         elif vram_gb >= 6:
-            rec.coordinator = "qwen2.5:3b"
-            rec.generator = "qwen2.5:7b"
-            rec.utility = "qwen2.5:3b"
+            rec.coordinator = "qwen3.5:2b"
+            rec.generator = "qwen3.5:9b"
+            rec.utility = "qwen3.5:2b"
             rec.mode = "GPU SPLIT"
             rec.speed_estimate = "~8 tok/sec"
             rec.status = "✅"
@@ -281,9 +281,9 @@ class HardwareDetector:
             rec.warnings.append("7B модель будет частично на CPU — это нормально")
 
         elif vram_gb >= 3:
-            rec.coordinator = "qwen2.5:3b"
-            rec.generator = "qwen2.5:3b"
-            rec.utility = "qwen2.5:1.5b"
+            rec.coordinator = "qwen3.5:2b"
+            rec.generator = "qwen3.5:2b"
+            rec.utility = "qwen3.5:2b"
             rec.mode = "GPU LIMITED"
             rec.speed_estimate = "~6 tok/sec"
             rec.status = "✅"
@@ -305,8 +305,8 @@ class HardwareDetector:
 
         # Только CPU
         elif ram_gb >= 16:
-            rec.coordinator = "qwen2.5:3b"
-            rec.generator = "qwen2.5:3b"
+            rec.coordinator = "qwen3.5:2b"
+            rec.generator = "qwen3.5:2b"
             rec.mode = "CPU ONLY"
             rec.speed_estimate = "~2 tok/sec"
             rec.status = "⚠️"

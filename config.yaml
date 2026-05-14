@@ -62,5 +62,5 @@ server:
   log_level: INFO
 
 ollama:
-  base_url: http://localhost:11434
+  base_url: http://host.docker.internal:11434
   timeout: 120

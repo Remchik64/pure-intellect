@@ -19,15 +19,15 @@ class Settings(BaseSettings):
     
     # Models
     orchestrator_model: str = Field(
-        default="qwen2.5:3b",
+        default="qwen3.5:2b",
         description="Модель для внутренней логики Оркестратора"
     )
     chat_model: str = Field(
-        default="qwen2.5:7b",
+        default="qwen3.5:9b",
         description="Модель для ответов пользователю"
     )
     utility_model: str = Field(
-        default="qwen2.5:7b",
+        default="qwen3.5:9b",
         description="Модель для фоновых утилитарных задач и инструментов"
     )
     model_cache_dir: str = Field(
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     )
     
     model_config = SettingsConfigDict(
-        env_prefix="PURE_INTELLECT_",
+        env_prefix="CONTEXTOR_",
         env_file=".env",
         env_file_encoding="utf-8",
     )

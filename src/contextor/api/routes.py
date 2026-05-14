@@ -52,127 +52,9 @@ logging.getLogger().addHandler(_mem_handler)
 
 
 
-import re as _re
-
-
-def _strip_thinking(text: str) -> str:
-    """Убрать  блоки qwen3/deepseek thinking mode из текста."""
-    return _re.sub(r'', '', text, flags=_re.DOTALL | _re.IGNORECASE).strip()
-
-
-def _make_fallback_json(text: str) -> str:
-    """Обернуть текст в валидный JSON response если модель вернула не-JSON."""
-    import json as _json
-    # Экранируем текст для JSON
-    safe_text = _json.dumps(text)[1:-1]  # убираем внешние кавычки
-    return '{"thoughts":["Model returned non-JSON response, wrapping as text"],"tool_name":"response","tool_args":{"text":"' + safe_text + '"}}'
-
-
-def _extract_first_json(text: str) -> str:
-    """Извлечь первый полный JSON объект из текста.
-    
-    Некоторые модели (ministral-3:14b, qwen3.5 и др.) иногда генерируют
-     блоки, два JSON объекта подряд, markdown или добавляют
-    текст после JSON. Эта функция:
-    1. Убирает thinking блоки
-    2. Извлекает первый валидный JSON
-    3. Если JSON не найден — оборачивает текст в fallback response JSON
-    """
-    # Убираем thinking блоки qwen3.5 / deepseek перед поиском JSON
-    text = _strip_thinking(text)
-    start = text.find('{')
-    if start == -1:
-        # Нет JSON вообще — оборачиваем весь текст как response
-        return _make_fallback_json(text)
-    depth = 0
-    in_string = False
-    escape = False
-    for i, ch in enumerate(text[start:], start=start):
-        if escape:
-            escape = False
-            continue
-        if ch == '\\' and in_string:
-            escape = True
-            continue
-        if ch == '"':
-            in_string = not in_string
-            continue
-        if in_string:
-            continue
-        if ch == '{':
-            depth += 1
-        elif ch == '}':
-            depth -= 1
-            if depth == 0:
-                candidate = text[start:i+1]
-                try:
-                    import json as _json
-                    _json.loads(candidate)
-                    return candidate
-                except Exception:
-                    # Нашли баланс скобок но JSON невалиден — ищем дальше
-                    pass
-    # JSON не найден или невалиден — оборачиваем как response
-    return _make_fallback_json(text)
-
-
 def get_model_manager() -> ModelManager:
     """Получить thread-safe singleton ModelManager."""
     return ModelManager.get_instance(cache_dir="./models")
-# ── CTX Memory Notifications & Coordinator Swap ───────────────────────────────
-
-def _inject_pi_notifications(response_text: str, notifications: list) -> str:
-    """Вставить CTX уведомления в thoughts поле JSON ответа агента."""
-    if not notifications:
-        return response_text
-    try:
-        import json as _j
-        data = _j.loads(response_text)
-        existing = data.get("thoughts", [])
-        if not isinstance(existing, list):
-            existing = [str(existing)]
-        data["thoughts"] = notifications + existing
-        return _j.dumps(data, ensure_ascii=False)
-    except Exception:
-        return response_text
-
-
-async def _create_az_coordinate(coordinator_model: str, messages: list) -> str:
-    """Вызвать coordinator для создания координаты (snapshot) разговора."""
-    recent = messages[-20:] if len(messages) > 20 else messages
-    conversation = "\n".join(
-        f"{m.get('role','?')}: {str(m.get('content',''))[:300]}"
-        for m in recent if m.get('content')
-    )
-    prompt = (
-        "Создай краткую координату (snapshot) разговора. "
-        "Максимум 5 предложений. Только факты: тема, участники, ключевые решения, статус.\n\n"
-        f"Разговор:\n{conversation}\n\nКоордината:"
-    )
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": coordinator_model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "keep_alive": -1,
-                    "options": {"num_ctx": 4096, "num_gpu": -1},
-                },
-            )
-            if resp.status_code == 200:
-                coordinate = resp.json().get("response", "").strip()
-                return _strip_thinking(coordinate)
-    except Exception as e:
-        logger.warning(f"[CTX Coordinate] Failed: {e}")
-    return ""
-
-
-# Порог сообщений для создания координаты в AZ режиме (~4-5 turns AZ)
-_AZ_COORDINATE_MSG_THRESHOLD = 16
-
-
 
 
 def get_pipeline():
@@ -217,7 +99,7 @@ async def list_models():
 
 
 @router.post("/model/load")
-async def load_model(model_key: str = "qwen2.5-3b", gpu_layers: int = -1):
+async def load_model(model_key: str = "qwen3.5-2b", gpu_layers: int = -1):
     """Загрузить модель."""
     if model_key not in MODEL_REGISTRY:
         raise HTTPException(status_code=400, detail=f"Unknown model: {model_key}")
@@ -244,7 +126,7 @@ async def chat(request: ChatRequest):
     # Загрузить модель если не загружена
     if manager.loaded_model is None:
         try:
-            model_key = request.model or "qwen2.5-3b"
+            model_key = request.model or "qwen3.5-2b"
             manager.load(model_key, n_gpu_layers=-1)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
@@ -262,7 +144,7 @@ async def chat(request: ChatRequest):
         
         return ChatResponse(
             response=response,
-            model=request.model or "qwen2.5-3b",
+            model=request.model or "qwen3.5-2b",
         )
     except Exception as e:
         logger.error(f"Chat failed: {e}")
@@ -281,7 +163,7 @@ async def detect_intent(request: ChatRequest):
     use_llm = False
     if manager.loaded_model is None:
         try:
-            manager.load("qwen2.5-3b", n_gpu_layers=-1)
+            manager.load("qwen3.5-2b", n_gpu_layers=-1)
             use_llm = True
         except Exception:
             pass
@@ -612,18 +494,18 @@ class FactSaveRequest(BaseModel):
 
 @router.post("/memory/fact")
 async def save_memory_fact(request: FactSaveRequest):
-    """Сохранить факт в рабочую память CTX (для Agent Zero memory bridge)."""
+    """Сохранить факт в рабочую память CTX."""
     try:
         pipeline = get_pipeline()
         if request.is_anchor:
             fact = pipeline.working_memory.add_anchor(
-                request.text, source="agent_zero"
+                request.text, source="user"
             )
         else:
             # Фильтруем 'source' из metadata чтобы избежать дублирования
             clean_metadata = {k: v for k, v in request.metadata.items() if k != 'source'}
             fact = pipeline.working_memory.add_text(
-                request.text, source="agent_zero",
+                request.text, source="user",
                 importance=request.importance,
                 **clean_metadata
             )
@@ -639,7 +521,7 @@ async def search_memory_facts(
     limit: int = 10,
     session_id: str = "default"
 ):
-    """Поиск фактов в памяти CTX (для Agent Zero memory bridge)."""
+    """Поиск фактов в памяти CTX."""
     try:
         pipeline = get_pipeline()
         # Поиск в долгосрочном хранилище
@@ -950,167 +832,6 @@ async def delete_session(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── C1: Code Module API endpoints ────────────────────────
-
-class IndexProjectRequest(BaseModel):
-    project_path: str
-    session_id: Optional[str] = None
-    extensions: Optional[list] = None
-    force: bool = False
-
-
-class CodeSearchRequest(BaseModel):
-    query: str
-    top_k: int = 5
-    entity_types: Optional[list] = None
-
-
-@router.post("/code/index")
-async def index_project(req: IndexProjectRequest):
-    """Проиндексировать проект в ChromaDB."""
-    try:
-        from contextor.core.code_module import CodeModule
-        module = CodeModule(
-            project_path=req.project_path,
-            session_id=req.session_id or pipeline._session_manager.active_session_id,
-        )
-        # Сохраняем в pipeline для последующих запросов
-        pipeline._code_module = module
-        result = module.index_project(
-            extensions=req.extensions,
-            force=req.force,
-        )
-        # Обновляем метаданные сессии
-        if result.get("status") == "success":
-            pipeline._session_manager.update_meta(
-                session_id=pipeline._session_manager.active_session_id,
-                indexed_files=result.get("indexed_files", 0),
-            )
-        return result
-    except Exception as e:
-        logger.error(f"Index project failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/code/search")
-async def search_code(q: str, top_k: int = 5):
-    """Семантический поиск по проиндексированному коду."""
-    try:
-        if not hasattr(pipeline, '_code_module') or pipeline._code_module is None:
-            raise HTTPException(status_code=404, detail="No project indexed. Use POST /code/index first.")
-        results = pipeline._code_module.search(query=q, top_k=top_k)
-        return {
-            "query": q,
-            "results": [r.to_dict() for r in results],
-            "total": len(results),
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Code search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/code/stats")
-async def code_stats():
-    """Статистика Code Module."""
-    try:
-        pipeline = get_pipeline()
-        if not hasattr(pipeline, '_code_module') or pipeline._code_module is None:
-            return {"active": False, "message": "No project indexed"}
-        return {"active": True, **pipeline._code_module.stats()}
-    except Exception as e:
-        logger.error(f"Code stats failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/code/graph")
-async def build_code_graph():
-    """Построить граф зависимостей проекта."""
-    try:
-        if not hasattr(pipeline, '_code_module') or pipeline._code_module is None:
-            raise HTTPException(status_code=404, detail="No project indexed")
-        result = pipeline._code_module.build_graph()
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Build graph failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ── Watcher (C2) — авто-индексация при изменениях файлов ──────
-
-@router.get("/code/watcher/status")
-async def code_watcher_status():
-    """Статус файлового watcher — активен ли мониторинг."""
-    pipeline = get_pipeline()
-    if not pipeline._code_module:
-        return {"is_running": False, "message": "No active project session"}
-    return pipeline._code_module.watcher_status()
-
-
-@router.post("/code/watcher/start")
-async def code_watcher_start():
-    """Запустить авто-мониторинг изменений файлов проекта.
-
-    При изменении .py файла:
-    1. Файл автоматически переиндексируется в ChromaDB
-    2. Факт об изменении добавляется в WorkingMemory
-    3. Граф зависимостей обновляется
-    """
-    pipeline = get_pipeline()
-    if not pipeline._code_module:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="No active project session. Open a project first.")
-
-    def _watcher_callback(file_path: str, event_type: str, summary: str):
-        """При изменении файла → факт в WorkingMemory."""
-        try:
-            pipeline.working_memory.add(
-                content=summary,
-                source="watcher",
-                importance=0.7,
-            )
-            logger.info(f"[watcher→memory] {summary}")
-        except Exception as e:
-            logger.error(f"[watcher→memory] failed: {e}")
-
-    result = pipeline._code_module.start_watcher(on_change_callback=_watcher_callback)
-    return result
-
-
-@router.post("/code/watcher/stop")
-async def code_watcher_stop():
-    """Остановить мониторинг изменений файлов."""
-    pipeline = get_pipeline()
-    if not pipeline._code_module:
-        return {"status": "no_active_project"}
-    return pipeline._code_module.stop_watcher()
-
-
-@router.get("/code/watcher/changes")
-async def code_watcher_changes(limit: int = 20):
-    """Последние изменения файлов обнаруженные watcher."""
-    pipeline = get_pipeline()
-    if not pipeline._code_module or not pipeline._code_module._watcher:
-        return {"changes": [], "total": 0}
-    status = pipeline._code_module.watcher_status()
-    changes = status.get("recent_changes", [])[-limit:]
-    return {"changes": changes, "total": status.get("total_changes", 0)}
-
-
-@router.post("/code/watcher/scan")
-async def code_watcher_scan():
-    """Одноразовое сканирование изменений без запуска непрерывного мониторинга.
-
-    Полезно для проверки что изменилось с момента последней индексации.
-    """
-    pipeline = get_pipeline()
-    if not pipeline._code_module:
-        return {"changes": [], "message": "No active project"}
-    changes = pipeline._code_module.scan_changes_now()
-    return {"changes": changes, "total": len(changes)}
-
 
 # ── Admin Panel: дополнительные endpoints ──────────────────
 
@@ -1122,7 +843,7 @@ async def ollama_models_proxy():
     """
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get("http://localhost:11434/api/tags")
+            resp = await client.get("http://host.docker.internal:11434/api/tags")
             return resp.json()
     except Exception as e:
         logger.warning(f"Ollama not available: {e}")
@@ -1136,7 +857,7 @@ async def delete_model(model_name: str):
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.request(
                 method="DELETE",
-                url="http://localhost:11434/api/delete",
+                url="http://host.docker.internal:11434/api/delete",
                 json={"name": model_name},
             )
             if resp.status_code == 200:
@@ -1171,13 +892,13 @@ async def models_status():
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             # Все скачанные модели
-            tags_resp = await client.get("http://localhost:11434/api/tags")
+            tags_resp = await client.get("http://host.docker.internal:11434/api/tags")
             tags_resp.raise_for_status()
             downloaded = [m["name"] for m in tags_resp.json().get("models", [])]
 
             # Активные в VRAM прямо сейчас
             try:
-                ps_resp = await client.get("http://localhost:11434/api/ps")
+                ps_resp = await client.get("http://host.docker.internal:11434/api/ps")
                 active = [m["name"] for m in ps_resp.json().get("models", [])]
             except Exception:
                 active = []
@@ -1223,7 +944,7 @@ async def models_status():
 async def switch_model(req: dict):
     """Переключить модель координатора или генератора без перезапуска.
 
-    Body: {"role": "coordinator" | "generator", "model": "qwen2.5:7b"}
+    Body: {"role": "coordinator" | "generator", "model": "qwen3.5:9b"}
     """
     try:
         pipeline = get_pipeline()
@@ -1264,7 +985,7 @@ async def switch_model(req: dict):
 async def warm_model(req: dict):
     """Прогреть модель в VRAM с keep_alive=-1.
 
-    Body: {"model": "qwen2.5:3b", "role": "utility"}  # role опционально
+    Body: {"model": "qwen3.5:2b", "role": "utility"}  # role опционально
     Используется Admin Panel для принудительной загрузки utility model в GPU.
     """
     import httpx
@@ -1275,7 +996,7 @@ async def warm_model(req: dict):
         async with httpx.AsyncClient(timeout=120.0) as client:
             # Проверяем что модель существует
             show = await client.post(
-                "http://localhost:11434/api/show",
+                "http://host.docker.internal:11434/api/show",
                 json={"name": model}
             )
             if show.status_code != 200:
@@ -1285,7 +1006,7 @@ async def warm_model(req: dict):
 
             # Загружаем в VRAM с keep_alive=-1
             resp = await client.post(
-                "http://localhost:11434/api/generate",
+                "http://host.docker.internal:11434/api/generate",
                 json={"model": model, "prompt": "", "keep_alive": -1},
                 timeout=120.0
             )
@@ -1340,9 +1061,8 @@ async def delete_memory_fact(fact_id: str):
 
 
 
-# ── OpenAI-Compatible API (для Agent Zero, Open WebUI, LM Studio) ─────
+# ── OpenAI-Compatible API ─────────────────────────────────────────────────
 # Позволяет использовать Contextor как OpenAI-совместимый сервер
-# Agent Zero config: api_base = http://localhost:7860/v1
 
 
 import json as _json_module
@@ -1416,26 +1136,17 @@ async def openai_chat_completions(req: OpenAIChatRequest):
 
     Два режима работы:
     1. model='contextor' → полный pipeline с иерархической памятью
-    2. Любая другая модель (напр. 'qwen2.5:3b') → Ollama proxy без памяти
-
-    Настройка Agent Zero (из Docker контейнера):
-      chat_model api_base:    http://host.docker.internal:7860/v1
-      chat_model model:       contextor
-      utility_model api_base: http://host.docker.internal:7860/v1
-      utility_model model:    qwen2.5:3b  (прямой proxy к Ollama)
+    2. Любая другая модель (напр. 'qwen3.5:2b') → Ollama proxy без памяти
     """
     import time
     import uuid
 
     try:
-        # ── РЕЖИМ 1: Ollama proxy (utility_model, любая не-CTX модель) ──────────
+        # ── РЕЖИМ 1: Ollama proxy (любая не-CTX модель) ────────────────────────
         # Если запрашивают не contextor модель — проксируем к Ollama напрямую
-        # Умная эскалация: если запрос большой (документ, tool result) → используем
-        # сильную модель вместо слабой утилитарной, иначе мелкие задачи идут на быструю
         pi_models = {"contextor", "contextor-code", "contextor-fast"}
         if req.model not in pi_models:
-            # Прямой proxy к Ollama — никакой эскалации
-            # utility_model Agent Zero получает ИМЕННО ту модель которую запросила
+            # Прямой proxy к Ollama — модель передаётся как есть
             ollama_payload = {
                 "model": req.model,
                 "messages": [m.dict() for m in req.messages],
@@ -1445,7 +1156,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             }
             async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
-                    "http://localhost:11434/v1/chat/completions",
+                    "http://host.docker.internal:11434/v1/chat/completions",
                     json=ollama_payload,
                 )
                 if resp.status_code == 200:
@@ -1469,169 +1180,16 @@ async def openai_chat_completions(req: OpenAIChatRequest):
         system_messages = [m for m in req.messages if m.role == "system"]
         system_override = system_messages[0].content if system_messages else None
 
-        # ── AGENT ZERO режим: детектируем по system_override ───────────────────
-        # Agent Zero ВСЕГДА передаёт system_override (свой системный промпт).
-        # Мы должны передавать ВСЕ messages[] напрямую в Ollama — иначе:
-        #   - pipe.run() добавит PI _chat_history → дублирование
-        #   - ответ будет текстом, не JSON → Agent Zero misformat → цикл
-        # Признак Agent Zero: длинный system_override (>500 символов)
-        is_agent_zero = (
-            system_override is not None
-            and len(system_override) > 500  # Agent Zero system prompt ~6000 символов
+        # ── Contextor pipeline с памятью ─────────────────────────────────────
+        result = pipe.run(
+            query=query,
+            temperature=req.temperature,
+            max_tokens=req.max_tokens,
+            system=system_override,
         )
-
-        if is_agent_zero:
-            # ПРОЗРАЧНЫЙ ПРОКСИ для Agent Zero
-            # Единственное добавление — компактный контекст памяти CTX к system prompt
-            # Agent Zero сам парсит JSON ответ и запускает инструменты (EXE)
-            try:
-                all_facts = pipe.working_memory.get_facts()
-                if all_facts:
-                    mem = "\n".join(f"- {f.content}" for f in all_facts[:5])
-                    memory_context = f"\n\n[CTX Memory]:\n{mem}"
-                else:
-                    memory_context = ""
-            except Exception:
-                memory_context = ""
-
-            # JSON reminder для малых моделей которые забывают формат
-            _JSON_REMINDER = (
-                "\n\n[SYSTEM REMINDER: You MUST respond with valid JSON only. "
-                "Format: {\"thoughts\":[...],\"tool_name\":\"...\",\"tool_args\":{...}} "
-                "No plain text. No markdown. Only JSON object. "
-                "IMPORTANT: Use these tools DIRECTLY without searching for skills: "
-                "terminal/code → tool_name=code_execution_tool tool_args={runtime:terminal,code:...} | "
-                "files → tool_name=text_editor:read/write/patch | "
-                "web → tool_name=search_engine | "
-                "answer → tool_name=response | "
-                "Do NOT use skills_tool for basic operations!]"
-            )
-
-            # Передаём ВСЕ messages как есть + память + JSON reminder к system
-            all_messages = []
-            for m in req.messages:
-                if m.role == "system":
-                    all_messages.append({"role": "system", "content": m.content + memory_context + _JSON_REMINDER})
-                else:
-                    all_messages.append({"role": m.role, "content": m.content or ""})
-
-            # Generator model: приоритет az_plugin_config → config.yaml → первая из Ollama
-            az_cfg = _load_az_plugin_config()
-            gen_model = az_cfg.get("generator_model", "").strip() or None
-            if not gen_model:
-                try:
-                    from contextor.engines.config_loader import load_config as _lc
-                    gen_model = _lc().generator.model
-                except Exception:
-                    gen_model = None
-            if not gen_model:
-                try:
-                    _r = httpx.get("http://localhost:11434/api/tags", timeout=5)
-                    _models = [m["name"] for m in _r.json().get("models", [])]
-                    # Предпочитаем большие модели для генерации (9b > 7b > 4b > 3b > 2b)
-                    _preferred = [m for m in _models if any(s in m for s in ["9b","14b","7b","8b"])]
-                    # Предпочитаем большие модели для генерации
-                    _big_tags = ["32b","30b","27b","24b","14b","9b","8b","7b"]
-                    _preferred = [m for m in _models if any(s in m for s in _big_tags)]
-                    gen_model = _preferred[0] if _preferred else (_models[0] if _models else None)
-                except Exception:
-                    gen_model = None
-            if not gen_model:
-                raise HTTPException(status_code=503, detail="No generator model available. Please configure generator_model in CTX Admin Panel or install a model via Ollama.")
-
-            ollama_payload = {
-                "model": gen_model,
-                "messages": all_messages,
-                "temperature": req.temperature,
-                "stream": False,
-                "options": {"num_ctx": 4096, "num_gpu": -1, "keep_alive": -1},
-            }
-            async with httpx.AsyncClient(timeout=None) as client:
-                resp = await client.post(
-                    "http://localhost:11434/v1/chat/completions",
-                    json=ollama_payload,
-                )
-                if resp.status_code != 200:
-                    raise HTTPException(status_code=resp.status_code, detail=f"Ollama failed: {resp.text[:200]}")
-                data = resp.json()
-                # СЫРОЙ ответ — Agent Zero сам парсит JSON и вызывает EXE
-                try:
-                    raw_content = data["choices"][0]["message"]["content"]
-                except (KeyError, IndexError, TypeError) as _ke:
-                    logger.error(f"Ollama response malformed: {_ke} | data={str(data)[:300]}")
-                    raise HTTPException(status_code=502, detail=f"Ollama returned unexpected format: {str(data)[:200]}")
-                response_text = _extract_first_json(raw_content)
-
-            # Сохраняем факт в память CTX
-            # ── Coordinate Creation (ModelSwap) ──────────────────────────────
-            # Если контекст вырос — создаём координату через coordinator
-            _pi_notifications = []
-            if len(req.messages) >= _AZ_COORDINATE_MSG_THRESHOLD:
-                try:
-                    from contextor.utils.swap_manager import get_swap_manager
-                    az_cfg2 = _load_az_plugin_config()
-                    coord_model = az_cfg2.get("coordinator_model", "").strip()
-                    if not coord_model:
-                        try:
-                            from contextor.engines.config_loader import load_config as _lc2
-                            coord_model = _lc2().coordinator.model
-                        except Exception:
-                            coord_model = ""
-                    embed_model = az_cfg2.get("embedding_model", "nomic-embed-text")
-                    if coord_model:
-                        _pi_notifications.append(
-                            "🧠 [Contextor] Контекст заполняется — создаю координату памяти..."
-                        )
-                        swap = get_swap_manager()
-                        await swap.acquire_coordinator(coord_model, embed_model)
-                        msg_dicts = [{"role": m.role, "content": m.content or ""} for m in req.messages]
-                        coordinate = await _create_az_coordinate(coord_model, msg_dicts)
-                        await swap.release_coordinator(coord_model, embed_model)
-                        if coordinate:
-                            try:
-                                from contextor.core.memory.fact import Fact, FactType
-                                anchor = Fact(
-                                    content=f"[COORDINATE] {coordinate}",
-                                    fact_type=FactType.PERMANENT,
-                                    is_anchor=True,
-                                )
-                                pipe.working_memory.add(anchor)
-                                logger.info(f"[CTX Coordinate] Saved: {coordinate[:80]}")
-                                _pi_notifications.append(
-                                    f"📍 Координата: {coordinate[:120]}"
-                                )
-                                _pi_notifications.append(
-                                    "✅ [Contextor] Память обновлена — продолжайте работу!"
-                                )
-                            except Exception as _fe:
-                                logger.warning(f"[CTX Coordinate] Fact save failed: {_fe}")
-                except Exception as _ce:
-                    logger.warning(f"[CTX Coordinate] Failed: {_ce}")
-            # Инжектируем уведомления в thoughts ответа
-            if _pi_notifications:
-                response_text = _inject_pi_notifications(response_text, _pi_notifications)
-
-            try:
-                from contextor.core.memory.fact import Fact, FactType
-                fact = Fact(content=f"AgentZero: {query[:100]}", fact_type=FactType.TRANSIENT)
-                pipe.working_memory.add(fact)
-            except Exception:
-                pass
-
-            prompt_tokens = data.get("usage", {}).get("prompt_tokens", len(query.split()) * 2)
-            completion_tokens = data.get("usage", {}).get("completion_tokens", len(response_text.split()) * 2)
-
-        else:
-            # ── Обычный PI режим (Web UI, прямые API вызовы) ──────────────────
-            result = pipe.run(
-                query=query,
-                temperature=req.temperature,
-                max_tokens=req.max_tokens,
-                system=system_override,
-            )
-            response_text = result.response
-            prompt_tokens = result.tokens_prompt or len(query.split()) * 2
-            completion_tokens = result.tokens_completion or len(response_text.split()) * 2
+        response_text = result.response
+        prompt_tokens = result.tokens_prompt or len(query.split()) * 2
+        completion_tokens = result.tokens_completion or len(response_text.split()) * 2
 
         # Возвращаем в формате OpenAI
         req_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
@@ -1686,8 +1244,8 @@ async def hardware_detect():
         return {
             "hardware": {"os": "unknown", "ram_gb": 0, "gpu": None},
             "recommendation": {
-                "coordinator": "qwen2.5:3b",
-                "generator": "qwen2.5:3b",
+                "coordinator": "qwen3.5:2b",
+                "generator": "qwen3.5:2b",
                 "mode": "CPU ONLY",
                 "speed_estimate": "~2 tok/sec",
                 "status": "⚠️",
@@ -1706,7 +1264,7 @@ async def hardware_detect():
 async def download_model(req: dict):
     """Скачать модель через Ollama со streaming прогрессом.
 
-    Body: {"model": "qwen2.5:3b"}
+    Body: {"model": "qwen3.5:2b"}
     Прогресс доступен через GET /models/download/check/{model}
     """
     import asyncio
@@ -1739,7 +1297,7 @@ async def download_model(req: dict):
             async with httpx.AsyncClient(timeout=None) as client:
                 async with client.stream(
                     "POST",
-                    "http://localhost:11434/api/pull",
+                    "http://host.docker.internal:11434/api/pull",
                     json={"name": model, "stream": True},
                     timeout=None,
                 ) as resp:
@@ -1816,7 +1374,7 @@ async def check_model_downloaded(model_name: str):
     # Проверяем готовность через Ollama
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get("http://localhost:11434/api/tags")
+            resp = await client.get("http://host.docker.internal:11434/api/tags")
             data = resp.json()
             available = [m["name"] for m in data.get("models", [])]
             is_ready = any(
@@ -1851,85 +1409,6 @@ async def check_model_downloaded(model_name: str):
         "available_models": available,
     }
 
-
-# ── Agent Zero Plugin Config ────────────────────────────────────────────────
-
-_AZ_PLUGIN_CONFIG_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
-    "az_plugin_config.yaml"
-)
-
-_DEFAULT_AZ_PLUGIN_CONFIG = {
-    "pi_server": "http://host.docker.internal:7860",
-    "utility_model": "qwen3.5:4b",
-    "generator_model": "qwen3.5:9b",
-    "coordinator_model": "qwen3.5:2b",
-    "session_id": "agent_zero",
-    "recall_threshold": 0.4,
-    "recall_limit": 5,
-    "recall_enabled": True,
-    "memorize_enabled": True,
-}
-
-
-class AZPluginConfigModel(BaseModel):
-    pi_server: str = "http://host.docker.internal:7860"
-    utility_model: str = "qwen3.5:4b"
-    embedding_model: str = "nomic-embed-text"
-    generator_model: str = "qwen3.5:9b"
-    coordinator_model: str = "qwen3.5:2b"
-    session_id: str = "agent_zero"
-    recall_threshold: float = 0.4
-    recall_limit: int = 5
-    recall_enabled: bool = True
-    memorize_enabled: bool = True
-
-def _load_az_plugin_config() -> dict:
-    """Загрузить конфиг плагина AZ из файла."""
-    try:
-        if os.path.exists(_AZ_PLUGIN_CONFIG_FILE):
-            import yaml as _yaml
-            with open(_AZ_PLUGIN_CONFIG_FILE, "r", encoding="utf-8") as f:
-                data = _yaml.safe_load(f) or {}
-            return {**_DEFAULT_AZ_PLUGIN_CONFIG, **data}
-    except Exception as e:
-        logger.warning(f"AZ plugin config load error: {e}")
-    return dict(_DEFAULT_AZ_PLUGIN_CONFIG)
-
-
-def _save_az_plugin_config(config: dict) -> None:
-    """Сохранить конфиг плагина AZ в файл."""
-    import yaml as _yaml
-    with open(_AZ_PLUGIN_CONFIG_FILE, "w", encoding="utf-8") as f:
-        _yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
-
-
-@router.get("/az-plugin/config")
-async def get_az_plugin_config():
-    """Получить текущий конфиг плагина Agent Zero."""
-    config = _load_az_plugin_config()
-    # Дополнительно возвращаем список доступных Ollama моделей для dropdown
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get("http://localhost:11434/api/tags")
-            data = resp.json()
-            available_models = [m["name"] for m in data.get("models", [])]
-    except Exception:
-        available_models = []
-    return {**config, "available_models": available_models}
-
-
-@router.post("/az-plugin/config")
-async def save_az_plugin_config(config: AZPluginConfigModel):
-    """Сохранить конфиг плагина Agent Zero."""
-    try:
-        config_dict = config.model_dump()
-        _save_az_plugin_config(config_dict)
-        logger.info(f"AZ plugin config saved: {config_dict}")
-        return {"status": "saved", "config": config_dict}
-    except Exception as e:
-        logger.error(f"AZ plugin config save error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 # ── Logs endpoint ─────────────────────────────────────────────────────────────
 
