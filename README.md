@@ -1,90 +1,97 @@
 # 🧠 Contextor
 
-> **Local AI with unlimited hierarchical memory — 85% fewer tokens, 100% privacy**
+> **Local AI with unlimited memory — 85% fewer tokens, 100% recall, zero cloud**
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/Tests-465%20passed-brightgreen.svg)](tests/)
-[![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2FContextor-pro-black.svg)](https://github.com/Remchik64/Contextor-pro)
+[![GitHub](https://img.shields.io/badge/GitHub-Remchik64%2FContextor--pro-black.svg)](https://github.com/Remchik64/Contextor-pro)
 [![Support on Boosty](https://img.shields.io/badge/Support%20on-Boosty-orange.svg)](https://boosty.to/rem64)
 [![Support via YooMoney](https://img.shields.io/badge/Support-ЮMoney-blueviolet.svg)](https://yoomoney.ru/to/4100118846255337)
 
 ![Contextor Admin Panel](docs/images/admin-panel.png)
 
-Contextor solves the fundamental problem of LLM context limitation — **context degradation in long conversations**. Instead of losing information when context fills up, the system creates a "coordinate" (compressed memory snapshot) and performs a **soft reset**, maintaining full conversational continuity.
+Every LLM has a context limit. When conversation gets long, the model forgets, hallucinates, or breaks. Contextor solves this with **hierarchical memory** and **soft resets** — your AI remembers everything, conversations never degrade, and token usage drops by 85%.
 
 ---
 
-## ✨ Key Features
+## ✨ What Makes Contextor Different
 
-### 🧠 Hierarchical Memory System
-- **Working Memory (HOT)** — active facts with attention scoring
-- **Memory Storage (WARM)** — semi-active facts, semantic search via SentenceTransformers
-- **Archive (COLD)** — compressed historical data
-- **Anchor Facts** — critical information that never decays
-- **Smart Eviction** — auto-evict low-importance facts when RAM pressure > 80%
+### 🧠 Hierarchical Memory
+
+Contextor doesn't just stuff everything into context. It organizes knowledge in layers:
+
+| Layer | What | How it works |
+|-------|------|-------------|
+| **HOT** | Working Memory | Active facts with attention scoring — always in context |
+| **WARM** | Storage | Semi-active facts, semantic search via embeddings — recalled when relevant |
+| **Anchor** | Critical Facts | Information that never decays — names, preferences, key decisions |
+
+Facts automatically flow between layers: important facts get promoted to HOT, irrelevant ones sink to WARM. Anchor facts always stay visible.
 
 ### 🎯 Soft Reset with Coordinates
-- Context fills up → 3B model creates a **coordinate** (compressed snapshot)
-- Context resets to zero, coordinate injected as first message
-- **100% recall** across resets — tested and proven
-- **Adaptive reset** — triggers by CCI score, not just turn count
+
+When context fills up, most systems either truncate history (losing information) or crash. Contextor does a **soft reset**:
+
+1. A lightweight 3B model creates a **coordinate** — a compressed snapshot of the entire conversation (~200 tokens)
+2. Context clears, coordinate injected as the first message
+3. **100% recall across resets** — the model picks up exactly where it left off
+
+No information loss. No degradation. Unlimited conversation length.
 
 ### 📊 Context Coherence Index (CCI)
-- Real-time tracking of conversational coherence (0.0 → 1.0)
-- CCI < 0.55 + turns ≥ 4 → automatic soft reset
-- Hard limit: turns ≥ 16 → forced reset regardless of CCI
-- Restores context automatically when coherence drops
+
+Contextor continuously monitors conversation health with CCI (0.0 → 1.0):
+
+- **CCI > 0.55** → conversation is coherent, proceed normally
+- **CCI < 0.55** → context is degrading, time for a soft reset
+- **Hard limit** → reset after 16 turns regardless of CCI
+
+This means resets happen **when needed**, not on a fixed schedule.
 
 ### 🤖 Dual Model Architecture
-- **Coordinator (3B)** — fast navigation, intent detection, coordinate creation
-- **Generator (7B)** — high-quality response generation
-- **CPU+GPU Split** — partial offload for systems with limited VRAM
-- **Dynamic model switching** — change models without server restart
 
-### 💻 Code Module
-- Index Python projects into ChromaDB for semantic search
-- **RAG** — automatically inject relevant code context into prompts
-- **Watcher** — auto-reindex files on change (debounced, hash-checked)
-- **Code-Aware Memory** — code facts automatically stored in working memory
+Contextor uses two models together for optimal quality and speed:
 
-### 🔌 OpenAI-Compatible API
-- `POST /v1/chat/completions` — standard OpenAI format
-- `GET /v1/models` — model list
-- Any OpenAI-compatible client connects instantly
-- Memory works transparently for any client
+| Model | Size | Role | Speed |
+|-------|------|------|-------|
+| **Coordinator** | 2B | Intent detection, coordinates, fact extraction | ⚡ Fast |
+| **Generator** | 9B | High-quality response generation | 🧠 Smart |
+
+The coordinator handles all meta-tasks (what to remember, when to reset), while the generator focuses on producing excellent answers. This means the 9B model only runs when generating responses — saving VRAM and compute.
+
+### 💾 Persistent Memory
+
+All memory is **saved to disk**. Restart the server, and it remembers everything:
+
+- Working memory facts survive restarts
+- Coordinate archive preserves every soft reset snapshot
+- Switch models anytime — memory is never lost
+- Each session has isolated storage
 
 ### 🖥️ Admin Panel
-- Full web interface at `http://localhost:7860`
-- **Dashboard** — real-time GPU, CCI, memory metrics
-- **Models** — hardware detection + model recommendations + download
-- **Memory** — view/search/delete facts and coordinates
-- **Projects** — code indexing, watcher control
-- **Connections** — integration configs 🚧 *In Development*
-- **Settings** — CCI threshold, memory limits (live config)
 
-### 🔍 Hardware Detection
-- Auto-detects GPU (NVIDIA/AMD/Apple Silicon)
-- Recommends optimal models based on VRAM:
-  - VRAM ≥ 10GB → GPU FULL (qwen2.5:7b)
-  - VRAM 6-10GB → GPU SPLIT (partial CPU offload)
-  - VRAM 3-6GB → GPU LIMITED (3B models)
-  - No GPU → CPU ONLY mode
+Full web interface at `http://localhost:7860`:
 
-### 💾 Persistent Memory Storage
-- All memory is **saved to disk** — restart the server and it remembers everything
-- **Coordinate Archive** — every soft reset snapshot is stored permanently in `coordinate_archive/`
-- **Model-independent** — switch models anytime, memory is never lost
-- **Multi-session** — each session has its own isolated storage folder
-- On Windows (installer): `Desktop\storage\sessions\<session_id>\` (next to start.bat)
-- On Linux/macOS: `./storage/sessions/<session_id>/` from working directory
+- **💬 Chat** — talk to your AI with full memory support
+- **🧠 Memory** — view, search, and manage facts and coordinates
+- **🤖 Models** — hardware detection, model recommendations, download
+- **⚙️ Settings** — live configuration (CCI threshold, memory limits)
+- **📋 Logs** — real-time server logs
 
+### 🔌 OpenAI-Compatible API
+
+```bash
+POST /v1/chat/completions   # Standard OpenAI format
+GET  /v1/models              # Model list
+```
+
+Any OpenAI-compatible client (curl, Python SDK, apps) connects instantly. Memory works transparently for every client.
 
 ---
 
 ## 🚀 Quick Start
 
-### Option 1: Installer Script (Recommended)
+### Option 1: Installer (Recommended)
 
 **Windows:**
 
@@ -105,7 +112,7 @@ The installer will:
 2. ✅ Install Ollama automatically
 3. ✅ Install Contextor via pip
 4. ✅ Create desktop shortcut / launcher
-5. ✅ Launch the server
+5. ✅ Launch the server and open browser
 
 ### Option 2: Manual Installation
 
@@ -126,8 +133,8 @@ contextor serve
 ### First Run
 
 After installation, open `http://localhost:7860` and:
-1. Go to **🤖 Models** section
-2. Click **"Detect Hardware"**
+1. Go to **🤖 Models** tab
+2. Click **"Detect Hardware"** — Contextor auto-detects your GPU
 3. See recommendations for your system
 4. Click **"Download"** to get recommended models
 5. Start chatting! 🎉
@@ -154,7 +161,7 @@ After installation, open `http://localhost:7860` and:
 │                                                     │
 │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
 │  │  Intent  │  │   CCI    │  │  Memory System   │  │
-│  │ Detector │  │ Tracker  │  │  HOT/WARM/COLD   │  │
+│  │ Detector │  │ Tracker  │  │  HOT / WARM      │  │
 │  └────┬─────┘  └────┬─────┘  └────────┬─────────┘  │
 │       │              │                  │            │
 │  ┌────▼──────────────▼──────────────────▼─────────┐ │
@@ -164,11 +171,11 @@ After installation, open `http://localhost:7860` and:
 │       │                                             │
 │  ┌────▼──────────────────────────────────────────┐ │
 │  │           Dual Model Router                   │ │
-│  │  Coordinator (3B) │ Generator (7B)            │ │
+│  │  Coordinator (2B) │ Generator (9B)            │ │
 │  └────┬──────────────────────────────────────────┘ │
 │       │                                             │
 │  ┌────▼──────────────────────────────────────────┐ │
-│  │  Code Module │ Watcher │ Semantic Search        │ │
+│  │  RAG │ Knowledge Graph │ Semantic Search        │ │
 │  └───────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────┘
          │
@@ -182,24 +189,25 @@ After installation, open `http://localhost:7860` and:
 ```
 contextor/
 ├── src/contextor/
-│   ├── api/          # FastAPI routes, WebSocket
+│   ├── api/              # FastAPI routes, WebSocket
 │   ├── core/
-│   │   ├── memory/   # Fact, WorkingMemory, Storage, Scorer, Optimizer
-│   │   ├── orchestrator.py  # Main pipeline
-│   │   ├── code_module.py   # Code indexing + RAG
-│   │   ├── code_memory.py   # Code-aware facts
-│   │   ├── session_manager.py
-│   │   ├── dual_model.py    # 3B/7B router
-│   │   └── watcher.py       # File change monitoring
-│   ├── engines/      # Ollama provider, config loader
-│   ├── utils/        # Hardware detector, tokenizer
-│   └── static/       # Admin Panel (index.html)
-├── tests/            # 465 tests
-├── benchmarks/       # Performance benchmarks
-├── docs/             # Documentation
-├── install.bat       # Windows installer
-├── install.sh        # Linux/macOS installer
-├── config.yaml       # Configuration
+│   │   ├── memory/       # Fact, WorkingMemory, Storage, Scorer, Optimizer
+│   │   ├── orchestrator.py   # Main pipeline
+│   │   ├── dual_model.py     # 2B/9B router
+│   │   ├── intent.py         # Intent detection
+│   │   ├── card_generator.py # RAG card generation
+│   │   ├── retriever.py      # Semantic search
+│   │   ├── assembler.py      # Context assembly
+│   │   ├── graph.py          # Knowledge graph
+│   │   └── session_manager.py
+│   ├── engines/          # Ollama provider, config loader
+│   ├── utils/            # Hardware detector, tokenizer
+│   └── static/           # Admin Panel (index.html)
+├── tests/                # 370+ tests
+├── docs/                 # Documentation
+├── install.bat           # Windows installer
+├── install.sh            # Linux/macOS installer
+├── config.yaml           # Configuration
 └── pyproject.toml
 ```
 
@@ -214,20 +222,24 @@ server:
   port: 7860
 
 coordinator:
-  model: qwen2.5:3b    # Fast model for navigation
+  model: qwen3.5:2b    # Fast model for navigation
+  temperature: 0.2
+  max_tokens: 400
 
 generator:
-  model: qwen2.5:7b    # Smart model for responses
-  num_gpu: -1          # -1 = auto, 0 = CPU, N = N layers on GPU
+  model: qwen3.5:9b    # Smart model for responses
+  temperature: 0.7
+  max_tokens: 2048
 
 memory:
-  hot_facts_max: 50
-  soft_reset_turns: 8
+  context_window_messages: 12
+  keep_after_reset: 6
+  max_hot_facts: 50
   adaptive_reset:
     enabled: true
     cci_threshold: 0.55
-    min_turns: 4
-    hard_limit_turns: 16
+    min_turns_between_resets: 4
+    max_turns_without_reset: 16
 
 cci:
   window_size: 5
@@ -236,42 +248,23 @@ cci:
 
 ---
 
-## 🔌 Integrations
+## 🔌 Integration
 
 ### ✅ Ollama (Working)
 
-Contextor uses Ollama as the default backend. Install Ollama and pull models — the Admin Panel handles the rest.
+Contextor uses Ollama as the default backend. Install Ollama and pull models:
 
 ```bash
 # Install Ollama
 curl -fsSL https://ollama.com/install.sh | sh
 
 # Pull recommended models
-ollama pull qwen2.5:3b
-ollama pull qwen2.5:7b
+ollama pull qwen3.5:2b
+ollama pull qwen3.5:9b
+ollama pull nomic-embed-text
 ```
 
-### 🚧 LM Studio *(In Development)*
-
-LM Studio integration as a backend provider is planned but not yet fully functional.
-
-```yaml
-# config.yaml — experimental, not guaranteed to work
-generator:
-  provider: lmstudio
-  base_url: http://localhost:1234
-  model: your-model-name
-```
-
-### 🚧 Open WebUI *(In Development)*
-
-Connecting Contextor to Open WebUI as a backend is planned. Instructions will be added when stable.
-
-### 🚧 Agent Zero *(In Development)*
-
-Deep integration with Agent Zero (replacing its memory backend with Contextor) is under active development in a separate repository.
-
-The integration goal: Agent Zero uses Contextor as its memory layer — hierarchical memory, Anchor Facts, and Coordinate system — without modifying Agent Zero's core GEN/EXE cycle.
+Any Ollama-compatible model works. The Admin Panel handles model detection and download.
 
 ---
 
@@ -288,10 +281,8 @@ source venv/bin/activate  # Linux/macOS
 .\venv\Scripts\activate   # Windows
 pip install -e .
 
-# Run tests (unit only, fast)
-python -m pytest tests/ -q \
-  --ignore=tests/test_live_memory.py \
-  --ignore=tests/test_system_full.py
+# Run tests
+python -m pytest tests/ -q
 
 # Run server
 contextor serve --port 7860
@@ -301,27 +292,25 @@ contextor serve --port 7860
 
 ## 📈 Roadmap
 
-- [x] Hierarchical memory (HOT/WARM/COLD)
+- [x] Hierarchical memory (HOT/WARM)
 - [x] Soft Reset with coordinates
 - [x] Context Coherence Index (CCI)
-- [x] Dual Model Router (3B coordinator + 7B generator)
-- [x] Semantic search with SentenceTransformers (CUDA)
+- [x] Dual Model Router (2B coordinator + 9B generator)
+- [x] Semantic search with embeddings (CUDA)
 - [x] LLM-based importance tagging
-- [x] Code Module (indexing + RAG)
-- [x] File Watcher (auto-reindex)
-- [x] Code-Aware Memory
 - [x] OpenAI-compatible API
 - [x] Multi-session support
 - [x] Admin Panel
 - [x] Hardware Detection + Model Recommendations
 - [x] Install Scripts (Windows/Linux/macOS)
+- [x] Persistent Memory Storage
+- [x] Knowledge Graph
+- [x] RAG card generation
 - [ ] PyPI package (`pip install contextor`)
-- [ ] LM Studio backend provider 🚧
-- [ ] Open WebUI integration 🚧
-- [ ] Agent Zero memory backend 🚧
-- [ ] HuggingFace Hub model provider
+- [ ] Module Mode (transparent proxy for AI apps)
+- [ ] UCIP v2 (4-layer Context Package)
+- [ ] Adaptive CCI threshold
 - [ ] Docker image
-- [ ] Electron desktop app
 
 ---
 
@@ -331,7 +320,7 @@ Contributions are welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Add tests for new functionality
-4. Ensure all 465 tests pass
+4. Ensure all tests pass
 5. Submit a Pull Request
 
 ---

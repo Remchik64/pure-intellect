@@ -36,8 +36,7 @@ echo  OK: Server is ready!
 :: ── Step 4: Open browser ────────────────────────────────────────────────────
 echo.
 echo [4/4] Opening browser...
-start microsoft-edge:http://127.0.0.1:7860
-if errorlevel 1 start http://127.0.0.1:7860
+start http://127.0.0.1:7860
 
 echo.
 echo  ================================================

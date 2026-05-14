@@ -120,8 +120,8 @@ CTX инжектирует не только координату, а **4-сло
 
 | Файл | Строки | Описание |
 |------|--------|----------|
-| `src/contextor/core/orchestrator.py` | 940 | Главный пайплайн, Soft Reset, координаты |
-| `src/contextor/api/routes.py` | 1976 | API эндпоинты (нуждается в рефакторинге) |
+| `src/contextor/core/orchestrator.py` | 908 | Главный пайплайн, Soft Reset, координаты |
+| `src/contextor/api/routes.py` | 813 | API эндпоинты (очищен от мёртвого кода) |
 | `src/contextor/core/memory/` | — | Иерархическая память (HOT/WARM/COLD) |
 | `src/contextor/core/dual_model.py` | 325 | Маршрутизация Coordinator/Generator |
 | `src/contextor/utils/swap_manager.py` | 200 | VRAM Swap Manager |
@@ -133,7 +133,7 @@ CTX инжектирует не только координату, а **4-сло
 
 ## ⚠️ Известные проблемы
 
-1. **routes.py — 1976 строк** — монолит, нужен рефакторинг на модули
+1. **routes.py — 813 строк** — очищен от мёртвого кода (было 1976), возможно дальнейшее разбиение
 2. **Coordinator prompt на русском** — для Module Mode нужен английский
 3. **Нет proxy pipeline** — основная задача Фазы 2
 4. **Нет UCIP v2** — координаты генерируются в русском шаблонном формате
@@ -275,6 +275,31 @@ CTX инжектирует не только координату, а **4-сло
 - routes.py: 1976→813 строк (−59%)
 - Удалено 11 файлов (5 модулей + 6 тестов)
 - Все импорты проходят проверку ✅
+- Сервер перезапущен, все живые эндпоинты работают, удалённые возвращают 404
+
+**Аудит зависимостей (отложено — чистка pyproject.toml):**
+
+| Зависимость | Используется? | Кем | Действие |
+|-------------|--------------|-----|----------|
+| `watchdog` | ❌ 0 импортов | Только watcher.py (удалён) | Убрать из pyproject.toml |
+| `tree-sitter-javascript` | ❌ 0 импортов | JS parser не существует | Убрать из pyproject.toml |
+| `tree-sitter-typescript` | ❌ 0 импортов | TS parser не существует | Убрать из pyproject.toml |
+| `aiofiles` | ❌ 0 импортов | Не используется | Убрать из pyproject.toml |
+| `python-dotenv` | ❌ 0 импортов | Не используется | Убрать из pyproject.toml |
+| `rich` | ❌ 0 импортов | Не используется | Убрать из pyproject.toml |
+| `tree-sitter` | ✅ 1 импорт | python_parser.py | Оставить |
+| `tree-sitter-python` | ✅ 1 импорт | python_parser.py | Оставить |
+| `networkx` | ✅ 1 импорт | graph.py | Оставить |
+| `chromadb` | ✅ 4 импорта | retriever.py, card_generator.py | Оставить |
+| `tiktoken` | ✅ 1 импорт | tokenizer.py | Оставить |
+| `ddgs` | ✅ 1 импорт | utility_worker.py | Оставить |
+| `huggingface_hub` | ✅ 1 импорт | model_manager.py | Оставить |
+| `click` | ✅ 1 импорт | __main__.py | Оставить |
+
+Также проверить: `llama-cpp-python[cuda]` в optional — всё ещё нужен?
+
+**Известная особенность:** После перезапуска сервера нужно обновить страницу в браузере (F5) для восстановления WebSocket.
 
 **Следующие шаги:**
+- Почистить pyproject.toml (6 неиспользуемых зависимостей)
 - Начать реализацию Фазы 1 — UCIP v2
