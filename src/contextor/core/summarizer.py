@@ -1,7 +1,5 @@
 """Summarizer — сжатие истории бесед."""
 
-import json
-from pathlib import Path
 from contextor.utils.logger import get_logger
 
 logger = get_logger("summarizer")

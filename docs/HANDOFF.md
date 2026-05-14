@@ -230,7 +230,51 @@ CTX инжектирует не только координату, а **4-сло
 **Итого за сессию:** index.html сокращён с 3392→2448 строк (−944 строки, −28%)
 
 **Следующие шаги:**
-- Удалить Python-модули `code_module.py`, `watcher.py`, `code_memory.py`, `watcher_integration.py` если не нужны
-- Удалить старые `/watcher/` эндпоинты из routes.py
-- Проверить и удалить осиротевшие API-эндпоинты в routes.py (sessions, coordinates — если фронтенд больше не вызывает)
+- Начать реализацию Фазы 1 — UCIP v2
+
+### 14 мая 2026 (продолжение) — Полная чистка мёртвого кода
+
+**Выполнено:**
+
+1. ✅ **Удаление 30 мёртвых API-эндпоинтов из routes.py** (1455→813 строк, −642)
+   - `/models` (GET), `/model/load`, `/intent`, `/index`, `/cards/search`
+   - `/retrieve`, `/assemble`, `/graph/*`, `/watcher/*`, `/orchestrate`
+   - `/coordinates/*`, `/memory/fact`, `/memory/search`, `/cci/reset`
+   - `/session/save`, `/sessions/*`, `/dual-model/refresh`, `/models/warm`
+   - `/memory/fact/{id}` (DELETE), + 5 Pydantic моделей
+
+2. ✅ **Удаление мёртвых экспортов из core/__init__.py** (23→19 строк)
+   - Убраны `FileWatcher`, `WatcherIntegration`
+
+3. ✅ **Удаление мёртвого кода из orchestrator.py** (940→908 строк, −32)
+   - Убраны `CodeAwareMemoryIntegration` импорт, `_code_module`, `_code_aware`
+   - Удалены блоки C3: Code-Aware Memory (code_context + process_code_turn)
+   - Убраны `SESSION_TYPE_CHAT`, `SESSION_TYPE_PROJECT` импорты
+
+4. ✅ **Удаление 5 мёртвых Python-модулей** (~1100 строк)
+   - `watcher.py` (154 строк), `watcher_integration.py` (103 строк)
+   - `code_module.py` (467 строк), `code_memory.py` (278 строк)
+   - `archive.py` (122 строк)
+
+5. ✅ **Удаление 6 тестов мёртвых модулей** (~900 строк)
+   - `test_code_module.py`, `test_code_memory.py`, `test_watcher_c2.py`
+   - `test_graph.py`, `test_parser.py`, `test_retriever.py`
+
+6. ✅ **Очистка неиспользуемых импортов**
+   - `card_generator.py`: удалён `Any`
+   - `summarizer.py`: удалены `json`, `Path`
+   - `orchestrator.py`: удалены `SESSION_TYPE_CHAT`, `SESSION_TYPE_PROJECT`, `CodeAwareMemoryIntegration`
+
+7. ✅ **Очистка config.py** (81→70 строк, −11)
+   - Удалён `archive_dir` (мёртвый — archive.py удалён)
+   - Удалена секция File Watcher settings (`supported_extensions`, `ignore_dirs`)
+
+**Итого за сессию чистки:**
+- Python: удалено ~2670+ строк кода + ~900 строк тестов
+- Frontend: index.html сокращён с 3392→2448 строк (−944 строки, −28%)
+- routes.py: 1976→813 строк (−59%)
+- Удалено 11 файлов (5 модулей + 6 тестов)
+- Все импорты проходят проверку ✅
+
+**Следующие шаги:**
 - Начать реализацию Фазы 1 — UCIP v2

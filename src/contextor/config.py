@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     chroma_dir: str = Field(default="./storage/chromadb", description="Директория ChromaDB")
     graph_file: str = Field(default="./storage/graph.json", description="Файл графа")
     metadata_db: str = Field(default="./storage/metadata.db", description="SQLite БД")
-    archive_dir: str = Field(default="./storage/archive", description="Директория архива")
     
     # LLM parameters
     context_length: int = Field(default=4096, description="Длина контекста")
@@ -55,16 +54,6 @@ class Settings(BaseSettings):
     max_rag_chunks: int = Field(default=5, description="Максимум карточек RAG")
     max_context_tokens: int = Field(default=3000, description="Максимум токенов контекста")
     max_system_prompt_tokens: int = Field(default=2000, description="Максимум токенов system prompt")
-    
-    # File Watcher settings
-    supported_extensions: list[str] = Field(
-        default=[".py", ".js", ".ts", ".jsx", ".tsx", ".json", ".yaml", ".yml", ".md"],
-        description="Поддерживаемые расширения файлов"
-    )
-    ignore_dirs: list[str] = Field(
-        default=["__pycache__", ".git", "venv", ".venv", "node_modules", ".eggs", "dist", "build", "storage", "models"],
-        description="Игнорируемые директории"
-    )
     
     model_config = SettingsConfigDict(
         env_prefix="CONTEXTOR_",

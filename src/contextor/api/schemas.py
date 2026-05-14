@@ -1,6 +1,6 @@
 """Pydantic модели для API."""
 
-from typing import Optional, Dict, List, Any
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -24,18 +24,3 @@ class HealthResponse(BaseModel):
     status: str
     model_loaded: bool
     version: str
-
-
-class ModelListResponse(BaseModel):
-    """Список моделей."""
-    models: Dict[str, Any]
-
-
-class OrchestrateRequest(BaseModel):
-    """Запрос к полному пайплайну оркестратора."""
-    query: str = Field(..., description="Запрос пользователя")
-    model: Optional[str] = Field(default=None, description="Ключ модели")
-    system: Optional[str] = Field(default=None, description="System prompt")
-    temperature: float = Field(default=0.7, description="Температура")
-    max_tokens: int = Field(default=2048, description="Максимум токенов")
-    use_llm_intent: bool = Field(default=False, description="Использовать LLM для intent")

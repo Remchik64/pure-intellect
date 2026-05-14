@@ -1,18 +1,16 @@
 """API endpoints."""
 
-import os
 import collections
 import datetime
 import threading
 import httpx
 import logging
-from typing import Optional, List
-from pathlib import Path
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from ..api.schemas import ChatRequest, ChatResponse, HealthResponse, ModelListResponse, OrchestrateRequest
-from ..engine import ModelManager, MODEL_REGISTRY
+from ..api.schemas import ChatRequest, ChatResponse, HealthResponse
+from ..engine import ModelManager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -50,8 +48,6 @@ _mem_handler.setLevel(logging.DEBUG)
 logging.getLogger().addHandler(_mem_handler)
 
 
-
-
 def get_model_manager() -> ModelManager:
     """Получить thread-safe singleton ModelManager."""
     return ModelManager.get_instance(cache_dir="./models")
@@ -68,7 +64,6 @@ def get_pipeline():
     return _pipeline
 
 
-
 @router.get("/health", response_model=HealthResponse)
 async def health():
     """Проверка здоровья сервера."""
@@ -79,43 +74,6 @@ async def health():
         model_loaded=loaded,
         version="0.1.0"
     )
-
-
-@router.get("/models", response_model=ModelListResponse)
-async def list_models():
-    """Список доступных моделей."""
-    manager = get_model_manager()
-    downloaded = manager.list_downloaded()
-    models = {}
-    for key, info in MODEL_REGISTRY.items():
-        models[key] = {
-            "name": info["name"],
-            "size_gb": info["size_gb"],
-            "vram_gb": info["vram_gb"],
-            "downloaded": key in downloaded,
-            "good_for": info["good_for"],
-        }
-    return ModelListResponse(models=models)
-
-
-@router.post("/model/load")
-async def load_model(model_key: str = "qwen3.5-2b", gpu_layers: int = -1):
-    """Загрузить модель."""
-    if model_key not in MODEL_REGISTRY:
-        raise HTTPException(status_code=400, detail=f"Unknown model: {model_key}")
-    
-    manager = get_model_manager()
-    try:
-        llm = manager.load(model_key, n_gpu_layers=gpu_layers)
-        info = MODEL_REGISTRY[model_key]
-        return {
-            "status": "loaded",
-            "model": model_key,
-            "name": info["name"],
-        }
-    except Exception as e:
-        logger.error(f"Failed to load model: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -151,297 +109,6 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/intent")
-async def detect_intent(request: ChatRequest):
-    """Определить намерение запроса."""
-    from ..core import IntentDetector
-    
-    manager = get_model_manager()
-    detector = IntentDetector(model_manager=manager)
-    
-    # Пытаемся загрузить модель если не загружена
-    use_llm = False
-    if manager.loaded_model is None:
-        try:
-            manager.load("qwen3.5-2b", n_gpu_layers=-1)
-            use_llm = True
-        except Exception:
-            pass
-    else:
-        use_llm = True
-    
-    result = detector.detect(request.query, use_llm=use_llm)
-    
-    return {
-        "intent": result.intent.value,
-        "confidence": result.confidence,
-        "entities": result.entities,
-        "keywords": result.keywords,
-        "reasoning": result.reasoning,
-        "suggested_context": result.suggested_context,
-    }
-
-
-@router.post("/index")
-async def index_project(directory: str = ".", extensions: List[str] = [".py"]):
-    """Index project directory for code cards."""
-    from ..core import CardGenerator
-    
-    try:
-        generator = CardGenerator()
-        total_cards = generator.index_directory(Path(directory), extensions)
-        
-        return {
-            "status": "indexed",
-            "directory": directory,
-            "total_cards": total_cards,
-            "extensions": extensions,
-        }
-    except Exception as e:
-        logger.error(f"Indexing failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/cards/search")
-async def search_cards(query: str, top_k: int = 5):
-    """Search code cards by query."""
-    from ..core import CardGenerator
-    
-    try:
-        generator = CardGenerator()
-        cards = generator.search_cards(query, top_k)
-        
-        return {
-            "query": query,
-            "results": [
-                {
-                    "card_id": card.card_id,
-                    "entity_name": card.entity.name,
-                    "entity_type": card.entity.type,
-                    "file_path": card.entity.file_path,
-                    "summary": card.summary,
-                }
-                for card in cards
-            ],
-        }
-    except Exception as e:
-        logger.error(f"Card search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/retrieve")
-async def retrieve_context(
-    query: str,
-    top_k: int = 5,
-    intent: Optional[str] = None,
-):
-    """Retrieve relevant code context using RAG."""
-    from ..core import Retriever
-    
-    try:
-        retriever = Retriever()
-        
-        if intent:
-            # Поиск по intent
-            results = retriever.search_by_intent(intent)
-        else:
-            # Обычный поиск
-            results = retriever.search(query, top_k=top_k)
-        
-        return {
-            "query": query,
-            "intent": intent,
-            "total_cards": retriever.count(),
-            "results": [
-                {
-                    "card_id": r.card_id,
-                    "entity_name": r.entity_name,
-                    "entity_type": r.entity_type,
-                    "file_path": r.file_path,
-                    "lines": f"{r.start_line}-{r.end_line}",
-                    "summary": r.summary,
-                    "distance": round(r.distance, 4),
-                    "relevance": round(r.relevance_score, 4),
-                }
-                for r in results
-            ],
-            "context": retriever.format_context(results),
-        }
-    except Exception as e:
-        logger.error(f"Retrieve failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/assemble")
-async def assemble_context(request: ChatRequest):
-    """Assemble context for LLM from user query."""
-    from ..core import IntentDetector, ContextAssembler
-    
-    try:
-        # 1. Intent detection
-        detector = IntentDetector()
-        intent_result = detector.detect(request.query)
-        
-        # 2. Context assembly
-        assembler = ContextAssembler()
-        result = assembler.assemble_and_respond(request.query, intent_result)
-        
-        return {
-            "query": request.query,
-            "intent": intent_result.intent.value,
-            "confidence": intent_result.confidence,
-            "entities": intent_result.entities,
-            "total_tokens": result["total_tokens"],
-            "mode": result["mode"],
-            "messages": result["messages"],
-        }
-    except Exception as e:
-        logger.error(f"Assemble failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/graph/build")
-async def build_graph(directory: str = "./src", extensions: List[str] = [".py"]):
-    """Build knowledge graph from project directory."""
-    from ..core import GraphBuilder
-    
-    try:
-        builder = GraphBuilder()
-        stats = builder.build_from_directory(Path(directory), extensions)
-        return {
-            "status": "built",
-            "directory": directory,
-            "stats": stats,
-        }
-    except Exception as e:
-        logger.error(f"Graph build failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/graph/stats")
-async def graph_stats():
-    """Get knowledge graph statistics."""
-    from ..core import GraphBuilder
-    
-    try:
-        builder = GraphBuilder()
-        return builder.get_stats()
-    except Exception as e:
-        logger.error(f"Graph stats failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/graph/search")
-async def graph_search(query: str, limit: int = 10):
-    """Search knowledge graph nodes."""
-    from ..core import GraphBuilder
-    
-    try:
-        builder = GraphBuilder()
-        results = builder.search(query, limit)
-        return {
-            "query": query,
-            "results": results,
-        }
-    except Exception as e:
-        logger.error(f"Graph search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/graph/file")
-async def graph_file(file_path: str):
-    """Get graph subgraph for a specific file."""
-    from ..core import GraphBuilder
-    
-    try:
-        builder = GraphBuilder()
-        return builder.get_file_graph(file_path)
-    except Exception as e:
-        logger.error(f"Graph file failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/watcher/start")
-async def start_watcher(directory: str = "./src"):
-    """Start file watcher for project directory."""
-    from ..core import WatcherIntegration
-    
-    try:
-        integration = WatcherIntegration(directory)
-        integration.start()
-        return {
-            "status": "started",
-            "directory": directory,
-        }
-    except Exception as e:
-        logger.error(f"Watcher start failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/watcher/stop")
-async def stop_watcher():
-    """Stop file watcher."""
-    from ..core import WatcherIntegration
-    
-    try:
-        integration = WatcherIntegration()
-        integration.stop()
-        return {"status": "stopped"}
-    except Exception as e:
-        logger.error(f"Watcher stop failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/watcher/scan")
-async def scan_changes(directory: str = "./src"):
-    """One-time scan for file changes."""
-    from ..core import WatcherIntegration
-    
-    try:
-        integration = WatcherIntegration(directory)
-        changes = integration.scan_now()
-        return {
-            "status": "scanned",
-            "directory": directory,
-            "changes": changes,
-            "total": len(changes),
-        }
-    except Exception as e:
-        logger.error(f"Watcher scan failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/watcher/status")
-async def watcher_status():
-    """Get watcher status."""
-    from ..core import WatcherIntegration
-    
-    try:
-        integration = WatcherIntegration()
-        return integration.get_status()
-    except Exception as e:
-        logger.error(f"Watcher status failed: {e}")
-
-
-@router.post("/orchestrate")
-async def orchestrate(request: OrchestrateRequest):
-    """Полный пайплайн: Intent → RAG → Graph → Assembler → LLM."""
-    try:
-        pipeline = get_pipeline()
-        result = pipeline.run(
-            query=request.query,
-            model_key=request.model,
-            system=request.system,
-            temperature=request.temperature,
-            max_tokens=request.max_tokens,
-            use_llm_intent=request.use_llm_intent,
-        )
-        return result.to_dict()
-    except Exception as e:
-        logger.error(f"Orchestration failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.get("/memory/stats")
 @router.get("/memory/facts")
 async def memory_facts():
@@ -453,16 +120,6 @@ async def memory_facts():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/coordinates/{turn}")
-async def delete_coordinate_by_turn(turn: int):
-    try:
-        pipeline = get_pipeline()
-        mc = pipeline._meta_coordinator
-        mc._active = [c for c in mc._active if c.turn != turn]
-        pipeline.session_save()  # save state
-        return {"status": "deleted", "turn": turn}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 async def memory_stats():
     """Статистика самообновляемой памяти."""
@@ -484,79 +141,6 @@ async def memory_clear():
     except Exception as e:
         logger.error(f"Memory clear failed: {e}")
 
-class FactSaveRequest(BaseModel):
-    text: str
-    importance: float = 0.7
-    is_anchor: bool = False
-    session_id: str = "default"
-    metadata: dict = {}
-
-
-@router.post("/memory/fact")
-async def save_memory_fact(request: FactSaveRequest):
-    """Сохранить факт в рабочую память CTX."""
-    try:
-        pipeline = get_pipeline()
-        if request.is_anchor:
-            fact = pipeline.working_memory.add_anchor(
-                request.text, source="user"
-            )
-        else:
-            # Фильтруем 'source' из metadata чтобы избежать дублирования
-            clean_metadata = {k: v for k, v in request.metadata.items() if k != 'source'}
-            fact = pipeline.working_memory.add_text(
-                request.text, source="user",
-                importance=request.importance,
-                **clean_metadata
-            )
-        return {"id": fact.fact_id, "status": "saved", "is_anchor": fact.is_anchor}
-    except Exception as e:
-        logger.error(f"Save memory fact failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/memory/search")
-async def search_memory_facts(
-    query: str,
-    limit: int = 10,
-    session_id: str = "default"
-):
-    """Поиск фактов в памяти CTX."""
-    try:
-        pipeline = get_pipeline()
-        # Поиск в долгосрочном хранилище
-        storage_results = pipeline.memory_storage.retrieve(query, top_k=limit)
-        # Также берём из рабочей памяти (горячие факты)
-        wm_facts = pipeline.working_memory.get_facts()
-        # Объединяем - рабочая память приоритетнее
-        seen_ids = set()
-        results = []
-        for fact in wm_facts:
-            if fact.fact_id not in seen_ids and query.lower() in fact.content.lower():
-                results.append({
-                    "id": fact.fact_id,
-                    "text": fact.content,
-                    "score": fact.attention_weight,
-                    "is_anchor": fact.is_anchor,
-                    "metadata": {"source": "working_memory"}
-                })
-                seen_ids.add(fact.fact_id)
-        for fact in storage_results:
-            if fact.fact_id not in seen_ids:
-                results.append({
-                    "id": fact.fact_id,
-                    "text": fact.content,
-                    "score": fact.attention_weight,
-                    "is_anchor": fact.is_anchor,
-                    "metadata": {"source": "storage"}
-                })
-                seen_ids.add(fact.fact_id)
-        return {"results": results[:limit], "total": len(results)}
-    except Exception as e:
-        logger.error(f"Memory search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 
 @router.get("/cci/stats")
 async def cci_stats():
@@ -567,29 +151,6 @@ async def cci_stats():
     except Exception as e:
         logger.error(f"CCI stats failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/cci/reset")
-async def cci_reset():
-    """Сбросить историю CCI (новая сессия)."""
-    try:
-        pipeline = get_pipeline()
-        pipeline.cci_tracker.reset()
-        return {"status": "reset", "message": "CCI history cleared"}
-    except Exception as e:
-        logger.error(f"CCI reset failed: {e}")
-
-
-@router.get("/coordinates")
-async def get_coordinates():
-    """Информация о текущих координатах сессии (для UI)."""
-    try:
-        pipeline = get_pipeline()
-        return pipeline.coordinates_info()
-    except Exception as e:
-        logger.error(f"Coordinates info failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @router.get("/session/info")
@@ -615,28 +176,6 @@ async def session_delete():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/session/save")
-async def session_save():
-    """Принудительно сохранить текущую сессию."""
-    try:
-        pipeline = get_pipeline()
-        pipeline._session.save(
-            working_memory=pipeline.working_memory,
-            storage=pipeline.memory_storage,
-            chat_history=pipeline._chat_history,
-            turn=pipeline._turn,
-        )
-        return {
-            "status": "saved",
-            "turn": pipeline._turn,
-            "working_memory_facts": pipeline.working_memory.size(),
-            "storage_facts": pipeline.memory_storage.size(),
-        }
-    except Exception as e:
-        logger.error(f"Session save failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.get("/dual-model/stats")
 async def dual_model_stats():
     """Статистика Dual Model Router (P6): coordinator vs generator."""
@@ -645,22 +184,6 @@ async def dual_model_stats():
         return pipeline.dual_model_stats()
     except Exception as e:
         logger.error(f"Dual model stats failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/dual-model/refresh")
-async def dual_model_refresh():
-    """Перепроверить доступность generator модели (7B)."""
-    try:
-        pipeline = get_pipeline()
-        available = pipeline._router.refresh_generator_check()
-        return {
-            "generator_model": pipeline._router.generator_model,
-            "generator_available": available,
-            "coordinator_model": pipeline._router.coordinator_model,
-        }
-    except Exception as e:
-        logger.error(f"Dual model refresh failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -747,90 +270,6 @@ async def hardware_info():
     except Exception as e:
         logger.error(f"Hardware info failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# ── F1: Multi-session API endpoints ──────────────────────
-
-class NewSessionRequest(BaseModel):
-    display_name: Optional[str] = None
-    session_type: str = "chat"  # 'chat' or 'project'
-    project_path: Optional[str] = None
-
-
-class RenameSessionRequest(BaseModel):
-    display_name: str
-
-
-@router.get("/sessions")
-async def list_sessions():
-    """Список всех сессий."""
-    try:
-        pipeline = get_pipeline()
-        return pipeline.get_sessions()
-    except Exception as e:
-        logger.error(f"List sessions failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/sessions/new")
-async def create_new_session(req: NewSessionRequest):
-    """Создать новую сессию и переключиться на неё."""
-    try:
-        pipeline = get_pipeline()
-        result = pipeline.create_new_session(
-            display_name=req.display_name,
-            session_type=req.session_type,
-            project_path=req.project_path,
-        )
-        return result
-    except Exception as e:
-        logger.error(f"Create session failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/sessions/{session_id}/switch")
-async def switch_session(session_id: str):
-    """Переключить активную сессию."""
-    try:
-        pipeline = get_pipeline()
-        result = pipeline.switch_session(session_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=404, detail=result.get("error", "Session not found"))
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Switch session failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.patch("/sessions/{session_id}/rename")
-async def rename_session(session_id: str, req: RenameSessionRequest):
-    """Переименовать сессию."""
-    try:
-        pipeline = get_pipeline()
-        result = pipeline.rename_session(session_id, req.display_name)
-        return result
-    except Exception as e:
-        logger.error(f"Rename session failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/sessions/{session_id}")
-async def delete_session(session_id: str):
-    """Удалить сессию."""
-    try:
-        pipeline = get_pipeline()
-        result = pipeline.delete_session_by_id(session_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=400, detail="Cannot delete this session")
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Delete session failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 
 # ── Admin Panel: дополнительные endpoints ──────────────────
@@ -939,7 +378,6 @@ async def models_status():
                 "generator": {"model": "—", "status": "offline"}}
 
 
-
 @router.post("/models/switch")
 async def switch_model(req: dict):
     """Переключить модель координатора или генератора без перезапуска.
@@ -979,86 +417,6 @@ async def switch_model(req: dict):
     except Exception as e:
         logger.error(f"Switch model failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/models/warm")
-async def warm_model(req: dict):
-    """Прогреть модель в VRAM с keep_alive=-1.
-
-    Body: {"model": "qwen3.5:2b", "role": "utility"}  # role опционально
-    Используется Admin Panel для принудительной загрузки utility model в GPU.
-    """
-    import httpx
-    model = req.get("model", "").strip()
-    if not model:
-        raise HTTPException(status_code=400, detail="model is required")
-    try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            # Проверяем что модель существует
-            show = await client.post(
-                "http://host.docker.internal:11434/api/show",
-                json={"name": model}
-            )
-            if show.status_code != 200:
-                raise HTTPException(status_code=404, detail=f"Model '{model}' not found in Ollama")
-
-            size_gb = show.json().get("size", 0) / (1024**3)
-
-            # Загружаем в VRAM с keep_alive=-1
-            resp = await client.post(
-                "http://host.docker.internal:11434/api/generate",
-                json={"model": model, "prompt": "", "keep_alive": -1},
-                timeout=120.0
-            )
-            if resp.status_code == 200:
-                logger.info(f"[warm] ✅ {model} ({size_gb:.1f} GB) loaded to GPU (permanent)")
-                return {
-                    "status": "loaded",
-                    "model": model,
-                    "size_gb": round(size_gb, 2),
-                    "keep_alive": -1,
-                    "message": f"Model '{model}' loaded to GPU permanently"
-                }
-            else:
-                raise HTTPException(status_code=502, detail=f"Ollama returned {resp.status_code}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"[warm] Failed to warm {model}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/memory/fact/{fact_id}")
-async def delete_memory_fact(fact_id: str):
-    """Удалить конкретный факт из памяти по ID."""
-    try:
-        pipeline = get_pipeline()
-        wm = pipeline.working_memory
-        # Удаляем из WorkingMemory
-        initial_size = wm.size()
-        wm._facts = [f for f in wm._facts if f.id != fact_id]
-        deleted_wm = initial_size - wm.size()
-
-        # Удаляем из MemoryStorage
-        deleted_storage = 0
-        storage = pipeline.memory_storage
-        initial_storage = len(storage._facts)
-        storage._facts = [f for f in storage._facts if f.id != fact_id]
-        deleted_storage = initial_storage - len(storage._facts)
-
-        if deleted_wm + deleted_storage == 0:
-            raise HTTPException(status_code=404, detail=f"Fact {fact_id} not found")
-
-        return {"deleted": True, "fact_id": fact_id, 
-                "from_working_memory": deleted_wm,
-                "from_storage": deleted_storage}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Delete fact failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 
 
 # ── OpenAI-Compatible API ─────────────────────────────────────────────────

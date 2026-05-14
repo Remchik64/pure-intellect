@@ -2,7 +2,7 @@
 
 import hashlib
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from pathlib import Path
 import chromadb
 from chromadb.config import Settings

@@ -12,8 +12,7 @@ from .graph_builder import GraphBuilder
 from .card_generator import CardGenerator
 from .memory import WorkingMemory, MemoryStorage, MemoryOptimizer, AttentionScorer, CCITracker, ImportanceTagger, MetaCoordinator
 from .session import SessionPersistence
-from .session_manager import SessionManager, SESSION_TYPE_CHAT, SESSION_TYPE_PROJECT
-from .code_memory import CodeAwareMemoryIntegration
+from .session_manager import SessionManager
 from .dual_model import DualModelRouter
 
 logger = logging.getLogger(__name__)
@@ -112,10 +111,6 @@ class OrchestratorPipeline:
         # ── F1: SessionManager — multi-session support ──
         self._session_manager = SessionManager(base_dir="storage/sessions")
         self._first_message_seen: bool = False  # для auto-name
-
-        # ── C1/C3: Code Module (опциональный) ──
-        self._code_module = None  # активируется при открытии проекта
-        self._code_aware = CodeAwareMemoryIntegration()
 
         # ── R1: MetaCoordinator — управление ростом координат ──
         try:
@@ -438,24 +433,10 @@ class OrchestratorPipeline:
             except Exception as e:
                 logger.error(f"        Utility Worker failed: {e}")
 
-        # ── C3: Code-Aware Memory — получаем контекст кода ──
-        code_context = ""
-        if self._code_module is not None and self._code_module.is_indexed:
-            if self._code_module.is_code_query(query):
-                code_context = self._code_module.get_context_for_llm(
-                    query=query, top_k=3, max_tokens=1200
-                )
-                if code_context:
-                    logger.info(f"        Code context: {len(code_context)} chars")
-
         system_prompt = system or self._build_system_prompt(intent, context_cards, graph_entities)
 
-        # Добавляем кодовый контекст к system prompt если есть
-        if code_context:
-            system_prompt = system_prompt + "\n" + code_context
-
         # Используем _build_messages (внутренний метод) вместо несуществующего assemble
-        messages = self._build_messages(query, intent, context_cards, graph_entities, system_prompt if code_context else system)
+        messages = self._build_messages(query, intent, context_cards, graph_entities, system_prompt)
         logger.info(f"        Assembled {len(messages)} messages")
         
         # ── Шаг 5: Генерация ответа ──
@@ -475,19 +456,6 @@ class OrchestratorPipeline:
         # ── Rolling Window: добавляем ответ в историю ──
         self._chat_history.append({"role": "assistant", "content": response_text})
 
-        # ── C3: Code-Aware Memory — добавляем факты о коде в WM ──
-        if self._code_module is not None and code_context:
-            _, code_facts_added = self._code_aware.process_code_turn(
-                query=query,
-                code_module=self._code_module,
-                working_memory=self.working_memory,
-                response=response_text,
-                max_facts=3,
-            )
-            if code_facts_added > 0:
-                logger.info(f"        Code facts added to WM: {code_facts_added}")
-
-        
         result = OrchestrationResult(
             query=query,
             intent=intent,
