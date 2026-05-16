@@ -140,10 +140,8 @@ async function switchChat(id) {
     }
     // Reload stats (CCI, model)
     loadChatStats();
-    // Reload memory data if on memory tab
-    if (currentSection === 'memory') {
-      loadMemory();
-    }
+    // Reload memory data for new session (always, not just on memory tab)
+    loadMemory();
     await loadSessions();
     showSection('chat');
   } else {
@@ -1199,6 +1197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSessions();
   await loadChatHistory();
   loadChatStats();
+  loadMemory();  // Pre-load memory data for active session
   showSection('chat');
 });
 
