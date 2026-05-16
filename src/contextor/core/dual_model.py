@@ -27,6 +27,7 @@ import json
 import logging
 import urllib.request
 import urllib.error
+from contextor.config import settings
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,6 @@ COORDINATOR_MODEL = _DEFAULT_COORDINATOR
 GENERATOR_MODEL = _DEFAULT_GENERATOR
 
 # Настройки Ollama
-OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 GENERATE_TIMEOUT = 300  # секунд для генератора
 COORDINATE_TIMEOUT = 90  # секунд для координатора
 
@@ -80,13 +80,13 @@ class DualModelRouter:
         self,
         coordinator_model: Optional[str] = None,
         generator_model: Optional[str] = None,
-        ollama_url: str = OLLAMA_BASE_URL,
+        ollama_url: str = None,
     ):
         # Читаем из config.yaml если не переданы явно
         cfg_coordinator, cfg_generator = _load_models_from_config()
         self.coordinator_model = coordinator_model or cfg_coordinator
         self.generator_model = generator_model or cfg_generator
-        self.ollama_url = ollama_url
+        self.ollama_url = ollama_url or settings.ollama_url
 
         logger.info(
             f"[dual_model] Init: coordinator={self.coordinator_model!r}, "

@@ -7,7 +7,6 @@ from src.contextor.core.dual_model import (
     DualModelRouter,
     COORDINATOR_MODEL,
     GENERATOR_MODEL,
-    OLLAMA_BASE_URL,
 )
 
 

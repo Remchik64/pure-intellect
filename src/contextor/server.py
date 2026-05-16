@@ -104,7 +104,7 @@ async def _preload_models():
             for model in models_to_load:
                 try:
                     resp = await client.post(
-                        "http://host.docker.internal:11434/api/show",
+                        f"{settings.ollama_url}/api/show",
                         json={"name": model}
                     )
                     if resp.status_code == 200:
@@ -124,7 +124,7 @@ async def _preload_models():
             unknown_models = [m for m in models_to_load if sizes.get(m, 0) == 0]
             if unknown_models:
                 try:
-                    tags_resp = await client.get("http://host.docker.internal:11434/api/tags")
+                    tags_resp = await client.get(f"{settings.ollama_url}/api/tags")
                     if tags_resp.status_code == 200:
                         tags_data = tags_resp.json()
                         tags_map = {m["name"]: m.get("size", 0) for m in tags_data.get("models", [])}
@@ -164,7 +164,7 @@ async def _preload_models():
                 # Fallback: через Ollama /api/tags — берём total VRAM из первой запущенной модели
                 if available_vram_bytes == 0:
                     try:
-                        ps = await client.get("http://host.docker.internal:11434/api/ps")
+                        ps = await client.get(f"{settings.ollama_url}/api/ps")
                         if ps.status_code == 200:
                             ps_data = ps.json()
                             running = ps_data.get("models", [])
@@ -208,7 +208,7 @@ async def _preload_models():
             for model in load_list:
                 try:
                     resp = await client.post(
-                        "http://host.docker.internal:11434/api/generate",
+                        f"{settings.ollama_url}/api/generate",
                         json={"model": model, "prompt": "", "keep_alive": -1},
                         timeout=120.0
                     )

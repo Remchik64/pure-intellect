@@ -5,12 +5,13 @@ import httpx
 from contextor.utils.swap_manager import get_swap_manager
 from contextor.core.intent import IntentType, IntentResult
 from ddgs import DDGS
+from contextor.config import settings
 
 def _get_available_utility_model(preferred: str, fallback: str) -> str:
     """Query Ollama to verify model exists. Fall back to generator model if not."""
     try:
         import urllib.request, json as _json
-        resp = urllib.request.urlopen("http://host.docker.internal:11434/api/tags", timeout=2)
+        resp = urllib.request.urlopen(f"{settings.ollama_url}/api/tags", timeout=2)
         models = [m["name"] for m in _json.loads(resp.read()).get("models", [])]
         if preferred in models:
             return preferred
@@ -30,7 +31,7 @@ class UtilityWorker:
     def __init__(self, config):
         self.config = config
         self.swap_manager = get_swap_manager()
-        self.ollama_base = "http://host.docker.internal:11434"
+        self.ollama_base = settings.ollama_url
 
     def _chunk_text(self, text: str, chunk_size: int = 12000) -> list[str]:
         return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]

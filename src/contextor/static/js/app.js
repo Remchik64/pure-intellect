@@ -481,7 +481,7 @@ async function clearSession() {
   }
 }
 
-// Auto-resize textarea
+// Auto-resize textarea & version badge
 document.addEventListener('DOMContentLoaded', () => {
   const ta = document.getElementById('chat-input');
   ta.addEventListener('input', () => {
@@ -494,6 +494,16 @@ document.addEventListener('DOMContentLoaded', () => {
       sendMessage();
     }
   });
+
+  // Fetch version from API and update badge
+  fetch('/api/v1/version')
+    .then(r => r.json())
+    .then(data => {
+      const ver = data.version || 'dev';
+      const badge = document.getElementById('version-badge');
+      if (badge) badge.textContent = 'v' + ver.replace(/^v/, '');
+    })
+    .catch(() => {});  // silently ignore — keep default v0.2
 });
 
 // ================================================================

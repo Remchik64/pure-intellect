@@ -18,12 +18,12 @@ import logging
 import re
 import urllib.request
 import urllib.error
+from contextor.config import settings
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
 # Ollama настройки
-OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 TAGGER_MODEL = "qwen3.5:2b"
 TAGGER_TIMEOUT = 12  # секунд
 
@@ -64,11 +64,11 @@ class ImportanceTagger:
     
     def __init__(
         self,
-        ollama_url: str = OLLAMA_BASE_URL,
+        ollama_url: str = None,
         model: str = TAGGER_MODEL,
         timeout: int = TAGGER_TIMEOUT,
     ):
-        self._ollama_url = ollama_url
+        self._ollama_url = ollama_url or settings.ollama_url
         self._model = model
         self._timeout = timeout
         self._llm_available: bool | None = None

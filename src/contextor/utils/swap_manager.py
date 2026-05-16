@@ -16,9 +16,9 @@ import asyncio
 import logging
 from typing import Optional
 
-logger = logging.getLogger(__name__)
+from ..config import settings
 
-_OLLAMA_BASE = "http://host.docker.internal:11434"
+logger = logging.getLogger(__name__)
 
 
 class ModelSwapManager:
@@ -45,12 +45,12 @@ class ModelSwapManager:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 if is_embed:
                     resp = await client.post(
-                        f"{_OLLAMA_BASE}/api/embed",
+                        f"{settings.ollama_url}/api/embed",
                         json={"model": model, "input": "", "keep_alive": -1},
                     )
                 else:
                     resp = await client.post(
-                        f"{_OLLAMA_BASE}/api/generate",
+                        f"{settings.ollama_url}/api/generate",
                         json={"model": model, "prompt": "", "keep_alive": -1},
                     )
                 if resp.status_code == 200:
@@ -69,12 +69,12 @@ class ModelSwapManager:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 if is_embed:
                     resp = await client.post(
-                        f"{_OLLAMA_BASE}/api/embed",
+                        f"{settings.ollama_url}/api/embed",
                         json={"model": model, "input": "", "keep_alive": 0},
                     )
                 else:
                     resp = await client.post(
-                        f"{_OLLAMA_BASE}/api/generate",
+                        f"{settings.ollama_url}/api/generate",
                         json={"model": model, "prompt": "", "keep_alive": 0},
                     )
                 if resp.status_code == 200:
@@ -95,7 +95,7 @@ class ModelSwapManager:
         while asyncio.get_event_loop().time() < deadline:
             try:
                 async with httpx.AsyncClient(timeout=5.0) as client:
-                    resp = await client.get(f"{_OLLAMA_BASE}/api/ps")
+                    resp = await client.get(f"{settings.ollama_url}/api/ps")
                     if resp.status_code == 200:
                         loaded = [m.get("name", "") for m in resp.json().get("models", [])]
                         # Check if model is still loaded (compare base name)

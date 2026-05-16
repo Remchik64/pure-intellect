@@ -10,6 +10,8 @@ import shutil
 from dataclasses import dataclass, field
 from typing import Optional
 
+from contextor.config import settings
+
 try:
     import psutil
     HAS_PSUTIL = True
@@ -164,7 +166,7 @@ class HardwareDetector:
         # Ollama fallback: если Ollama использует GPU — берём инфо оттуда
         try:
             import urllib.request, json as _json
-            req = urllib.request.urlopen("http://host.docker.internal:11434/api/ps", timeout=3)
+            req = urllib.request.urlopen(f"{settings.ollama_url}/api/ps", timeout=3)
             data = _json.loads(req.read())
             models = data.get("models", [])
             for m in models:

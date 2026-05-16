@@ -24,3 +24,14 @@ class HealthResponse(BaseModel):
     status: str
     model_loaded: bool
     version: str
+
+
+class SwitchModelRequest(BaseModel):
+    """Запрос на переключение модели."""
+    role: str = Field(..., description="Ключ модели: coordinator или generator")
+    model: str = Field(..., description="Имя модели (например, qwen3.5:9b)")
+
+
+class DownloadModelRequest(BaseModel):
+    """Запрос на скачивание модели."""
+    model: str = Field(..., description="Имя модели для скачивания")

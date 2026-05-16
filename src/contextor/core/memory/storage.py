@@ -21,6 +21,7 @@ import urllib.error
 from pathlib import Path
 from typing import Optional
 from .fact import Fact, CompressionLevel
+from contextor.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,6 @@ HOT_PROMOTION_THRESHOLD = 5   # Если факт запрошен N раз — 
 COLD_ARCHIVE_THRESHOLD = 0.05  # Если вес ниже — кандидат на архивирование
 
 # Ollama embedding настройки (fallback)
-OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 OLLAMA_EMBED_MODEL = "nomic-embed-text"  # default, читается из config.yaml при инициализации
 EMBED_TIMEOUT = 60  # секунд (nomic-embed-text первый запуск занимает 15-30 сек)
 
@@ -151,7 +151,7 @@ def _get_ollama_embedding(text: str) -> list[float] | None:
         }).encode("utf-8")
         
         req = urllib.request.Request(
-            f"{OLLAMA_BASE_URL}/api/embed",
+            f"{settings.ollama_url}/api/embed",
             data=payload,
             headers={"Content-Type": "application/json"},
             method="POST"
@@ -199,7 +199,7 @@ class MemoryStorage:
         self,
         storage_path: Optional[str] = None,
         use_semantic: bool = True,
-        ollama_url: str = OLLAMA_BASE_URL,
+        ollama_url: str = None,
         embed_model: str = OLLAMA_EMBED_MODEL,
     ):
         self._facts: dict[str, Fact] = {}  # fact_id → Fact
@@ -213,7 +213,7 @@ class MemoryStorage:
         
         # Семантический поиск
         self._use_semantic = use_semantic
-        self._ollama_url = ollama_url
+        self._ollama_url = ollama_url or settings.ollama_url
         self._embed_model = embed_model
         self._semantic_available: bool | None = None
         self._provider: str = "none"  # "st", "ollama", "bm25"

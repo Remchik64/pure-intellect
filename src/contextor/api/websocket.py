@@ -14,6 +14,8 @@ from typing import Optional
 import httpx
 from fastapi import WebSocket, WebSocketDisconnect
 
+from ..config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -95,7 +97,7 @@ class StreamingManager:
             # Проверяем доступность Ollama
             try:
                 import urllib.request as _ur
-                _ur.urlopen("http://host.docker.internal:11434", timeout=2)
+                _ur.urlopen(settings.ollama_url, timeout=2)
             except Exception:
                 await self.send_json(websocket, {
                     "type": "error",
@@ -113,7 +115,7 @@ class StreamingManager:
                 # Получаем URL Ollama и модель из router
                 try:
                     from contextor.config import settings
-                    ollama_url = getattr(settings, "ollama_url", "http://host.docker.internal:11434")
+                    ollama_url = settings.ollama_url
                     ollama_model = (
                         model_key
                         or getattr(router, "coordinator_model", None)

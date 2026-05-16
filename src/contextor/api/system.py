@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from ..api.schemas import HealthResponse
 from ..api.state import get_pipeline, get_model_manager, LOG_BUFFER, LOG_LOCK
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -284,7 +285,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
             }
             async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
-                    "http://host.docker.internal:11434/v1/chat/completions",
+                    f"{settings.ollama_url}/v1/chat/completions",
                     json=ollama_payload,
                 )
                 if resp.status_code == 200:

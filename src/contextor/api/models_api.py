@@ -4,7 +4,9 @@ import asyncio
 import logging
 import httpx
 from fastapi import APIRouter, HTTPException
+from ..api.schemas import SwitchModelRequest, DownloadModelRequest
 from ..api.state import get_pipeline, download_progress
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -27,13 +29,13 @@ async def models_status():
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             # Все скачанные модели
-            tags_resp = await client.get("http://host.docker.internal:11434/api/tags")
+            tags_resp = await client.get(f"{settings.ollama_url}/api/tags")
             tags_resp.raise_for_status()
             downloaded = [m["name"] for m in tags_resp.json().get("models", [])]
 
             # Активные в VRAM прямо сейчас
             try:
-                ps_resp = await client.get("http://host.docker.internal:11434/api/ps")
+                ps_resp = await client.get(f"{settings.ollama_url}/api/ps")
                 active = [m["name"] for m in ps_resp.json().get("models", [])]
             except Exception:
                 active = []
@@ -75,15 +77,12 @@ async def models_status():
 
 
 @router.post("/models/switch")
-async def switch_model(req: dict):
-    """Переключить модель координатора или генератора без перезапуска.
-
-    Body: {"role": "coordinator" | "generator", "model": "qwen3.5:9b"}
-    """
+async def switch_model(request: SwitchModelRequest):
+    """Переключить модель координатора или генератора без перезапуска."""
     try:
         pipeline = get_pipeline()
-        role = req.get("role")
-        model = req.get("model")
+        role = request.role
+        model = request.model
         if role not in ("coordinator", "generator"):
             raise HTTPException(status_code=400, detail="role must be coordinator or generator")
         if not model:
@@ -122,7 +121,7 @@ async def delete_model(model_name: str):
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.request(
                 method="DELETE",
-                url="http://host.docker.internal:11434/api/delete",
+                url=f"{settings.ollama_url}/api/delete",
                 json={"name": model_name},
             )
             if resp.status_code == 200:
@@ -141,16 +140,12 @@ async def delete_model(model_name: str):
 
 
 @router.post("/models/download")
-async def download_model(req: dict):
-    """Скачать модель через Ollama со streaming прогрессом.
-
-    Body: {"model": "qwen3.5:2b"}
-    Прогресс доступен через GET /models/download/check/{model}
-    """
+async def download_model(request: DownloadModelRequest):
+    """Скачать модель через Ollama со streaming прогрессом."""
     import json as _json
     import time as _time
 
-    model = req.get("model", "").strip()
+    model = request.model.strip()
     if not model:
         raise HTTPException(status_code=400, detail="model is required")
 
@@ -176,7 +171,7 @@ async def download_model(req: dict):
             async with httpx.AsyncClient(timeout=None) as client:
                 async with client.stream(
                     "POST",
-                    "http://host.docker.internal:11434/api/pull",
+                    f"{settings.ollama_url}/api/pull",
                     json={"name": model, "stream": True},
                     timeout=None,
                 ) as resp:
@@ -253,7 +248,7 @@ async def check_model_downloaded(model_name: str):
     # Проверяем готовность через Ollama
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get("http://host.docker.internal:11434/api/tags")
+            resp = await client.get(f"{settings.ollama_url}/api/tags")
             data = resp.json()
             available = [m["name"] for m in data.get("models", [])]
             is_ready = any(
@@ -308,7 +303,7 @@ async def ollama_models_proxy():
     """
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get("http://host.docker.internal:11434/api/tags")
+            resp = await client.get(f"{settings.ollama_url}/api/tags")
             return resp.json()
     except Exception as e:
         logger.warning(f"Ollama not available: {e}")

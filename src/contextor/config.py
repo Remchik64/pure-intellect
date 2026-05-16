@@ -39,6 +39,12 @@ class Settings(BaseSettings):
         description="Количество GPU слоёв (-1 = все)"
     )
     
+    # Ollama
+    ollama_url: str = Field(
+        default="http://host.docker.internal:11434",
+        description="URL Ollama API"
+    )
+    
     # Storage
     storage_dir: str = Field(default="./storage", description="Директория хранилища")
     chroma_dir: str = Field(default="./storage/chromadb", description="Директория ChromaDB")
