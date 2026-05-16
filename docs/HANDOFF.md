@@ -1,7 +1,7 @@
 # 📋 Записка для следующего чата — Contextor Development Context
 
-> Дата: 2026-05-12
-> Создал: Agent Zero (hacker profile)
+> Дата: 2026-05-16
+> Создал: Agent Zero (developer profile)
 > Проект: https://github.com/Remchik64/Contextor-pro (активная разработка)
 > Архив: https://github.com/Remchik64/pure-intellect (только чтение)
 > Локальная копия: /a0/usr/workdir/pure-intellect/ (пакет переименован в contextor)
@@ -121,40 +121,54 @@ CTX инжектирует не только координату, а **4-сло
 | Файл | Строки | Описание |
 |------|--------|----------|
 | `src/contextor/core/orchestrator.py` | 908 | Главный пайплайн, Soft Reset, координаты |
-| `src/contextor/api/routes.py` | 813 | API эндпоинты (очищен от мёртвого кода) |
-| `src/contextor/core/memory/` | — | Иерархическая память (HOT/WARM/COLD) |
+| `src/contextor/api/routes.py` | 17 | Роутер-хаб (делегирует в модули) |
+| `src/contextor/api/chat.py` | 42 | Chat API эндпоинты |
+| `src/contextor/api/session.py` | 31 | Session API эндпоинты |
+| `src/contextor/api/memory_api.py` | 43 | Memory API эндпоинты |
+| `src/contextor/api/models_api.py` | 310 | Models API (status, switch, download) |
+| `src/contextor/api/system.py` | 353 | System API (health, config, hardware, OpenAI) |
+| `src/contextor/api/websocket.py` | 358 | WebSocket стриминг |
+| `src/contextor/api/schemas.py` | 37 | Pydantic модели для API |
+| `src/contextor/api/state.py` | 56 | Глобальное состояние пайплайна |
 | `src/contextor/core/dual_model.py` | 325 | Маршрутизация Coordinator/Generator |
 | `src/contextor/utils/swap_manager.py` | 200 | VRAM Swap Manager |
-| `src/contextor/core/memory/meta_coordinator.py` | 254 | Мета-координаты (сжатие координат) |
 | `src/contextor/core/memory/working_memory.py` | 396 | Рабочая память (HOT) |
-| `src/contextor/config.py` | — | Конфигурация (Pydantic Settings) |
+| `src/contextor/core/memory/meta_coordinator.py` | 254 | Мета-координаты (сжатие координат) |
+| `src/contextor/config.py` | 76 | Конфигурация (Pydantic Settings, ollama_url) |
+| `src/contextor/server.py` | 243 | FastAPI сервер, startup/shutdown |
+| `src/contextor/static/index.html` | 341 | Web UI HTML |
+| `src/contextor/static/css/style.css` | 1040 | Web UI стили |
+| `src/contextor/static/js/app.js` | 1075 | Web UI JavaScript |
 
 ---
 
 ## ⚠️ Известные проблемы
 
-1. **routes.py — 813 строк** — очищен от мёртвого кода (было 1976), возможно дальнейшее разбиение
-2. **Coordinator prompt на русском** — для Module Mode нужен английский
-3. **Нет proxy pipeline** — основная задача Фазы 2
-4. **Нет UCIP v2** — координаты генерируются в русском шаблонном формате
-5. **CCI threshold фиксированный (0.55)** — нужен adaptive
+1. **Coordinator prompt на русском** — для Module Mode нужен английский
+2. **Нет proxy pipeline** — основная задача Фазы 2
+3. **Нет UCIP v2** — координаты генерируются в русском шаблонном формате
+4. **CCI threshold фиксированный (0.55)** — нужен adaptive
+5. **Задержка ответа ~25 сек** — pipeline.run() синхронный, ответ появляется целиком
+6. **После перезапуска сервера нужен F5** — WebSocket не переподключается автоматически
+7. **Тесты модели** — test_config/test_tagger/test_hardware_detector ждут старые имена qwen2.5, код использует qwen3.5
 
 ---
 
 ## 🚀 Следующий шаг
 
-**Начать реализацию Фазы 1 — Стабильность ядра:**
-1. Исправить известные баги в orchestrator.py
+**Продолжить реализацию Фазы 1 — Стабильность ядра:**
+1. Обновить тесты под текущие имена моделей (qwen3.5 вместо qwen2.5)
 2. Переписать _create_coordinate() на английский (UCIP format)
 3. Добавить 4-слойный Context Package в _build_system_prompt()
-4. Улучшить CCI алгоритм
-5. Упростить UI (убрать лишнее)
+4. Улучшить CCI алгоритм (adaptive threshold)
+5. Асинхронный pipeline.run() для стриминга ответов
+6. WebSocket auto-reconnect на клиенте
 
 Для начала работы прочитать:
-- `docs/CTX_MODULE_ARCHITECTURE.md` — полная архитектура
+- `docs/CTX_MODULE_ARCHITECTURE.md` — полная архитектура Module Mode
 - `docs/ROADMAP.md` — дорожная карта с задачами
 - `docs/architecture.md` — оригинальная архитектура проекта
-- `src/contextor/core/orchestrator.py` — ядро (940 строк)
+- `src/contextor/core/orchestrator.py` — ядро (908 строк)
  
  ---
  
@@ -303,6 +317,50 @@ CTX инжектирует не только координату, а **4-сло
 **Следующие шаги:**
 - ✅ Почистить pyproject.toml (6 неиспользуемых зависимостей) — ВЫПОЛНЕНО
 - Начать реализацию Фазы 1 — UCIP v2
+
+### 16 мая 2026 — Рефакторинг UI, API-модули, Code Review
+
+**Выполнено:**
+
+1. ✅ **Рефакторинг index.html: 2448→341 строка (−86%)**
+   - CSS вынесен в `static/css/style.css` (1040 строк)
+   - JS вынесен в `static/js/app.js` (1065 строк)
+   - index.html — чистая HTML-разметка, без инлайн-стилей и скриптов
+
+2. ✅ **Рефакторинг routes.py: 813→17 строк (−98%)**
+   - Разделён на модули: `api/state.py` (56), `api/chat.py` (42), `api/session.py` (31), `api/memory_api.py` (43), `api/models_api.py` (310), `api/system.py` (353)
+   - `routes.py` — роутер-хаб, делегирует в подмодули
+
+3. ✅ **Code Review — 3 критические проблемы исправлены**
+   - `style.css`: незакрытый `@keyframes pulse-think` — исправлено
+   - `websocket.py`: `get_pipeline()` → `_get_pipeline()` — исправлено (ленивый импорт)
+   - `style.css`: лишняя `}` в конце файла — удалена
+
+4. ✅ **Code Review — 4 важных замечания исправлено**
+   - **Централизация Ollama URL**: 21 захардкоженный `http://host.docker.internal:11434` → `settings.ollama_url` в 10 файлах (server.py, swap_manager.py, hardware_detector.py, tagger.py, storage.py, utility_worker.py, dual_model.py, models_api.py, system.py, websocket.py)
+   - **Pydantic модели**: `SwitchModelRequest` и `DownloadModelRequest` добавлены в `schemas.py`, `models_api.py` обновлён
+   - **Динамическая версия**: `<span>v0.2</span>` → `<span id="version-badge">` + JS fetch `/api/v1/version`
+   - Удалены локальные константы `_OLLAMA_BASE`, `OLLAMA_BASE_URL` из swap_manager, tagger, storage, dual_model
+
+5. ✅ **Исправлен баг WebSocket 'Ollama не запущена!'**
+   - Удалена blocking `urllib` предпроверка из async handler (коммит 543ec02)
+   - Причина: `urllib.request.urlopen()` блокировал event loop → WebSocket timeout
+
+6. ✅ **6 неиспользуемых зависимостей убрано из pyproject.toml**
+   - Удалены: watchdog, tree-sitter-javascript, tree-sitter-typescript, aiofiles, python-dotenv, rich
+
+7. ✅ **Push в оба репозитория** (Contextor + Contextor-pro)
+
+**Известные особенности:**
+- После перезапуска сервера нужен F5 для WebSocket reconnect
+- Задержка ответа ~25 сек (pipeline.run() синхронный) — ответ появляется целиком
+- Тесты: 19 fail'ов (старые имена qwen2.5 vs qwen3.5) — pre-existing, не от текущих изменений
+
+**Следующие шаги:**
+- Обновить тесты под текущие имена моделей (qwen3.5)
+- Начать реализацию Фазы 1 — UCIP v2
+- Асинхронный pipeline.run() для стриминга ответов
+- WebSocket auto-reconnect на клиенте
 
 ---
 
