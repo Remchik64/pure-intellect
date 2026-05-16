@@ -54,3 +54,19 @@ def get_pipeline():
                 from ..core import OrchestratorPipeline
                 _pipeline = OrchestratorPipeline(model_manager=get_model_manager())
     return _pipeline
+
+
+# ── Session Manager singleton ──────────────────────────────────────────────────
+_session_manager = None
+_session_manager_lock = threading.Lock()
+
+
+def get_session_manager():
+    """Получить thread-safe singleton SessionManager."""
+    global _session_manager
+    if _session_manager is None:
+        with _session_manager_lock:
+            if _session_manager is None:
+                from ..core.session_manager import SessionManager
+                _session_manager = SessionManager()
+    return _session_manager

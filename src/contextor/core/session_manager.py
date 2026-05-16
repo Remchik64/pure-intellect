@@ -1,19 +1,19 @@
 """SessionManager — управление несколькими именованными сессиями.
 
-F1 дорожной карты: Multi-session + Project binding.
+MVP v0.3: Multi-session + изоляция данных.
 
 Возможности:
 - Несколько независимых сессий (чаты и проекты)
 - Автоматическое имя из первого сообщения
 - Переключение между сессиями
-- Привязка к папке проекта
 - Переименование и удаление
+- Каждая сессия = своя папка в storage/sessions/<id>/
 
 UX как в ChatGPT/Claude:
-  [+ Новый чат]  [📂 Открыть проект]
+  [+ Новый чат]
+  💬 New Chat
   💬 как_написать_fastapi
   📁 contextor
-  💬 мои_вопросы
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ import json
 import logging
 import re
 import shutil
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -31,6 +32,11 @@ logger = logging.getLogger(__name__)
 DEFAULT_SESSION = "default"
 SESSION_TYPE_CHAT = "chat"
 SESSION_TYPE_PROJECT = "project"
+
+
+def _short_uuid() -> str:
+    """Генерировать короткий UUID (8 символов)."""
+    return uuid.uuid4().hex[:8]
 
 
 class SessionInfo:
@@ -117,7 +123,7 @@ class SessionManager:
 
     Алгоритм:
     1. list_sessions() — список всех сессий из storage/sessions/
-    2. create_session() — создать новую сессию
+    2. create_session() — создать новую сессию с short UUID
     3. auto_name() — автоматическое имя из первого сообщения
     4. switch_session() — переключить активную сессию
     5. rename_session() — переименовать
@@ -140,12 +146,28 @@ class SessionManager:
         # Убеждаемся что default сессия существует
         default_dir = self._base_dir / DEFAULT_SESSION
         default_dir.mkdir(exist_ok=True)
+        # Создаём meta для default если нет
+        default_meta = default_dir / "session_meta.json"
+        if not default_meta.exists():
+            default_info = SessionInfo(
+                session_id=DEFAULT_SESSION,
+                display_name="Default Chat",
+                session_type=SESSION_TYPE_CHAT,
+            )
+            default_meta.write_text(
+                json.dumps(default_info.to_dict(), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
 
     # ── Публичный API ────────────────────────────────────────
 
     @property
     def active_session_id(self) -> str:
         return self._active_session_id
+
+    @property
+    def base_dir(self) -> Path:
+        return self._base_dir
 
     def list_sessions(self) -> list[SessionInfo]:
         """Список всех сессий отсортированных по активности (новые сначала)."""
@@ -156,16 +178,12 @@ class SessionManager:
                 if info:
                     sessions.append(info)
 
-        # Сортируем: активная первая, потом по last_active
-        sessions.sort(
-            key=lambda s: (
-                0 if s.session_id == self._active_session_id else 1,
-                s.last_active or "",
-            ),
-            reverse=True,
-        )
-        # Корректируем: активная должна быть первой
-        sessions.sort(key=lambda s: 0 if s.session_id == self._active_session_id else 1)
+        # Сортируем: активная первая, потом по last_active (новые сверху)
+        def _sort_key(s: SessionInfo):
+            is_active = 0 if s.session_id == self._active_session_id else 1
+            return (is_active, s.last_active or "")
+
+        sessions.sort(key=_sort_key)
         return sessions
 
     def create_session(
@@ -177,26 +195,27 @@ class SessionManager:
         """Создать новую сессию.
 
         Args:
-            display_name: Человекочитаемое имя (авто-генерируется из slug если не задано)
+            display_name: Человекочитаемое имя (default: 'New Chat')
             session_type: 'chat' или 'project'
             project_path: Путь к папке проекта (для type='project')
 
         Returns:
             SessionInfo новой сессии
         """
-        # Генерируем уникальный session_id
-        timestamp = datetime.now().strftime("%m%d_%H%M")
-        base_name = self._to_slug(display_name or f"new_chat_{timestamp}")
-        session_id = self._unique_id(base_name)
+        # Генерируем уникальный session_id (8-char UUID)
+        session_id = self._unique_uuid()
 
         # Создаём директорию
         session_dir = self._base_dir / session_id
         session_dir.mkdir(exist_ok=True)
 
+        # Имя по умолчанию
+        name = display_name or "New Chat"
+
         # Создаём метаданные
         info = SessionInfo(
             session_id=session_id,
-            display_name=display_name or session_id,
+            display_name=name,
             session_type=session_type,
             project_path=project_path,
             indexed_files=0,
@@ -209,44 +228,20 @@ class SessionManager:
 
         logger.info(
             f"[session_manager] Created session: {session_id} "
-            f"(type={session_type}, name={display_name!r})"
+            f"(type={session_type}, name={name!r})"
         )
         return info
 
-    def auto_name_from_message(self, message: str, session_id: str) -> str:
-        """Автоматически назвать сессию из первого сообщения.
-
-        Берёт первые 4 слова, делает slug, обновляет display_name.
-        session_id (папка) остаётся прежним.
+    def get_session(self, session_id: str) -> Optional[SessionInfo]:
+        """Получить информацию о сессии по ID.
 
         Returns:
-            Новый display_name
+            SessionInfo если сессия найдена, None если не существует
         """
-        # Берём первые 4 значимых слова
-        words = message.strip().split()
-        meaningful = [w for w in words if len(w) > 2][:4]
-        if not meaningful:
-            meaningful = words[:4]
-
-        display_name = " ".join(meaningful)
-        if len(display_name) > 40:
-            display_name = display_name[:40]
-
-        # Обновляем display_name в session_meta.json
-        meta_path = self._base_dir / session_id / "session_meta.json"
-        if meta_path.exists():
-            try:
-                with open(meta_path, "r", encoding="utf-8") as f:
-                    meta = json.load(f)
-                meta["display_name"] = display_name
-                meta["last_active"] = datetime.now().isoformat()
-                with open(meta_path, "w", encoding="utf-8") as f:
-                    json.dump(meta, f, ensure_ascii=False, indent=2)
-            except Exception as e:
-                logger.warning(f"[session_manager] auto_name failed: {e}")
-
-        logger.info(f"[session_manager] Auto-named session {session_id!r}: {display_name!r}")
-        return display_name
+        session_dir = self._base_dir / session_id
+        if not session_dir.exists():
+            return None
+        return SessionInfo.from_session_dir(session_dir)
 
     def switch_to(self, session_id: str) -> Optional[SessionInfo]:
         """Переключить активную сессию.
@@ -279,6 +274,7 @@ class SessionManager:
             with open(meta_path, "r", encoding="utf-8") as f:
                 meta = json.load(f)
             meta["display_name"] = new_display_name
+            meta["last_active"] = datetime.now().isoformat()
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(meta, f, ensure_ascii=False, indent=2)
             logger.info(f"[session_manager] Renamed {session_id!r} → {new_display_name!r}")
@@ -315,6 +311,41 @@ class SessionManager:
             logger.error(f"[session_manager] Delete failed: {e}")
             return False
 
+    def auto_name_from_message(self, message: str, session_id: str) -> str:
+        """Автоматически назвать сессию из первого сообщения.
+
+        Берёт первые 4 слова, делает slug, обновляет display_name.
+        session_id (папка) остаётся прежним.
+
+        Returns:
+            Новый display_name
+        """
+        # Берём первые 4 значимых слова
+        words = message.strip().split()
+        meaningful = [w for w in words if len(w) > 2][:4]
+        if not meaningful:
+            meaningful = words[:4]
+
+        display_name = " ".join(meaningful)
+        if len(display_name) > 40:
+            display_name = display_name[:40]
+
+        # Обновляем display_name в session_meta.json
+        meta_path = self._base_dir / session_id / "session_meta.json"
+        if meta_path.exists():
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                meta["display_name"] = display_name
+                meta["last_active"] = datetime.now().isoformat()
+                with open(meta_path, "w", encoding="utf-8") as f:
+                    json.dump(meta, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                logger.warning(f"[session_manager] auto_name failed: {e}")
+
+        logger.info(f"[session_manager] Auto-named session {session_id!r}: {display_name!r}")
+        return display_name
+
     def update_meta(
         self,
         session_id: str,
@@ -338,16 +369,12 @@ class SessionManager:
         except Exception as e:
             logger.warning(f"[session_manager] update_meta failed: {e}")
 
-    def get_session_info(self, session_id: str) -> Optional[SessionInfo]:
-        """Получить информацию о конкретной сессии."""
-        session_dir = self._base_dir / session_id
-        if not session_dir.exists():
-            return None
-        return SessionInfo.from_session_dir(session_dir)
-
     def session_exists(self, session_id: str) -> bool:
         """Проверить существование сессии."""
-        return (self._base_dir / session_id).exists()
+        return (self._base_dir / session_id).is_dir()
+
+    # Backward-compatible alias
+    get_session_info = get_session
 
     def stats(self) -> dict:
         """Статистика менеджера сессий."""
@@ -362,21 +389,12 @@ class SessionManager:
 
     # ── Внутренние методы ────────────────────────────────────
 
-    def _to_slug(self, text: str) -> str:
-        """Преобразовать текст в slug для имени папки."""
-        # Убираем спецсимволы, оставляем буквы цифры и подчёркивания
-        slug = re.sub(r'[^\w\s-]', '', text.lower())
-        slug = re.sub(r'[\s-]+', '_', slug)
-        slug = slug.strip('_')
-        # Ограничиваем длину
-        return slug[:50] if slug else "session"
-
-    def _unique_id(self, base: str) -> str:
-        """Генерировать уникальный session_id."""
-        if not (self._base_dir / base).exists():
-            return base
-        # Добавляем суффикс
-        i = 2
-        while (self._base_dir / f"{base}_{i}").exists():
-            i += 1
-        return f"{base}_{i}"
+    def _unique_uuid(self) -> str:
+        """Генерировать уникальный 8-символьный UUID для session_id."""
+        for _ in range(10):  # максимум 10 попыток
+            sid = _short_uuid()
+            if not (self._base_dir / sid).exists():
+                return sid
+        # Fallback: добавляем суффикс
+        sid = _short_uuid() + "_1"
+        return sid

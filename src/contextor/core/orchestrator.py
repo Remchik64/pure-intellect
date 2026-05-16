@@ -730,6 +730,99 @@ class OrchestratorPipeline:
         )
         return text, tokens_prompt, tokens_completion
 
+    def switch_session(self, session_id: str) -> dict:
+        """Переключить пайплайн на другую сессию.
+
+        Сохраняет текущую сессию, загружает новую.
+        Сбрасывает WorkingMemory, chat_history, turn, MetaCoordinator.
+
+        Returns:
+            dict с ключами:
+            - session_id: str
+            - turn: int
+            - chat_history: list
+            - loaded: bool
+        """
+        # Skip if already on this session
+        if self._session.session_id == session_id:
+            logger.info(f"[switch_session] Already on session {session_id}, skipping")
+            return {
+                "session_id": session_id,
+                "turn": self._turn,
+                "chat_history": self._chat_history,
+                "loaded": True,
+            }
+
+        # Step 1: Save current session state
+        try:
+            self._session.save(
+                working_memory=self.working_memory,
+                storage=self.memory_storage,
+                chat_history=self._chat_history,
+                turn=self._turn,
+            )
+            logger.info(
+                f"[switch_session] Saved current session {self._session.session_id}"
+            )
+        except Exception as e:
+            logger.warning(f"[switch_session] Failed to save current session: {e}")
+
+        # Step 2: Create new SessionPersistence and load
+        new_session = SessionPersistence(
+            base_dir="storage/sessions",
+            session_id=session_id,
+        )
+
+        # Step 3: Clear WorkingMemory (remove stale facts from previous session)
+        self.working_memory.clear()
+
+        # Step 4: Load new session state
+        if new_session.exists:
+            result = new_session.load(self.working_memory, self.memory_storage)
+            self._turn = result["turn"]
+            self._chat_history = result["chat_history"]
+            loaded = result["loaded"]
+        else:
+            # New empty session
+            self._turn = 0
+            self._chat_history = []
+            loaded = False
+            logger.info(f"[switch_session] New empty session {session_id}")
+
+        # Step 5: Update pipeline references
+        self._session = new_session
+
+        # Step 6: Recreate MetaCoordinator for new session
+        try:
+            from contextor.engines.config_loader import get_config as _get_cfg
+            _meta_every = _get_cfg().memory.meta_coordinate_every
+        except Exception:
+            _meta_every = 4
+        self._meta_coordinator = MetaCoordinator(
+            session_dir=self._session.session_dir,
+            meta_every=_meta_every,
+        )
+
+        # Step 7: Reset adaptive reset counters
+        self._turns_since_reset = 0
+
+        logger.info(
+            f"[switch_session] Switched to session {session_id}: "
+            f"turn={self._turn}, history={len(self._chat_history)} msgs, "
+            f"wm={self.working_memory.size()} facts, loaded={loaded}"
+        )
+
+        return {
+            "session_id": session_id,
+            "turn": self._turn,
+            "chat_history": self._chat_history,
+            "loaded": loaded,
+        }
+
+    def get_active_session_id(self) -> str:
+        """Вернуть ID текущей активной сессии пайплайна."""
+        return self._session.session_id
+
     def session_info(self) -> dict:
         """Информация о текущей сессии (для API endpoint)."""
         return self._session.info()
@@ -759,7 +852,7 @@ class OrchestratorPipeline:
         """Очистить рабочую память (переместить в storage)."""
         self.working_memory.clear()
 
-    # ── F1: Multi-session API ────────────────────────────────
+    # ── F1: Multi-session coordinates info ─────────────────────
 
     def coordinates_info(self) -> dict:
         """Информация о текущих координатах (для UI)."""
@@ -790,112 +883,6 @@ class OrchestratorPipeline:
             "prompt_tokens_estimate": len(prompt_ctx) // 4 if prompt_ctx else 0,
         }
 
-
-    def get_sessions(self) -> dict:
-        """Список всех сессий."""
-        return self._session_manager.stats()
-
-    def create_new_session(
-        self,
-        display_name: str = None,
-        session_type: str = "chat",
-        project_path: str = None,
-    ) -> dict:
-        """Создать новую сессию и переключиться на неё."""
-        # Сохраняем текущую сессию
-        self._session.save(
-            working_memory=self.working_memory,
-            storage=self.memory_storage,
-            chat_history=self._chat_history,
-            turn=self._turn,
-        )
-
-        # Создаём новую
-        info = self._session_manager.create_session(
-            display_name=display_name,
-            session_type=session_type,
-            project_path=project_path,
-        )
-
-        # Переключаемся
-        return self._switch_to_session(info.session_id)
-
-    def switch_session(self, session_id: str) -> dict:
-        """Переключить активную сессию."""
-        if not self._session_manager.session_exists(session_id):
-            return {"success": False, "error": f"Session not found: {session_id}"}
-
-        # Сохраняем текущую
-        self._session.save(
-            working_memory=self.working_memory,
-            storage=self.memory_storage,
-            chat_history=self._chat_history,
-            turn=self._turn,
-        )
-
-        return self._switch_to_session(session_id)
-
-    def rename_session(self, session_id: str, new_name: str) -> dict:
-        """Переименовать сессию."""
-        ok = self._session_manager.rename_session(session_id, new_name)
-        return {"success": ok, "session_id": session_id, "display_name": new_name}
-
-    def delete_session_by_id(self, session_id: str) -> dict:
-        """Удалить сессию."""
-        ok = self._session_manager.delete_session(session_id)
-        return {"success": ok, "session_id": session_id}
-
-    def _switch_to_session(self, session_id: str) -> dict:
-        """Внутренний метод переключения сессии."""
-        self._session_manager.switch_to(session_id)
-
-        # Обновляем SessionPersistence
-        self._session = __import__(
-            "contextor.core.session", fromlist=["SessionPersistence"]
-        ).SessionPersistence(
-            base_dir="storage/sessions",
-            session_id=session_id,
-        )
-
-        # Сбрасываем состояние
-        from .memory import WorkingMemory, MemoryStorage
-        self.working_memory = WorkingMemory(
-            token_budget=1500,
-            storage=self.memory_storage,
-        )
-        self.memory_storage = MemoryStorage()
-        self._chat_history = []
-        self._turn = 0
-        self._first_message_seen = False
-
-        # Обновляем MetaCoordinator для новой сессии
-        self._meta_coordinator = self._meta_coordinator.__class__(
-            session_dir=self._session.session_dir,
-            meta_every=self._meta_coordinator._meta_every,
-        )
-
-        # Загружаем сохранённую сессию если есть
-        if self._session.exists:
-            result = self._session.load(self.working_memory, self.memory_storage)
-            if result["loaded"]:
-                self._turn = result["turn"]
-                self._chat_history = result["chat_history"]
-                self._first_message_seen = self._turn > 0
-                logger.info(
-                    f"[session] Switched to {session_id!r}: "
-                    f"turn={self._turn}, wm={self.working_memory.size()} facts"
-                )
-
-        info = self._session_manager.get_session_info(session_id)
-        return {
-            "success": True,
-            "session_id": session_id,
-            "display_name": info.display_name if info else session_id,
-            "session_type": info.session_type if info else "chat",
-            "turn": self._turn,
-            "wm_facts": self.working_memory.size(),
-        }
-
     def _auto_name_session_if_first(self, message: str) -> None:
         """Автоматически назвать сессию из первого сообщения."""
         if not self._first_message_seen:
@@ -905,4 +892,4 @@ class OrchestratorPipeline:
             info = self._session_manager.get_session_info(session_id)
             if info and (info.display_name == session_id or "new_chat" in info.display_name):
                 self._session_manager.auto_name_from_message(message, session_id)
-        logger.info("Working memory cleared")
+                logger.info(f"[auto_name] Session {session_id} auto-named")

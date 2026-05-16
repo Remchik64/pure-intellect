@@ -35,3 +35,14 @@ class SwitchModelRequest(BaseModel):
 class DownloadModelRequest(BaseModel):
     """Запрос на скачивание модели."""
     model: str = Field(..., description="Имя модели для скачивания")
+
+
+class CreateSessionRequest(BaseModel):
+    """Запрос на создание новой сессии."""
+    display_name: Optional[str] = Field(default=None, description="Имя чата (default: 'New Chat')")
+    session_type: Optional[str] = Field(default="chat", description="Тип сессии: chat или project")
+
+
+class RenameSessionRequest(BaseModel):
+    """Запрос на переименование сессии."""
+    display_name: str = Field(..., description="Новое имя чата")

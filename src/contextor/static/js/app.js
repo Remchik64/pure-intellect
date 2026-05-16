@@ -15,6 +15,8 @@ let chatHistory = [];
 let isTyping = false;
 let allFacts = { coords: [], anchors: [], hot: [] };
 let currentSection = 'chat';
+let activeSessionId = 'default';
+let sessionsList = [];
 
 // ================================================================
 // NAVIGATION
@@ -26,7 +28,7 @@ function showSection(name) {
     s.style.display = 'none';
     s.classList.remove('active');
   });
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.header-nav-item').forEach(n => n.classList.remove('active'));
 
   const sec = document.getElementById('section-' + name);
   if (!sec) return;
@@ -40,7 +42,7 @@ function showSection(name) {
   }
   sec.classList.add('active');
 
-  const navEl = document.querySelector(`.nav-item[data-section="${name}"]`);
+  const navEl = document.querySelector(`.header-nav-item[data-section="${name}"]`);
   if (navEl) navEl.classList.add('active');
 
   currentSection = name;
@@ -49,12 +51,12 @@ function showSection(name) {
   const sidebar = document.getElementById('sidebar');
   if (sidebar.classList.contains('open')) sidebar.classList.remove('open');
 
-  // Load section data
   // Stop models polling if leaving models section
   if (name !== 'models') stopModelsPolling();
 
   // Load section data
-  switch (name) {    case 'chat': loadChatStats(); break;
+  switch (name) {
+    case 'chat': loadChatStats(); break;
     case 'memory': loadMemory(); break;
     case 'models': loadModels(); startModelsPolling(); break;
     case 'settings': loadSettings(); break;
@@ -65,6 +67,181 @@ function showSection(name) {
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
 }
+
+// ================================================================
+// SESSION MANAGEMENT
+// ================================================================
+
+async function loadSessions() {
+  const data = await api('/api/v1/sessions');
+  if (!data) return;
+
+  activeSessionId = data.active_session_id || 'default';
+  sessionsList = data.sessions || [];
+
+  const listEl = document.getElementById('chat-list');
+  if (!listEl) return;
+
+  if (!sessionsList.length) {
+    listEl.innerHTML = '<div class="empty-state" style="padding:16px;text-align:center;color:var(--text-dim);font-size:12px;">Нет чатов</div>';
+    return;
+  }
+
+  listEl.innerHTML = sessionsList.map(s => {
+    const id = esc(s.session_id || s.id);
+    const name = esc(s.display_name || s.name || 'New Chat');
+    const icon = s.icon || '💬';
+    const isActive = s.session_id === activeSessionId || s.id === activeSessionId;
+    const isDefault = s.session_id === 'default' || s.id === 'default' || s.session_type === 'default';
+    return `<div class="chat-item${isActive ? ' active' : ''}" data-session-id="${id}" onclick="switchChat('${id}')">
+      <span class="chat-item-icon">${icon}</span>
+      <span class="chat-item-name">${name}</span>
+      ${!isDefault ? `<button class="chat-item-menu-btn" onclick="showChatMenu('${id}', event)">⋮</button>
+      <div class="chat-item-menu" id="menu-${id}">
+        <button onclick="startRenameChat('${id}', '${esc(s.display_name || s.name || 'New Chat')}', event)">✏️ Rename</button>
+        <button class="menu-danger" onclick="deleteChat('${id}', event)">🗑️ Delete</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function createNewChat() {
+  const data = await api('/api/v1/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ display_name: 'New Chat' })
+  });
+  if (data) {
+    toast('Чат создан', 'success');
+    await loadSessions();
+    showSection('chat');
+  } else {
+    toast('Ошибка создания чата', 'error');
+  }
+}
+
+async function switchChat(id) {
+  if (id === activeSessionId) return;
+  const data = await api(`/api/v1/sessions/${encodeURIComponent(id)}/switch`, {
+    method: 'POST'
+  });
+  if (data !== null) {
+    activeSessionId = id;
+    // Clear current messages from UI
+    document.getElementById('messages').innerHTML = '';
+    // Load chat_history from switch response into chat UI
+    if (data.chat_history && data.chat_history.length > 0) {
+      data.chat_history.forEach(msg => {
+        appendMessage(msg.role || 'user', msg.content || '');
+      });
+    }
+    // Update turn/CCI badges
+    if (data.turn != null) {
+      document.getElementById('chat-turn-badge').textContent = `Turn: ${data.turn}`;
+    }
+    // Reload stats (CCI, model)
+    loadChatStats();
+    // Reload memory data if on memory tab
+    if (currentSection === 'memory') {
+      loadMemory();
+    }
+    await loadSessions();
+    showSection('chat');
+  } else {
+    toast('Ошибка переключения чата', 'error');
+  }
+}
+
+async function deleteChat(id, event) {
+  if (event) { event.stopPropagation(); event.preventDefault(); }
+  closeAllMenus();
+  if (!confirm('Удалить этот чат?')) return;
+  const r = await api(`/api/v1/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (r !== null) {
+    toast('Чат удалён', 'success');
+    document.getElementById('messages').innerHTML = '';
+    await loadSessions();
+  } else {
+    toast('Ошибка удаления чата', 'error');
+  }
+}
+
+function startRenameChat(id, name, event) {
+  if (event) { event.stopPropagation(); event.preventDefault(); }
+  closeAllMenus();
+
+  const chatItem = document.querySelector(`.chat-item[data-session-id="${id}"]`);
+  if (!chatItem) return;
+
+  const nameSpan = chatItem.querySelector('.chat-item-name');
+  if (!nameSpan) return;
+
+  // Replace name span with input
+  const input = document.createElement('input');
+  input.className = 'chat-item-edit';
+  input.value = name;
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      finishRenameChat(id, e);
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      loadSessions(); // Cancel rename
+    }
+  });
+  input.addEventListener('blur', (e) => {
+    finishRenameChat(id, e);
+  });
+
+  nameSpan.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
+async function finishRenameChat(id, event) {
+  if (event) event.stopPropagation();
+  const chatItem = document.querySelector(`.chat-item[data-session-id="${id}"]`);
+  if (!chatItem) return;
+
+  const input = chatItem.querySelector('.chat-item-edit');
+  if (!input) return;
+
+  const newName = input.value.trim();
+  if (!newName) {
+    loadSessions();
+    return;
+  }
+
+  const r = await api(`/api/v1/sessions/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ display_name: newName })
+  });
+  if (r !== null) {
+    toast('Чат переименован', 'success');
+    await loadSessions();
+  } else {
+    toast('Ошибка переименования', 'error');
+    loadSessions();
+  }
+}
+
+function showChatMenu(id, event) {
+  if (event) { event.stopPropagation(); event.preventDefault(); }
+  closeAllMenus();
+  const menu = document.getElementById('menu-' + id);
+  if (menu) menu.classList.add('show');
+}
+
+function closeAllMenus() {
+  document.querySelectorAll('.chat-item-menu.show').forEach(m => m.classList.remove('show'));
+}
+
+// Close menus on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.chat-item-menu') && !e.target.closest('.chat-item-menu-btn')) {
+    closeAllMenus();
+  }
+});
 
 // ================================================================
 // UTILITIES
@@ -113,7 +290,7 @@ function toast(msg, type = 'info') {
 }
 
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function fmtSize(bytes) {
@@ -270,14 +447,14 @@ function finalizeStreamBubble() {
 
 
 function createThinkingBubble() {
-  const chatMessages = document.getElementById('chat-messages');
+  const chatMessages = document.getElementById('messages');
   const div = document.createElement('div');
   div.className = 'message assistant thinking-message';
   div.innerHTML = `
     <div class="thinking-header" onclick="toggleThinking(this)">
-      <span class="thinking-icon">&#x1F9E0;</span>
-      <span class="thinking-label">&#x1F501; &#x414;&#x443;&#x43C;&#x430;&#x44E;...</span>
-      <span class="thinking-toggle">&#x25BC;</span>
+      <span class="thinking-icon">🧠</span>
+      <span class="thinking-label">🔄 Думаю...</span>
+      <span class="thinking-toggle">▼</span>
     </div>
     <div class="thinking-content"></div>
   `;
@@ -290,19 +467,19 @@ function appendThinkingToken(token) {
   if (!_thinkingBubble) return;
   _thinkingText += token;
   _thinkingBubble.textContent = _thinkingText;
-  const chatMessages = document.getElementById('chat-messages');
+  const chatMessages = document.getElementById('messages');
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function finalizeThinkingBubble() {
   if (_thinkingBubble) {
     const header = _thinkingBubble.parentElement.querySelector('.thinking-label');
-    if (header) header.innerHTML = '&#x1F4AD; &#x41C;&#x44B;&#x441;&#x43B;&#x438; <small style="opacity:0.6">(&#x43D;&#x430;&#x436;&#x43C;&#x438; &#x447;&#x442;&#x43E;&#x431;&#x44B; &#x440;&#x430;&#x437;&#x432;&#x435;&#x440;&#x43D;&#x443;&#x442;&#x44C;)</small>';
+    if (header) header.innerHTML = '💭 Мысли <small style="opacity:0.6">(нажми чтобы развернуть)</small>';
     const toggle = _thinkingBubble.parentElement.querySelector('.thinking-toggle');
     if (toggle) toggle.textContent = '▶';
     _thinkingBubble.style.display = 'none';
     _thinkingBubble = null;
-    _thinkingText = ''; 
+    _thinkingText = '';
   }
 }
 
@@ -314,11 +491,11 @@ function toggleThinking(header) {
   if (content.style.display === 'none' || content.style.display === '') {
     content.style.display = 'block';
     if (toggle) toggle.textContent = '▼';
-    if (label) label.innerHTML = '&#x1F4AD; &#x41C;&#x44B;&#x441;&#x43B;&#x438; <small style="opacity:0.6">(&#x441;&#x432;&#x435;&#x440;&#x43D;&#x443;&#x442;&#x44C;)</small>';
+    if (label) label.innerHTML = '💭 Мысли <small style="opacity:0.6">(свернуть)</small>';
   } else {
     content.style.display = 'none';
     if (toggle) toggle.textContent = '▶';
-    if (label) label.innerHTML = '&#x1F4AD; &#x41C;&#x44B;&#x441;&#x43B;&#x438; <small style="opacity:0.6">(&#x440;&#x430;&#x437;&#x432;&#x435;&#x440;&#x43D;&#x443;&#x442;&#x44C;)</small>';
+    if (label) label.innerHTML = '💭 Мысли <small style="opacity:0.6">(развернуть)</small>';
   }
 }
 
@@ -440,6 +617,20 @@ function sendMessage() {
   } catch (e) {
     hideTyping();
     toast('Ошибка отправки: ' + e.message, 'error');
+  }
+
+  // Auto-name: if current chat is named "New Chat", rename with first 30 chars
+  const activeItem = document.querySelector('.chat-item.active .chat-item-name');
+  if (activeItem && activeItem.textContent === 'New Chat' && activeSessionId !== 'default') {
+    const autoName = text.substring(0, 30).replace(/[\n\r]/g, ' ').trim();
+    if (autoName) {
+      api(`/api/v1/sessions/${encodeURIComponent(activeSessionId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ display_name: autoName })
+      }).then(() => {
+        loadSessions();
+      });
+    }
   }
 }
 
@@ -646,7 +837,6 @@ async function loadModels() {
     const dualData = await api('/api/v1/dual-model/stats');
     if (dualData) updateDualModelUI(dualData, 'm');
   }
-
 
   // 2. Список скачанных моделей Ollama (через наш прокси)
   const ollamaData = await api('/api/v1/ollama/models');
@@ -990,6 +1180,7 @@ async function saveSettings() {
 
 document.addEventListener('DOMContentLoaded', () => {
   connectWS();
+  loadSessions();
   showSection('chat');
 });
 
@@ -1071,5 +1262,4 @@ function toggleLogsAutoScroll() {
   const btn = document.getElementById('log-autoscroll-btn');
   if (btn) btn.textContent = _logsAutoScroll ? '⬇️ Авто-скролл: ВКЛ' : '⬇️ Авто-скролл: ВЫКЛ';
 }
-
 

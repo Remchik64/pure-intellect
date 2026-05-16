@@ -10,10 +10,27 @@
 <body>
 <div id="app">
 
-<!-- HEADER -->
+<!-- HEADER (sticky, nav tabs moved here) -->
 <header id="header">
   <button id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-  <div class="logo">🧠 <span>Contextor</span> Admin</div>
+  <div class="logo">🧠 <span>Contextor</span></div>
+  <nav class="header-nav">
+    <button class="header-nav-item active" data-section="chat" onclick="showSection('chat')">
+      <span>💬</span><span>Chat</span>
+    </button>
+    <button class="header-nav-item" data-section="memory" onclick="showSection('memory')">
+      <span>🧠</span><span>Memory</span>
+    </button>
+    <button class="header-nav-item" data-section="models" onclick="showSection('models')">
+      <span>🤖</span><span>Models</span>
+    </button>
+    <button class="header-nav-item" data-section="settings" onclick="showSection('settings')">
+      <span>⚙️</span><span>Settings 🚧</span>
+    </button>
+    <button class="header-nav-item" data-section="logs" onclick="showSection('logs')">
+      <span>📋</span><span>Logs 🚧</span>
+    </button>
+  </nav>
   <div class="badges">
     <div class="badge" id="badge-gpu"><div class="dot" id="gpu-dot"></div><span id="gpu-label">GPU: —</span></div>
     <div class="badge" id="badge-ws"><div class="dot" id="ws-dot"></div><span id="ws-label">Offline</span></div>
@@ -24,25 +41,10 @@
 <!-- MAIN -->
 <div id="main">
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR (chat list) -->
   <nav id="sidebar">
-    <div class="nav-item active" data-section="chat" onclick="showSection('chat')">
-      <span class="nav-icon">💬</span><span>Chat</span>
-    </div>
-    <div class="nav-item" data-section="memory" onclick="showSection('memory')">
-      <span class="nav-icon">🧠</span><span>Memory</span>
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-item" data-section="models" onclick="showSection('models')">
-      <span class="nav-icon">🤖</span><span>Models</span>
-    </div>
-
-    <div class="nav-item" data-section="settings" onclick="showSection('settings')">
-      <span class="nav-icon">⚙️</span><span>Settings 🚧</span>
-    </div>
-    <div class="nav-item" data-section="logs" onclick="showSection('logs')">
-      <span class="nav-icon">📋</span><span>Logs 🚧</span>
-    </div>
+    <button class="sidebar-new-chat" onclick="createNewChat()">+ Новый чат</button>
+    <div id="chat-list" class="chat-list"></div>
   </nav>
 
   <!-- CONTENT -->
@@ -167,7 +169,6 @@
         </div>
       </div>
 
-      <!-- Active Models -->
       <!-- Active Models -->
       <div class="card mb-16">
         <div class="card-title">Активные модели</div>

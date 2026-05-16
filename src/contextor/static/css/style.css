@@ -2,6 +2,7 @@
   --bg: #0d1117;
   --surface: #161b22;
   --surface2: #21262d;
+  --surface3: #1a1f27;
   --border: #30363d;
   --text: #e6edf3;
   --text-dim: #8b949e;
@@ -10,7 +11,7 @@
   --yellow: #d29922;
   --red: #f85149;
   --purple: #bc8cff;
-  --nav-width: 200px;
+  --nav-width: 250px;
   --header-height: 52px;
 }
 
@@ -52,6 +53,8 @@ a { color: var(--accent); text-decoration: none; }
   gap: 12px;
   flex-shrink: 0;
   z-index: 100;
+  position: sticky;
+  top: 0;
 }
 
 #header .logo {
@@ -65,6 +68,45 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 #header .logo span { color: var(--accent); }
+
+/* ===== HEADER NAV ===== */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 16px;
+}
+
+.header-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.header-nav-item:hover {
+  background: rgba(88, 166, 255, 0.08);
+  color: var(--text);
+}
+
+.header-nav-item.active {
+  color: var(--accent);
+  background: rgba(88, 166, 255, 0.15);
+  font-weight: 600;
+}
+
+.header-nav-item span:first-child {
+  font-size: 15px;
+}
 
 #header .badges {
   display: flex;
@@ -106,48 +148,172 @@ a { color: var(--accent); text-decoration: none; }
   overflow: hidden;
 }
 
-/* ===== SIDEBAR ===== */
+/* ===== SIDEBAR (Chat List) ===== */
 #sidebar {
   width: var(--nav-width);
-  background: var(--surface2);
+  background: var(--surface3);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 12px 0;
   flex-shrink: 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.nav-item {
+.sidebar-new-chat {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 6px;
   padding: 10px 16px;
-  cursor: pointer;
-  color: var(--text-dim);
-  border-left: 3px solid transparent;
-  transition: all 0.15s;
-  user-select: none;
+  margin: 12px 12px 8px;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--accent);
   font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
 }
 
-.nav-item:hover {
+.sidebar-new-chat:hover {
+  background: rgba(88, 166, 255, 0.1);
+  border-color: var(--accent);
+}
+
+/* ===== CHAT LIST ===== */
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 13px;
+  transition: all 0.15s;
+  user-select: none;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.chat-item:hover {
   background: rgba(88, 166, 255, 0.08);
   color: var(--text);
 }
 
-.nav-item.active {
-  color: var(--accent);
-  border-left-color: var(--accent);
+.chat-item.active {
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--text);
+  border-color: var(--accent);
+  border-left: 3px solid var(--accent);
+}
+
+.chat-item-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.chat-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.chat-item-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
+}
+
+.chat-item:hover .chat-item-menu-btn {
+  display: flex;
+}
+
+.chat-item-menu-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* ===== CHAT CONTEXT MENU ===== */
+.chat-item-menu {
+  position: absolute;
+  right: 8px;
+  top: 100%;
+  z-index: 300;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 140px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  display: none;
+}
+
+.chat-item-menu.show {
+  display: block;
+}
+
+.chat-item-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.chat-item-menu button:hover {
   background: rgba(88, 166, 255, 0.1);
 }
 
-.nav-item .nav-icon { font-size: 16px; flex-shrink: 0; }
+.chat-item-menu button.menu-danger:hover {
+  background: rgba(248, 81, 73, 0.15);
+  color: var(--red);
+}
 
-.nav-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 8px 12px;
+/* ===== CHAT INLINE RENAME ===== */
+.chat-item-edit {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 2px 6px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
 }
 
 /* ===== CONTENT ===== */
@@ -225,8 +391,10 @@ a { color: var(--accent); text-decoration: none; }
 
 @media (max-width: 600px) {
   #sidebar { width: 52px; }
-  .nav-item span:last-child { display: none; }
-  .nav-item { padding: 10px; justify-content: center; }
+  .sidebar-new-chat span { display: none; }
+  .chat-item-name { display: none; }
+  .chat-item-menu-btn { display: none !important; }
+  .header-nav-item span:last-child { display: none; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   #content { padding: 0; }
   .section { padding: 16px; }
@@ -915,8 +1083,6 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   font-family: monospace;
 }
 
-
-
 /* ===== Responsive Sidebar Toggle ===== */
 #sidebar-toggle {
   display: none;
@@ -941,7 +1107,6 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     transition: transform 0.2s;
   }
   #sidebar.open { transform: translateX(0); }
-  .nav-item span:last-child { display: block; }
 }
 
 /* endpoint status */
