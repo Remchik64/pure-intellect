@@ -475,16 +475,17 @@ class OrchestratorPipeline:
         # ── Memory Update ──
         self._turn += 1
 
-        # P5: Периодическое сохранение каждые 5 turns (не при soft reset — там уже сохраняем)
-        if self._turn % 5 == 0:
-            self._session.save(
-                working_memory=self.working_memory,
-                storage=self.memory_storage,
-                chat_history=self._chat_history,
-                turn=self._turn,
-            )
+        # P5: Сохранение после КАЖДОГО обмена (user→assistant)
+        # Это гарантирует что chat_history не теряется при F5/перезапуске
+        self._session.save(
+            working_memory=self.working_memory,
+            storage=self.memory_storage,
+            chat_history=self._chat_history,
+            turn=self._turn,
+        )
 
-            # R3: Умная фильтрация WorkingMemory — evict маловажных фактов из RAM
+        # R3: Периодическая фильтрация WorkingMemory каждые 5 turns
+        if self._turn % 5 == 0:
             try:
                 from contextor.engines.config_loader import get_config as _get_cfg
                 _mem_cfg = _get_cfg().memory

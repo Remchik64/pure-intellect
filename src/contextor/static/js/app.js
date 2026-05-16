@@ -1178,9 +1178,27 @@ async function saveSettings() {
 // INIT
 // ================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+// Load chat history for active session (on F5 / page init)
+async function loadChatHistory() {
+  const messagesEl = document.getElementById('messages');
+  if (!messagesEl || !activeSessionId) return;
+  try {
+    const data = await api(`/api/v1/sessions/${encodeURIComponent(activeSessionId)}/history`);
+    if (data && data.chat_history && data.chat_history.length > 0) {
+      data.chat_history.forEach(msg => {
+        appendMessage(msg.role || 'user', msg.content || '');
+      });
+    }
+  } catch (e) {
+    console.warn('Failed to load chat history:', e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   connectWS();
-  loadSessions();
+  await loadSessions();
+  await loadChatHistory();
+  loadChatStats();
   showSection('chat');
 });
 
