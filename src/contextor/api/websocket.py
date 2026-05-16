@@ -94,17 +94,6 @@ class StreamingManager:
         try:
             pipeline = _get_pipeline()
 
-            # Проверяем доступность Ollama
-            try:
-                import urllib.request as _ur
-                _ur.urlopen(settings.ollama_url, timeout=2)
-            except Exception:
-                await self.send_json(websocket, {
-                    "type": "error",
-                    "message": "Ollama не запущена! Запусти 'ollama serve' и обнови страницу.",
-                })
-                return
-
 
             # Пробуем настоящий стриминг через Ollama
             router = getattr(pipeline, "_router", None)
