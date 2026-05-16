@@ -237,7 +237,7 @@ class StreamingManager:
             # Получаем turn из pipeline если возможно
             turn_count = None
             try:
-                pipeline_obj = get_pipeline()
+                pipeline_obj = _get_pipeline()
                 if hasattr(pipeline_obj, 'session') and pipeline_obj.session:
                     turn_count = getattr(pipeline_obj.session, 'turn_count', None)
             except Exception:
