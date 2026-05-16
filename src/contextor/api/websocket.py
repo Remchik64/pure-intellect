@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 def _get_pipeline():
-    """Ленивый импорт get_pipeline из routes для избежания циклических зависимостей."""
-    from ..api.routes import get_pipeline
+    """Ленивый импорт get_pipeline из state для избежания циклических зависимостей."""
+    from ..api.state import get_pipeline
     return get_pipeline()
 
 
