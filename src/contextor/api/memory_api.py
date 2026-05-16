@@ -24,8 +24,15 @@ async def memory_facts():
     """Получить все факты из памяти (working + storage)."""
     try:
         pipeline = get_pipeline()
-        wm_facts = [f.__dict__ for f in pipeline.working_memory._facts]
-        storage_facts = [f.__dict__ for f in pipeline.memory_storage._facts]
+        def _fact_to_dict(f):
+            if isinstance(f, dict):
+                return f
+            if hasattr(f, '__dict__'):
+                return f.__dict__
+            return {"content": str(f)}
+
+        wm_facts = [_fact_to_dict(f) for f in pipeline.working_memory._facts]
+        storage_facts = [_fact_to_dict(f) for f in pipeline.memory_storage._facts]
         return {"facts": wm_facts + storage_facts}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
