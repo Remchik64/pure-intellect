@@ -32,7 +32,7 @@ async def memory_facts():
             return {"content": str(f)}
 
         wm_facts = [_fact_to_dict(f) for f in pipeline.working_memory._facts]
-        storage_facts = [_fact_to_dict(f) for f in pipeline.memory_storage._facts]
+        storage_facts = [_fact_to_dict(f) for f in pipeline.memory_storage._facts.values()]
         return {"facts": wm_facts + storage_facts}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
