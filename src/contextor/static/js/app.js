@@ -711,7 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ta = document.getElementById('chat-input');
   ta.addEventListener('input', () => {
     ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+    ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
   });
   ta.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
