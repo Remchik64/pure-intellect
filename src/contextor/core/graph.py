@@ -123,6 +123,6 @@ class KnowledgeGraph:
     def load(self):
         """Загрузить граф с диска."""
         if self.storage_path and self.storage_path.exists():
-            data = json.loads(self.storage_path.read_text(encoding="utf-8"))
+            data = json.loads(self.storage_path.read_text(encoding="utf-8", errors="replace"))
             self.graph = nx.node_link_graph(data)
             logger.info(f"Graph: загружен ({self.graph.number_of_nodes()} узлов)")

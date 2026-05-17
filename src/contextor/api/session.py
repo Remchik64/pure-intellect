@@ -156,7 +156,7 @@ async def get_session_history(session_id: str):
 
         import json
         try:
-            data = json.loads(history_path.read_text(encoding="utf-8"))
+            data = json.loads(history_path.read_text(encoding="utf-8", errors="replace"))
             messages = data.get("messages", [])
             return {
                 "session_id": session_id,

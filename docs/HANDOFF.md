@@ -470,3 +470,36 @@ CTX инжектирует не только координату, а **4-сло
 1. Сначала — серверная часть: мульти-сессии, изоляция данных (session_manager.py, routes.py)
 2. Затем — UI: шапка с вкладками + боковая панель с чатами (index.html)
 3. В конце — менеджер памяти, привязанный к активному чату
+
+### 18 мая 2026 — Фиксы кодировки, web search, num_ctx из конфига, Settings API, книга Contextor
+
+**Выполнено:**
+- ✅ fix: add encoding='utf-8' to all read_text() calls (коммит 032f0ff) — исправлена ошибка Windows charmap codec в session.py, working_memory.py, storage.py, session_manager.py
+- ✅ fix: improve web search query extraction and add web_search prompt instructions (коммит 6438b46) — utility_worker.py: keywords приоритетнее полного текста + regex очистка командных фраз; orchestrator.py: добавлены инструкции для web_search intent (НЕ говорить 'я не могу')
+- ✅ feat: improve web search activation — expanded intent rules, query extraction, prompt instructions (коммит 4931cff) — расширены триггеры WEB_SEARCH в intent.py (актуальн, курсов, сегодня, сейчас, google, look up и др.); force_web_search в orchestrator.py извлекает поисковый запрос из сообщения
+- ✅ feat: move num_ctx from hardcoded to config.yaml, add settings API endpoints, add num_ctx selector in Settings tab, add no-cache headers
+- ✅ fix: pass utility_context to LLM system prompt
+- ✅ fix: web search ddgs ImportError handling
+- ✅ docs: книга-рассказ о Contextor: docs/CTX_BOOK.md (487 строк, 8 глав)
+- ✅ Версия проекта обновлена до 0.3.0
+
+**Что в процессе:**
+- 🔄 Settings tab UI (v0.3.0, базовый функционал работает)
+- 🔄 Web search intent detection — нуждается в тестировании на разных запросах
+
+**Блокеры:**
+- Нет
+
+**Следующие шаги:**
+- Обновить тесты под текущие имена моделей (qwen3.5 вместо qwen2.5)
+- Переписать _create_coordinate() на английский (UCIP format)
+- Добавить 4-слойный Context Package в _build_system_prompt()
+- Улучшить CCI алгоритм (adaptive threshold)
+- Асинхронный pipeline.run() для стриминга ответов
+- WebSocket auto-reconnect на клиенте
+
+**Решения и обоснования:**
+- encoding='utf-8' добавлен ко всем read_text() — Windows по умолчанию использует cp1251, что ломает кириллицу в JSON файлах
+- Web search triggers расширены — старые триггеры были слишком узкие, запросы типа 'актуальн' или 'сейчас' не попадали в WEB_SEARCH
+- force_web_search извлекает запрос из сообщения — раньше LLM получала необработанное сообщение, теперь regex чистит командные фразы
+- num_ctx вынесен в config.yaml — был захардкожен в dual_model.py:180, теперь можно менять через Settings API без перезапуска

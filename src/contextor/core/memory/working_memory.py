@@ -261,7 +261,7 @@ class WorkingMemory:
             logger.warning(f"WorkingMemory file empty, starting fresh: {path}")
             return False
         try:
-            data = json.loads(path.read_text(encoding='utf-8'))
+            data = json.loads(path.read_text(encoding='utf-8', errors='replace'))
             self.current_turn = data.get("current_turn", 0)
             self._evicted_count = data.get("evicted_count", 0)
             loaded_facts = [
