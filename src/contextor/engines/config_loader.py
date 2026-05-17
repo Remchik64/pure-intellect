@@ -64,6 +64,12 @@ class HardwareConfig:
 @dataclass
 class MemoryConfig:
     """Параметры памяти."""
+    # Размер контекстного окна (буфера извлечения) в токенах
+    # 4096 — максимальная точность фактов, часто сбросы
+    # 8192 — баланс: беседа + факты (default)
+    # 16384 — код-ревью, длинные ответы
+    # 32768 — длинные сессии с код-генерацией
+    num_ctx: int = 8192
     context_window_messages: int = 12
     keep_after_reset: int = 6
     working_memory_tokens: int = 500
@@ -199,6 +205,7 @@ def load_config() -> AppConfig:
         )
 
         cfg.memory = MemoryConfig(
+            num_ctx=int(memory_raw.get("num_ctx", 8192)),
             context_window_messages=int(memory_raw.get("context_window_messages", 12)),
             keep_after_reset=int(memory_raw.get("keep_after_reset", 6)),
             working_memory_tokens=int(memory_raw.get("working_memory_tokens", 500)),

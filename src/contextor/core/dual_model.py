@@ -81,12 +81,23 @@ class DualModelRouter:
         coordinator_model: Optional[str] = None,
         generator_model: Optional[str] = None,
         ollama_url: str = None,
+        num_ctx: Optional[int] = None,
     ):
         # Читаем из config.yaml если не переданы явно
         cfg_coordinator, cfg_generator = _load_models_from_config()
         self.coordinator_model = coordinator_model or cfg_coordinator
         self.generator_model = generator_model or cfg_generator
         self.ollama_url = ollama_url or settings.ollama_url
+        # Размер контекстного окна (буфера извлечения)
+        # По умолчанию читаем из config.yaml, можно переопределить
+        if num_ctx is not None:
+            self._num_ctx = num_ctx
+        else:
+            try:
+                from contextor.engines.config_loader import get_config
+                self._num_ctx = get_config().memory.num_ctx
+            except Exception:
+                self._num_ctx = 8192
 
         logger.info(
             f"[dual_model] Init: coordinator={self.coordinator_model!r}, "
@@ -140,20 +151,28 @@ class DualModelRouter:
         return self._check_generator_available()
 
     def reload_from_config(self) -> None:
-        """Перечитать config.yaml и обновить модели без перезапуска."""
+        """Перечитать config.yaml и обновить модели и num_ctx без перезапуска."""
         try:
             from contextor.engines.config_loader import reload_config
             reload_config()
             cfg_coordinator, cfg_generator = _load_models_from_config()
             old_coordinator = self.coordinator_model
             old_generator = self.generator_model
+            old_num_ctx = self._num_ctx
             self.coordinator_model = cfg_coordinator
             self.generator_model = cfg_generator
             self._generator_available = None  # сброс кеша доступности
+            # Обновляем num_ctx из конфига
+            try:
+                from contextor.engines.config_loader import get_config
+                self._num_ctx = get_config().memory.num_ctx
+            except Exception:
+                pass  # оставляем текущее значение
             logger.info(
                 f"[dual_model] Reloaded config: "
                 f"coordinator {old_coordinator!r} → {self.coordinator_model!r}, "
-                f"generator {old_generator!r} → {self.generator_model!r}"
+                f"generator {old_generator!r} → {self.generator_model!r}, "
+                f"num_ctx {old_num_ctx} → {self._num_ctx}"
             )
         except Exception as e:
             logger.error(f"[dual_model] Failed to reload config: {e}")
@@ -177,7 +196,7 @@ class DualModelRouter:
             "max_tokens": max_tokens,
             "stream": False,
             "options": {
-                "num_ctx": 8192,
+                "num_ctx": self._num_ctx,
                 "num_gpu": -1,     # GPU+CPU hybrid: load max layers in VRAM, rest on CPU
             },
         }).encode("utf-8")
@@ -276,6 +295,7 @@ class DualModelRouter:
             "coordinator_model": self.coordinator_model,
             "generator_model": self.generator_model,
             "generator_available": self._generator_available,
+            "num_ctx": self._num_ctx,
             "coordinator_calls": self._coordinator_calls,
             "generator_calls": self._generator_calls,
             "coordinator_tokens": self._coordinator_tokens,

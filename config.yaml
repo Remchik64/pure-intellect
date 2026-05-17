@@ -43,11 +43,18 @@ hardware:
   vram_overflow_strategy: offload
 
 memory:
+  # Размер контекстного окна (буфера извлечения) в токенах
+  # 4096 — максимальная точность фактов, часто сбросы
+  # 8192 — баланс: беседа + факты (default)
+  # 16384 — код-ревью, длинные ответы
+  # 32768 — длинные сессии с код-генерацией
+  num_ctx: 8192
   context_window_messages: 12
   keep_after_reset: 6
   meta_coordinate_every: 4
   max_hot_facts: 50
   hot_evict_threshold: 0.2
+  working_memory_tokens: 500
   adaptive_reset:
     enabled: true
     cci_threshold: 0.55
