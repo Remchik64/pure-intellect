@@ -1,8 +1,3 @@
-# Contextor — конфигурация по умолчанию
-# ВНИМАНИЕ: Для изменения моделей используй Admin Panel → AZ Plugin Config
-# Значения ниже — только defaults при первом запуске
-# Они НЕ влияют на работу если az_plugin_config.yaml уже настроен
-
 models:
   coordinator:
     provider: ollama
@@ -11,7 +6,6 @@ models:
     temperature: 0.2
     max_tokens: 400
     timeout: 60
-
   generator:
     provider: ollama
     model: qwen3.5:9b
@@ -19,8 +13,6 @@ models:
     temperature: 0.7
     max_tokens: 2048
     timeout: 120
-
-
   utility:
     provider: ollama
     model: qwen3.5:9b
@@ -28,26 +20,16 @@ models:
     temperature: 0.3
     max_tokens: 4096
     timeout: 180
-
   embedder:
-    # Используй Ollama (nomic-embed-text должна быть скачана через 'ollama pull nomic-embed-text')
-    # Альтернатива: sentence_transformers (требует pip install sentence-transformers)
     provider: ollama
     model: nomic-embed-text
     device: auto
-
 hardware:
   auto_gpu_layers: true
   vram_reserve_mb: 512
   cpu_threads: 0
   vram_overflow_strategy: offload
-
 memory:
-  # Размер контекстного окна (буфера извлечения) в токенах
-  # 4096 — максимальная точность фактов, часто сбросы
-  # 8192 — баланс: беседа + факты (default)
-  # 16384 — код-ревью, длинные ответы
-  # 32768 — длинные сессии с код-генерацией
   num_ctx: 8192
   context_window_messages: 12
   keep_after_reset: 6
@@ -61,13 +43,11 @@ memory:
     min_turns_between_resets: 4
     max_turns_without_reset: 16
   max_storage_facts: 1000
-
 server:
   host: 0.0.0.0
   port: 7860
   workers: 1
   log_level: INFO
-
 ollama:
   base_url: http://host.docker.internal:11434
   timeout: 120

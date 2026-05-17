@@ -39,7 +39,7 @@ class UtilityWorker:
     def perform_web_search(self, query: str) -> str:
         logger.info(f"[UtilityWorker] Запуск поиска в DDG: {query}")
         try:
-            results = DDGS().text(query, max_results=3)
+            results = DDGS().text(query, max_results=5)
             if not results:
                 return "Ничего не найдено в интернете."
 
@@ -50,6 +50,9 @@ class UtilityWorker:
                 body = res.get("body", "")
                 text_content += f"Заголовок: {title}\nСсылка: {href}\nОписание: {body}\n\n"
             return text_content
+        except ImportError:
+            logger.error("[UtilityWorker] ddgs не установлен! Установите: pip install duckduckgo-search")
+            return "Ошибка: библиотека duckduckgo-search не установлена. Выполните: pip install duckduckgo-search"
         except Exception as e:
             logger.error(f"[UtilityWorker] Ошибка поиска DDG: {e}")
             return f"Ошибка поиска: {e}"
@@ -65,7 +68,13 @@ class UtilityWorker:
 
     async def _ask_utility_model(self, prompt: str) -> str:
         utility_model_name = _get_available_utility_model(getattr(self.config, 'utility_model', "qwen3.5:9b"), getattr(self.config, 'chat_model', "qwen3.5:9b"))
-        logger.info(f"[UtilityWorker] Запрос к {utility_model_name} (num_ctx=4096)")
+        # Читаем num_ctx из конфига
+        try:
+            from contextor.engines.config_loader import get_config
+            num_ctx = get_config().memory.num_ctx
+        except Exception:
+            num_ctx = 4096  # fallback
+        logger.info(f"[UtilityWorker] Запрос к {utility_model_name} (num_ctx={num_ctx})")
         async with httpx.AsyncClient(timeout=180.0) as client:
             resp = await client.post(
                 f"{self.ollama_base}/api/generate",
@@ -73,7 +82,7 @@ class UtilityWorker:
                     "model": utility_model_name,
                     "prompt": prompt,
                     "stream": False,
-                    "options": {"num_ctx": 4096}
+                    "options": {"num_ctx": num_ctx}
                 }
             )
             if resp.status_code == 200:
