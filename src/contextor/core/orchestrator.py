@@ -435,6 +435,10 @@ class OrchestratorPipeline:
 
         system_prompt = system or self._build_system_prompt(intent, context_cards, graph_entities)
 
+        # ── Включаем utility_context (результаты веб-поиска/документов) в system prompt ──
+        if utility_context:
+            system_prompt += f"\n\n## Результаты поиска в интернете:\n{utility_context}\n\nИспользуй эти данные для ответа. Укажи источники если есть ссылки."
+
         # Используем _build_messages (внутренний метод) вместо несуществующего assemble
         messages = self._build_messages(query, intent, context_cards, graph_entities, system_prompt)
         logger.info(f"        Assembled {len(messages)} messages")
@@ -648,6 +652,16 @@ class OrchestratorPipeline:
         # Intent
         if intent and hasattr(intent, 'intent') and intent.intent:
             parts.append(f"\n## Тип задачи: {intent.intent.value}")
+            
+            # Специальный промпт для веб-поиска
+            if intent.intent.value == "web_search":
+                parts.append("\nТы получил актуальные результаты поиска из интернета. Используй их для ответа.")
+                parts.append("Отвечай на основе найденных данных. Указывай ссылки на источники если они есть.")
+                parts.append("Если данные устарели или неполные — честно скажи об этом и дополни из своих знаний.")
+            
+            # Специальный промпт для документов
+            if intent.intent.value == "read_document":
+                parts.append("\nТы получил содержимое документа. Проанализируй его и ответь на вопрос пользователя.")
         
         # Контекст кода
         if cards:
