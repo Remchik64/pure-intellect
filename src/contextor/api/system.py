@@ -40,6 +40,110 @@ async def config_info():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── Settings ────────────────────────────────────────────────────────────────────
+
+class SettingsUpdate(BaseModel):
+    """Модель для обновления настроек."""
+    num_ctx: int | None = None  # Размер контекстного окна: 4096, 8192, 16384, 32768
+
+
+@router.get("/settings")
+async def get_settings():
+    """Получить текущие настройки памяти и моделей."""
+    try:
+        from contextor.engines.config_loader import get_config
+        cfg = get_config()
+        pipeline = get_pipeline()
+        return {
+            "memory": {
+                "num_ctx": cfg.memory.num_ctx,
+                "context_window_messages": cfg.memory.context_window_messages,
+                "keep_after_reset": cfg.memory.keep_after_reset,
+                "working_memory_tokens": cfg.memory.working_memory_tokens,
+                "max_hot_facts": cfg.memory.max_hot_facts,
+                "hot_evict_threshold": cfg.memory.hot_evict_threshold,
+                "meta_coordinate_every": cfg.memory.meta_coordinate_every,
+                "max_storage_facts": cfg.memory.max_storage_facts,
+            },
+            "models": {
+                "coordinator": cfg.coordinator.model,
+                "generator": cfg.generator.model,
+                "embedder": cfg.embedder.model,
+            },
+            "dual_model": pipeline._router.stats(),
+            "presets": {
+                "4K": {"num_ctx": 4096, "label": "Максимальная точность фактов", "description": "Частые сбросы = свежие факты"},
+                "8K": {"num_ctx": 8192, "label": "Баланс: беседа + факты", "description": "Оптимально для большинства задач"},
+                "16K": {"num_ctx": 16384, "label": "Код-ревью, длинные ответы", "description": "Больше контекста для анализа кода"},
+                "32K": {"num_ctx": 32768, "label": "Длинные сессии", "description": "Для код-генерации и длинных диалогов"},
+            },
+        }
+    except Exception as e:
+        logger.error(f"Get settings failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/settings")
+async def update_settings(update: SettingsUpdate):
+    """Обновить настройки и применить без перезапуска.
+    
+    Поддерживаемые параметры:
+    - num_ctx: размер контекстного окна (буфера извлечения)
+    """
+    try:
+        from contextor.engines.config_loader import get_config, _find_config_yaml
+        import yaml
+        
+        changes = {}
+        
+        if update.num_ctx is not None:
+            # Валидация
+            valid_ctx = [4096, 8192, 16384, 32768]
+            if update.num_ctx not in valid_ctx:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"num_ctx must be one of {valid_ctx}, got {update.num_ctx}"
+                )
+            
+            # Сохраняем в config.yaml
+            config_path = _find_config_yaml()
+            if config_path is None:
+                # Fallback: config.yaml в рабочей директории
+                config_path = Path("config.yaml")
+            
+            if config_path and config_path.exists():
+                with open(config_path, "r", encoding="utf-8") as f:
+                    raw = yaml.safe_load(f) or {}
+                
+                if "memory" not in raw:
+                    raw["memory"] = {}
+                raw["memory"]["num_ctx"] = update.num_ctx
+                
+                with open(config_path, "w", encoding="utf-8") as f:
+                    yaml.dump(raw, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+                
+                changes["num_ctx"] = {"before": None, "after": update.num_ctx}
+            
+            # Обновляем в runtime
+            pipeline = get_pipeline()
+            old_num_ctx = pipeline._router._num_ctx
+            pipeline._router._num_ctx = update.num_ctx
+            changes["num_ctx"]["before"] = old_num_ctx
+            
+            logger.info(f"[settings] num_ctx updated: {old_num_ctx} → {update.num_ctx}")
+        
+        return {
+            "status": "updated",
+            "changes": changes,
+            "message": "Settings applied without restart",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update settings failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/config/reload")
 async def config_reload():
     """Перечитать config.yaml и обновить модели без перезапуска.
