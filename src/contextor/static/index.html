@@ -238,6 +238,22 @@
         <div class="sep"></div>
 
         <div class="card">
+          <div class="card-title">📐 Размер контекста (буфер)</div>
+          <div class="form-group">
+            <label>Контекстное окно <span class="text-dim">(num_ctx)</span></label>
+            <select class="input" id="cfg-num-ctx">
+              <option value="4096">4K — Максимальная точность фактов</option>
+              <option value="8192" selected>8K — Баланс: беседа + факты</option>
+              <option value="16384">16K — Код-ревью, длинные ответы</option>
+              <option value="32768">32K — Длинные сессии с код-генерацией</option>
+            </select>
+            <small class="text-dim" id="ctx-hint">Меньший размер = чаще сбросы = точнее факты. Больший размер = больше контекста для длинных ответов.</small>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="card">
           <div class="card-title">📊 CCI & Reset</div>
           <div class="form-group">
             <label>CCI Threshold <span class="text-dim">(0.0 — 1.0)</span></label>

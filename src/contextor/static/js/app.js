@@ -1137,16 +1137,24 @@ async function downloadModel() {
 // ================================================================
 
 async function loadSettings() {
-  const data = await api('/api/v1/config');
-  if (!data) { toast('Не удалось загрузить настройки', 'error'); return; }
+  // Load settings from /api/v1/settings (includes num_ctx)
+  const settings = await api('/api/v1/settings');
+  // Fallback to /api/v1/config for model info
+  const config = await api('/api/v1/config');
+  if (!settings && !config) { toast('Не удалось загрузить настройки', 'error'); return; }
 
-  // Try various config shapes
-  const coord = data.coordinator_model ?? data.coordinator?.model ?? data.models?.coordinator ?? '';
-  const gen = data.generator_model ?? data.generator?.model ?? data.models?.generator ?? '';
-  const cciThr = data.cci_threshold ?? data.cci?.threshold ?? data.threshold ?? 0.7;
-  const maxTurns = data.max_turns_without_reset ?? data.adaptive_reset?.max_turns ?? data.max_turns ?? 20;
-  const minTurns = data.min_turns_between_resets ?? data.adaptive_reset?.min_turns ?? data.min_turns ?? 5;
-  const hotMax = data.hot_facts_max ?? data.memory?.hot_facts_max ?? data.max_hot_facts ?? 30;
+  // Model info from config
+  const cfg = config || {};
+  const coord = cfg.coordinator_model ?? cfg.coordinator?.model ?? cfg.models?.coordinator ?? '';
+  const gen = cfg.generator_model ?? cfg.generator?.model ?? cfg.models?.generator ?? '';
+
+  // Memory & CCI settings from /api/v1/settings
+  const mem = settings?.memory || {};
+  const cciThr = mem.cci_threshold ?? settings?.dual_model?.cci_threshold ?? 0.7;
+  const maxTurns = mem.max_turns_without_reset ?? settings?.max_turns_without_reset ?? 20;
+  const minTurns = mem.min_turns_between_resets ?? settings?.min_turns_between_resets ?? 5;
+  const hotMax = mem.max_hot_facts ?? settings?.hot_facts_max ?? 30;
+  const numCtx = mem.num_ctx ?? settings?.dual_model?.num_ctx ?? 8192;
 
   document.getElementById('cfg-coord').value = coord;
   document.getElementById('cfg-gen').value = gen;
@@ -1155,10 +1163,26 @@ async function loadSettings() {
   document.getElementById('cfg-max-turns').value = maxTurns;
   document.getElementById('cfg-min-turns').value = minTurns;
   document.getElementById('cfg-hot-max').value = hotMax;
+  
+  // Set num_ctx dropdown
+  const ctxSelect = document.getElementById('cfg-num-ctx');
+  if (ctxSelect) {
+    ctxSelect.value = String(numCtx);
+    // If value not in options, add it
+    if (!ctxSelect.querySelector(`option[value="${numCtx}"]`)) {
+      ctxSelect.value = '8192';
+    }
+  }
 }
 
 async function saveSettings() {
-  const payload = {
+  // Save num_ctx via PATCH /api/v1/settings
+  const numCtx = parseInt(document.getElementById('cfg-num-ctx').value);
+  const settingsPayload = { num_ctx: numCtx };
+  const settingsResult = await api('/api/v1/settings', { method: 'PATCH', body: JSON.stringify(settingsPayload) });
+  
+  // Save model/CCI settings via POST /api/v1/config/reload
+  const configPayload = {
     coordinator_model: document.getElementById('cfg-coord').value,
     generator_model: document.getElementById('cfg-gen').value,
     cci_threshold: parseFloat(document.getElementById('cfg-cci').value),
@@ -1167,13 +1191,11 @@ async function saveSettings() {
     hot_facts_max: parseInt(document.getElementById('cfg-hot-max').value)
   };
 
-  const r = await api('/api/v1/config/reload', { method: 'POST', body: JSON.stringify(payload) });
-  if (r !== null) toast('Настройки сохранены', 'success');
-  else {
-    // Fallback: try PATCH /api/v1/config
-    const r2 = await api('/api/v1/config', { method: 'PATCH', body: JSON.stringify(payload) });
-    if (r2 !== null) toast('Настройки сохранены', 'success');
-    else toast('Ошибка сохранения', 'error');
+  const r = await api('/api/v1/config/reload', { method: 'POST', body: JSON.stringify(configPayload) });
+  if (r !== null || settingsResult !== null) {
+    toast('Настройки сохранены', 'success');
+  } else {
+    toast('Ошибка сохранения', 'error');
   }
 }
 
