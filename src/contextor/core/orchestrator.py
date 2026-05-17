@@ -710,6 +710,16 @@ class OrchestratorPipeline:
         parts.append("- Используй контекст кода выше для точных ответов")
         parts.append("- При генерации кода следуй PEP 8 и SOLID")
         
+        # Специальные инструкции для web_search
+        if hasattr(intent, 'intent') and intent.intent.value == "web_search":
+            parts.append("\n## ⚠️ Важно: Режим веб-поиска")
+            parts.append("- Ты получил АКТУАЛЬНЫЕ результаты поиска из интернета")
+            parts.append("- ОБЯЗАТЕЛЬНО используй эти данные для ответа")
+            parts.append("- НЕ говори 'Я не могу предоставить данные в реальном времени'")
+            parts.append("- НЕ говори 'У меня нет доступа к интернету'")
+            parts.append("- Отвечай на основе найденных данных, указывай источники")
+            parts.append("- Если данные неполные, укажи что именно найдено и предложи уточнить запрос")
+        
         return "\n".join(parts)
 
     def _build_messages(self, query, intent, cards, graph_entities, system_override):

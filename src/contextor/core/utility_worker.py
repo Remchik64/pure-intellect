@@ -95,7 +95,17 @@ class UtilityWorker:
         intent_val = getattr(intent_result.intent, 'value', str(intent_result.intent))
 
         if intent_val == "web_search":
-            search_query = query if query else (" ".join(intent_result.keywords) if intent_result.keywords else "новости")
+            # Приоритет: keywords > извлечённый запрос > полный текст
+            if intent_result.keywords:
+                search_query = " ".join(intent_result.keywords)
+            else:
+                # Извлечь поисковый запрос из сообщения пользователя
+                import re
+                # Удалить типичные фразы-команды
+                clean = re.sub(r'(поищи|найди|нагугли|поиск|ищи|спроси)+(в+)?(интернете|сети|вебе|онлайне|гугле|duckduckgo)*', '', query, flags=re.IGNORECASE)
+                clean = re.sub(r'(выполни|сделай|помоги)+.*?[.!?]\s*', '', clean, flags=re.IGNORECASE)
+                clean = clean.strip()
+                search_query = clean if clean else query
             raw_text = self.perform_web_search(search_query)
         elif intent_val == "read_document":
             path = intent_result.entities[0] if intent_result.entities else ""
