@@ -139,7 +139,7 @@ class SessionPersistence:
         
         try:
             # Metadata первым — чтобы знать что загружаем
-            meta = json.loads(self._meta_path.read_text())
+            meta = json.loads(self._meta_path.read_text(encoding='utf-8'))
             result["meta"] = meta
             result["turn"] = meta.get("turn", 0)
             
@@ -190,7 +190,7 @@ class SessionPersistence:
         if not self._history_path.exists():
             return []
         try:
-            content = self._history_path.read_text().strip()
+            content = self._history_path.read_text(encoding='utf-8').strip()
             if not content:
                 return []
             data = json.loads(content)
@@ -214,7 +214,7 @@ class SessionPersistence:
         if not self.exists:
             return {"exists": False, "session_id": self.session_id}
         try:
-            meta = json.loads(self._meta_path.read_text())
+            meta = json.loads(self._meta_path.read_text(encoding='utf-8'))
             return {"exists": True, **meta}
         except Exception:
             return {"exists": True, "session_id": self.session_id}

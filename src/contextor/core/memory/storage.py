@@ -64,7 +64,7 @@ def _init_embed_config() -> None:
         ]
         for _c in _candidates:
             if _c.exists():
-                _cfg = _yaml.safe_load(_c.read_text()) or {}
+                _cfg = _yaml.safe_load(_c.read_text(encoding='utf-8')) or {}
                 _emb = _cfg.get("models", {}).get("embedder", {})
                 _embed_provider = _emb.get("provider", "auto")
                 _model = _emb.get("model", "")
@@ -557,7 +557,7 @@ class MemoryStorage:
     
     def _load(self) -> None:
         try:
-            data = json.loads(self.storage_path.read_text())
+            data = json.loads(self.storage_path.read_text(encoding='utf-8'))
             for fid, fact_data in data.get("facts", {}).items():
                 self._facts[fid] = Fact.from_dict(fact_data)
             self._embeddings = data.get("embeddings", {})

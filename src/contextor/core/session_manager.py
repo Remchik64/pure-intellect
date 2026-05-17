@@ -139,7 +139,7 @@ class SessionManager:
         # Загружаем активную сессию из файла если есть
         if self._active_file.exists():
             try:
-                self._active_session_id = self._active_file.read_text().strip() or DEFAULT_SESSION
+                self._active_session_id = self._active_file.read_text(encoding='utf-8').strip() or DEFAULT_SESSION
             except Exception:
                 self._active_session_id = DEFAULT_SESSION
 
