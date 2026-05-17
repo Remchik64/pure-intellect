@@ -20,7 +20,7 @@ settings = get_settings()
 app = FastAPI(
     title="Contextor",
     description="Локальный оркестратор для LLM с иерархической памятью",
-    version="0.1.0",
+    version="0.3.0",
 )
 
 # CORS — разрешаем все origins для локального использования и Docker
