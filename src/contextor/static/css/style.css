@@ -724,55 +724,25 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 }
 
 /* ===== MEMORY ===== */
-.memory-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
+.memory-single {
   margin-top: 16px;
-}
-
-@media (max-width: 900px) { .memory-cols { grid-template-columns: 1fr; } }
-
-.memory-col {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 200px);
-}
-
-.memory-col-header {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--surface2);
-  flex-shrink: 0;
-}
-
-.memory-col-header .count {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1px 8px;
-  font-size: 11px;
-  color: var(--text-dim);
 }
 
 .memory-list {
   overflow-y: auto;
-  flex: 1;
+  max-height: calc(100vh - 200px);
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.fact-type-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .fact-item {

@@ -81,7 +81,7 @@
     <!-- ======== MEMORY ======== -->
     <div id="section-memory" class="section">
       <div class="section-title row between">
-        <span>🧠 Memory Manager</span>
+        <span>🧠 Данные чата: <strong id="memory-session-name">default</strong></span>
         <div class="row">
           <input type="text" class="input" id="memory-search" placeholder="🔍 Поиск..." style="width:220px;" oninput="filterMemory()">
           <button class="btn" onclick="loadMemory()">↻</button>
@@ -89,28 +89,8 @@
         </div>
       </div>
 
-      <div class="memory-cols">
-        <div class="memory-col">
-          <div class="memory-col-header">
-            <span>📍 Координаты</span>
-            <span class="count" id="count-coords">0</span>
-          </div>
-          <div class="memory-list" id="list-coords"></div>
-        </div>
-        <div class="memory-col">
-          <div class="memory-col-header">
-            <span>⚓ Anchor Facts</span>
-            <span class="count" id="count-anchors">0</span>
-          </div>
-          <div class="memory-list" id="list-anchors"></div>
-        </div>
-        <div class="memory-col">
-          <div class="memory-col-header">
-            <span>🔥 Hot Facts</span>
-            <span class="count" id="count-hot">0</span>
-          </div>
-          <div class="memory-list" id="list-hot"></div>
-        </div>
+      <div class="memory-single">
+        <div class="memory-list" id="list-facts"></div>
       </div>
     </div>
 

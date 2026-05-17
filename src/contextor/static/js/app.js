@@ -13,7 +13,7 @@ let ws = null;
 let wsConnected = false;
 let chatHistory = [];
 let isTyping = false;
-let allFacts = { coords: [], anchors: [], hot: [] };
+let allFacts = [];
 let currentSection = 'chat';
 let activeSessionId = 'default';
 let sessionsList = [];
@@ -702,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadMemory() {
   const stats = await api('/api/v1/memory/stats');
   const factsData = await fetch('/api/v1/memory/facts').then(r => r.json()).catch(e => null);
-  allFacts = { coords: [], anchors: [], hot: [] };
+  allFacts = [];
 
   if (factsData && factsData.facts) {
     const facts = factsData.facts;
@@ -710,10 +710,18 @@ async function loadMemory() {
       const src = f.source ?? '';
       const isAnchor = f.is_anchor ?? false;
       const isCoord = src === 'soft_reset' || src === 'coordinate' || f.type === 'coordinate';
-      if (isCoord) allFacts.coords.push(f);
-      else if (isAnchor) allFacts.anchors.push(f);
-      else allFacts.hot.push(f);
+      if (isCoord) f._type = 'coord';
+      else if (isAnchor) f._type = 'anchor';
+      else f._type = 'hot';
+      allFacts.push(f);
     });
+  }
+
+  // Update session name in Memory header
+  const sessionName = document.getElementById('memory-session-name');
+  if (sessionName) {
+    const active = sessionsList.find(s => s.id === activeSessionId);
+    sessionName.textContent = active ? (active.name || active.id) : activeSessionId;
   }
 
   renderMemory();
@@ -721,33 +729,33 @@ async function loadMemory() {
 
 function renderMemory(filter = '') {
   const q = filter.toLowerCase();
-  const renderList = (facts, listId, countId) => {
-    const el = document.getElementById(listId);
-    const cnt = document.getElementById(countId);
-    const filtered = q ? facts.filter(f => (f.content || f.text || '').toLowerCase().includes(q)) : facts;
-    cnt.textContent = filtered.length;
-    if (!filtered.length) {
-      el.innerHTML = '<div class="empty-state">Нет данных</div>';
-      return;
-    }
-    el.innerHTML = filtered.map((f, i) => {
-      const text = f.content ?? f.text ?? JSON.stringify(f);
-      const imp = f.importance ?? f.score ?? 0.5;
-      const impClass = imp > 0.7 ? 'high' : imp > 0.4 ? 'med' : 'low';
-      const impLabel = imp > 0.7 ? '🔴' : imp > 0.4 ? '🟡' : '⚪';
-      return `<div class="fact-item" id="fact-${listId}-${i}">
-        <div class="fact-text">${esc(text)}</div>
-        <div class="fact-meta">
-          <span class="importance-badge ${impClass}">${impLabel} ${imp.toFixed ? imp.toFixed(2) : imp}</span>
-          <button class="del-fact-btn" onclick="deleteFact('${listId}', ${i})">×</button>
-        </div>
-      </div>`;
-    }).join('');
-  };
+  const el = document.getElementById('list-facts');
+  if (!el) return;
 
-  renderList(allFacts.coords, 'list-coords', 'count-coords');
-  renderList(allFacts.anchors, 'list-anchors', 'count-anchors');
-  renderList(allFacts.hot, 'list-hot', 'count-hot');
+  const filtered = q ? allFacts.filter(f => (f.content || f.text || '').toLowerCase().includes(q)) : allFacts;
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state">Нет данных</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.map((f, i) => {
+    const text = f.content ?? f.text ?? JSON.stringify(f);
+    const imp = f.importance ?? f.score ?? 0.5;
+    const impClass = imp > 0.7 ? 'high' : imp > 0.4 ? 'med' : 'low';
+    const impLabel = imp > 0.7 ? '🔴' : imp > 0.4 ? '🟡' : '⚪';
+    // Type badge
+    const typeBadge = f._type === 'coord' ? '📍' : f._type === 'anchor' ? '⚓' : '🔥';
+    const typeLabel = f._type === 'coord' ? 'Координата' : f._type === 'anchor' ? 'Якорь' : 'Hot';
+    return `<div class="fact-item" id="fact-${i}">
+      <div class="fact-text">${esc(text)}</div>
+      <div class="fact-meta">
+        <span class="fact-type-badge" title="${typeLabel}">${typeBadge} ${typeLabel}</span>
+        <span class="importance-badge ${impClass}">${impLabel} ${imp.toFixed ? imp.toFixed(2) : imp}</span>
+        <button class="del-fact-btn" onclick="deleteFact(${i})">×</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function filterMemory() {
@@ -755,12 +763,9 @@ function filterMemory() {
   renderMemory(q);
 }
 
-async function deleteFact(listId, idx) {
-  // Remove locally (API for delete by content/id would need backend support)
-  const map = { 'list-coords': 'coords', 'list-anchors': 'anchors', 'list-hot': 'hot' };
-  const key = map[listId];
-  if (key) {
-    allFacts[key].splice(idx, 1);
+async function deleteFact(idx) {
+  if (idx >= 0 && idx < allFacts.length) {
+    allFacts.splice(idx, 1);
     renderMemory(document.getElementById('memory-search').value);
     toast('Факт удалён (локально)', 'info');
   }
