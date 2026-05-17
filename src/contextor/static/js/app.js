@@ -340,27 +340,63 @@ function colorClass(v) {
 // Simple markdown → HTML (no library)
 function renderMarkdown(text) {
   if (!text) return '';
-  let s = esc(text);
+  let s = text;
 
-  // Code blocks
-  s = s.replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code.trim()}</code></pre>`);
+  // Preserve code blocks with language hint
+  const codeBlocks = [];
+  s = s.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    const langLabel = lang ? `<span class="code-lang">${esc(lang)}</span>` : '';
+    codeBlocks.push(`<div class="code-block">${langLabel}<button class="code-copy" onclick="copyCode(${idx})" title="Копировать">📋</button><pre><code>${esc(code.trim())}</code></pre></div>`);
+    return `%%CODEBLOCK${idx}%%`;
+  });
+
+  // Escape HTML (but preserve code blocks)
+  s = esc(s);
+
+  // Restore code blocks
+  codeBlocks.forEach((block, idx) => {
+    s = s.replace(`%%CODEBLOCK${idx}%%`, block);
+  });
+
   // Inline code
   s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
   // Bold
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // Italic
-  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // Italic (single *)
+  s = s.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+  // Blockquotes
+  s = s.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
   // Headers
   s = s.replace(/^### (.+)$/gm, '<h4>$1</h4>');
   s = s.replace(/^## (.+)$/gm, '<h3>$1</h3>');
   s = s.replace(/^# (.+)$/gm, '<h2>$1</h2>');
-  // Lists
+  // Horizontal rules
+  s = s.replace(/^---$/gm, '<hr>');
+  // Unordered lists
   s = s.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
-  s = s.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
-  // Line breaks (outside pre)
+  s = s.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
+  // Merge consecutive uls
+  s = s.replace(/<\/ul>\s*<ul>/g, '');
+  // Links
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  // Line breaks (outside pre/blockquote)
   s = s.replace(/\n/g, '<br>');
+  // Clean up blockquote breaks
+  s = s.replace(/<blockquote><br>/g, '<blockquote>');
+  s = s.replace(/<br><\/blockquote>/g, '</blockquote>');
 
   return s;
+}
+
+function copyCode(idx) {
+  const blocks = document.querySelectorAll('.code-block pre code');
+  if (blocks[idx]) {
+    navigator.clipboard.writeText(blocks[idx].textContent).then(() => {
+      const btn = blocks[idx].closest('.code-block').querySelector('.code-copy');
+      if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = '📋'; }, 1500); }
+    });
+  }
 }
 
 // ================================================================

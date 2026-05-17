@@ -174,6 +174,40 @@ CTX инжектирует не только координату, а **4-сло
  
  ## 📝 Дневник разработки
  
+### 17 мая 2026 — Auto-detect Ollama URL и редизайн Memory tab
+
+**Выполнено:**
+- ✅ fix: auto-detect Docker vs native for Ollama URL (коммит `0b23f2f`)
+  - `config.py`: добавлено автоопределение окружения (Docker vs native) для `ollama_url`
+  - Docker → `http://host.docker.internal:11434`, Native (Windows/Linux) → `http://localhost:11434`
+  - `config.py`: добавлено поле `ollama_timeout` (default: 120s)
+  - `state.py`: root logger level = DEBUG для заполнения LOG_BUFFER (вкладка Logs)
+- ✅ feat: redesign Memory tab (коммит `3f350dc`)
+  - Заменён 3-колоночный layout (📍 Координаты, ⚓ Якоря, 🔥 Hot Facts) на единый блок «Данные чата»
+  - Заголовок показывает имя активного чата: «Данные чата: <имя>»
+  - Каждый факт имеет бейдж типа (📍/⚓/🔥) и важность
+  - `allFacts` изменён с объекта на плоский массив
+  - CSS: `memory-cols`/`memory-col` → `memory-single`
+- ✅ Push в оба репозитория: contextor и contextor-pro (22 коммита)
+
+**Что в процессе:**
+- 🔄 Обновление оставшихся ссылок `qwen2.5` → `qwen3.5` в тестах
+- 🔄 UCIP v2 — координаты на английском
+
+**Блокеры:**
+- Нет
+
+**Следующие шаги:**
+- Обновить тесты под текущие имена моделей (qwen3.5)
+- Переписать `_create_coordinate()` на английский (UCIP format)
+- Асинхронный `pipeline.run()` для стриминга ответов
+- WebSocket auto-reconnect на клиенте
+
+**Решения и обоснования:**
+- Автоопределение Docker/native — убирает необходимость ручной конфигурации при переключении окружений
+- Единый блок Memory — упрощает восприятие, убирает визуальный шум от трёх колонок
+- Push в оба репо — поддерживает синхронность между contextor и contextor-pro
+
  ### 12 мая 2026 — Переименование и новый репозиторий
  
  **Выполнено:**
