@@ -1,8 +1,31 @@
 """Конфигурация Contextor."""
 
+import os
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
+def _is_running_in_docker() -> bool:
+    """Определить, запущен ли Contextor внутри Docker-контейнера."""
+    # Проверка /.dockerenv
+    if Path("/.dockerenv").exists():
+        return True
+    # Проверка /proc/1/cgroup
+    try:
+        with open("/proc/1/cgroup", "r") as f:
+            return "docker" in f.read() or "containerd" in f.read()
+    except (FileNotFoundError, PermissionError):
+        pass
+    return False
+
+
+def _default_ollama_url() -> str:
+    """Вернуть подходящий Ollama URL в зависимости от окружения."""
+    if _is_running_in_docker():
+        return "http://host.docker.internal:11434"
+    return "http://localhost:11434"
 
 
 class Settings(BaseSettings):
@@ -41,8 +64,12 @@ class Settings(BaseSettings):
     
     # Ollama
     ollama_url: str = Field(
-        default="http://host.docker.internal:11434",
-        description="URL Ollama API"
+        default_factory=_default_ollama_url,
+        description="URL Ollama API (авто: Docker→host.docker.internal, нативно→localhost)"
+    )
+    ollama_timeout: int = Field(
+        default=120,
+        description="Таймаут запросов к Ollama (секунды)"
     )
     
     # Storage

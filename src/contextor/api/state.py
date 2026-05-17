@@ -37,7 +37,9 @@ class PIMemoryHandler(logging.Handler):
 # Прикрепляем к root logger чтобы перехватывать ВСЕ логи
 _mem_handler = PIMemoryHandler()
 _mem_handler.setLevel(logging.DEBUG)
-logging.getLogger().addHandler(_mem_handler)
+_root_logger = logging.getLogger()
+_root_logger.setLevel(logging.DEBUG)  # Разрешаем все уровни логов для LOG_BUFFER
+_root_logger.addHandler(_mem_handler)
 
 
 def get_model_manager() -> ModelManager:
