@@ -188,7 +188,15 @@ CTX инжектирует не только координату, а **4-сло
   - Каждый факт имеет бейдж типа (📍/⚓/🔥) и важность
   - `allFacts` изменён с объекта на плоский массив
   - CSS: `memory-cols`/`memory-col` → `memory-single`
-- ✅ Push в оба репозитория: contextor и contextor-pro (22 коммита)
+- ✅ feat: redesign chat bubbles and improve markdown rendering (коммит `407cdb0`)
+  - CSS: скруглённые пузыри с тенями, анимации появления (`slideIn`/`fadeIn`)
+  - CSS: тёмные код-блоки с кнопкой копирования (`.copy-btn`, `.code-header`)
+  - JS: улучшен `renderMarkdown()` — цитаты, ссылки, код-блоки, таблицы
+- ✅ feat: adaptive chat input (коммит `412ffff`)
+  - CSS: textarea `max-height 200px`, `border-radius 12px`, focus glow (`box-shadow`)
+  - CSS: styled scrollbar, send button hover/active animations
+  - JS: auto-resize textarea до 200px с плавным переходом (`scrollHeight`)
+- ✅ Push в оба репозитория: contextor и contextor-pro (22+ коммита)
 
 **Что в процессе:**
 - 🔄 Обновление оставшихся ссылок `qwen2.5` → `qwen3.5` в тестах
@@ -206,6 +214,8 @@ CTX инжектирует не только координату, а **4-сло
 **Решения и обоснования:**
 - Автоопределение Docker/native — убирает необходимость ручной конфигурации при переключении окружений
 - Единый блок Memory — упрощает восприятие, убирает визуальный шум от трёх колонок
+- Редизайн chat bubbles — улучшает читаемость, современный вид, анимации дают обратную связь
+- Adaptive input — textarea растёт с контентом, не занимает лишнее место, плавный UX
 - Push в оба репо — поддерживает синхронность между contextor и contextor-pro
 
  ### 12 мая 2026 — Переименование и новый репозиторий

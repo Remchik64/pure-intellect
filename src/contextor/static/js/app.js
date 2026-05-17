@@ -56,7 +56,7 @@ function showSection(name) {
 
   // Load section data
   switch (name) {
-    case 'chat': loadChatStats(); break;
+    case 'chat': break;
     case 'memory': loadMemory(); break;
     case 'models': loadModels(); startModelsPolling(); break;
     case 'settings': loadSettings(); break;
@@ -134,12 +134,6 @@ async function switchChat(id) {
         appendMessage(msg.role || 'user', msg.content || '');
       });
     }
-    // Update turn/CCI badges
-    if (data.turn != null) {
-      document.getElementById('chat-turn-badge').textContent = `Turn: ${data.turn}`;
-    }
-    // Reload stats (CCI, model)
-    loadChatStats();
     // Reload memory data for new session (always, not just on memory tab)
     loadMemory();
     await loadSessions();
@@ -542,16 +536,11 @@ function handleWSMessage(msg) {
     appendStreamToken(msg.content || '');
   } else if (msg.type === 'end') {
     finalizeStreamBubble();
-    updateChatStats(msg);
-    // Обновляем статистику из API (turn, cci могут быть точнее)
-    loadChatStats();
   } else if (msg.type === 'reset_marker') {
     appendResetDivider(msg.turn || 0);
   } else if (msg.type === 'response' || msg.type === 'message') {
     hideTyping();
     appendMessage('assistant', msg.content || msg.message || '');
-  } else if (msg.type === 'status') {
-    updateChatStats(msg);
   } else if (msg.type === 'thinking_start') {
     hideTyping();
     _thinkingBubble = createThinkingBubble();
@@ -668,32 +657,7 @@ function sendMessage() {
   }
 }
 
-function updateChatStats(msg) {
-  if (msg.turn != null) document.getElementById('chat-turn-badge').textContent = `Turn: ${msg.turn}`;
-  if (msg.cci != null) document.getElementById('chat-cci-badge').textContent = `CCI: ${(msg.cci * 100).toFixed(0)}%`;
-  if (msg.model) document.getElementById('chat-model-badge').textContent = `Model: ${msg.model}`;
-}
-
-async function loadChatStats() {
-  const [cciData, sessData, dualData] = await Promise.all([
-    api('/api/v1/cci/stats'),
-    api('/api/v1/session/info'),
-    api('/api/v1/dual-model/stats')
-  ]);
-  if (cciData) {
-    const score = cciData.current_score ?? cciData.score ?? cciData.cci ?? 0;
-    document.getElementById('chat-cci-badge').textContent = `CCI: ${(score * 100).toFixed(0)}%`;
-  }
-  if (sessData) {
-    const turns = sessData.turn_count ?? sessData.turns ?? 0;
-    document.getElementById('chat-turn-badge').textContent = `Turn: ${turns}`;
-  }
-  if (dualData) {
-    const gen = dualData.generator ?? dualData.gen ?? {};
-    const name = gen.model ?? gen.name ?? '—';
-    document.getElementById('chat-model-badge').textContent = `Model: ${name}`;
-  }
-}
+// Chat stats removed — badges no longer displayed in header
 
 async function clearSession() {
   if (!confirm('Очистить текущую сессию?')) return;
@@ -1237,10 +1201,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   connectWS();
   await loadSessions();
   await loadChatHistory();
-  loadChatStats();
   loadMemory();  // Pre-load memory data for active session
   showSection('chat');
 });
+
 
 // Keyboard shortcut: Alt+1..7 → sections
 document.addEventListener('keydown', e => {

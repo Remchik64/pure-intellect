@@ -559,26 +559,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
 #chat-header h2 { font-size: 16px; font-weight: 600; }
 
-#chat-stats {
-  display: flex;
-  gap: 10px;
-  margin-left: auto;
-  flex-wrap: wrap;
-}
-
-.chat-badge {
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-}
-
-.chat-badge.model { color: var(--purple); border-color: var(--purple); }
-.chat-badge.cci { color: var(--accent); border-color: var(--accent); }
-.chat-badge.turn { color: var(--green); border-color: var(--green); }
+/* Chat stats badges removed — no longer displayed */
 
 .reset-divider {
   display: flex;
