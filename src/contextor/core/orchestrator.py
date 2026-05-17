@@ -365,6 +365,14 @@ class OrchestratorPipeline:
         if force_web_search:
             from contextor.core.intent import IntentType
             intent.intent = IntentType.WEB_SEARCH
+            # При force_web_search извлекаем поисковый запрос из сообщения
+            import re
+            clean = re.sub(r'(поищи|найди|погугли|загугли|спроси)+(в+)?(интернете|сети|вебе|онлайне|гугле)*', '', query, flags=re.IGNORECASE)
+            clean = re.sub(r'(выполни|сделай|помоги)+.*?[.!?]\s*', '', clean, flags=re.IGNORECASE)
+            clean = clean.strip()
+            if clean:
+                intent.keywords = clean.split()[:10]
+            logger.info(f"        Force web search: extracted query='{clean}'")
         logger.info(f"        Intent: {intent.intent.value} (confidence: {intent.confidence:.2f})")
         
         # ── Шаг 2: Извлечь контекст через RAG ──
