@@ -41,10 +41,22 @@ app.include_router(openai_router, tags=["openai-compatible"])
 # WebSocket
 app.add_api_websocket_route("/ws", websocket_endpoint)
 
-# Static files — Web UI
+# Static files — Web UI (no-cache для мгновенного обновления при деплое)
 _STATIC_DIR = Path(__file__).parent / "static"
 if _STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+    # Custom StaticFiles with no-cache headers
+    class NoCacheStaticFiles(StaticFiles):
+        async def __call__(self, scope, receive, send):
+            async def send_with_no_cache(message):
+                if message["type"] == "http.response.start":
+                    headers = dict(message.get("headers", []))
+                    headers[b"cache-control"] = b"no-cache, no-store, must-revalidate"
+                    headers[b"pragma"] = b"no-cache"
+                    headers[b"expires"] = b"0"
+                    message["headers"] = [(k, v) for k, v in headers.items()]
+                await send(message)
+            await super().__call__(scope, receive, send_with_no_cache)
+    app.mount("/static", NoCacheStaticFiles(directory=_STATIC_DIR), name="static")
 
 
 @app.get("/", include_in_schema=False)
